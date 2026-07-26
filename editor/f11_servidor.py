@@ -34,15 +34,22 @@ _CATALOGO_CACHE: list = None
 ESTADO_RENDER = {"proceso": None, "log": None}
 
 
-def _guardar_eventos(eventos: list) -> Path:
-    """Escritura atómica de los ajustes (sección 3 del plan): a .tmp y
-    renombrar, para que un José con el JSON abierto en otra parte nunca vea
-    un archivo a medio escribir."""
-    destino = DIR_TRABAJO / "ajustes.eventos.json"
+def _escritura_atomica(destino: Path, datos) -> Path:
+    """A .tmp y renombrar (sección 3 del plan): si José tiene el JSON abierto
+    en otra parte, nunca debe quedar a medio escribir."""
     tmp = destino.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"eventos": eventos}, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.write_text(json.dumps(datos, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(destino)
     return destino
+
+
+def _guardar_eventos(eventos: list) -> Path:
+    return _escritura_atomica(DIR_TRABAJO / "ajustes.eventos.json", {"eventos": eventos})
+
+
+def _guardar_sfx(sfx: list) -> Path:
+    # --sfx-manual (f5_audio.py) espera una LISTA plana, no envuelta en dict.
+    return _escritura_atomica(DIR_TRABAJO / "ajustes.sfx.json", sfx)
 
 
 def _catalogo() -> list:
@@ -235,7 +242,12 @@ class Handler(BaseHTTPRequestHandler):
         if partes.path == "/guardar":
             eventos = datos.get("eventos", [])
             destino = _guardar_eventos(eventos)
-            self._json({"ok": True, "ruta": str(destino), "n": len(eventos)})
+            resultado = {"ok": True, "ruta": str(destino), "n": len(eventos)}
+            if "sfx" in datos:
+                destino_sfx = _guardar_sfx(datos["sfx"])
+                resultado["ruta_sfx"] = str(destino_sfx)
+                resultado["n_sfx"] = len(datos["sfx"])
+            self._json(resultado)
 
         elif partes.path == "/render":
             proceso_previo = ESTADO_RENDER.get("proceso")
@@ -253,6 +265,14 @@ class Handler(BaseHTTPRequestHandler):
                 if candidato.exists():
                     ajustes = candidato
 
+            ajustes_sfx = None
+            if "sfx" in datos:
+                ajustes_sfx = _guardar_sfx(datos["sfx"])
+            else:
+                candidato_sfx = DIR_TRABAJO / "ajustes.sfx.json"
+                if candidato_sfx.exists():
+                    ajustes_sfx = candidato_sfx
+
             # editor.py solo necesita que "entrada" exista — en --reaplicar no
             # se lee: la transcripción/corte/análisis ya están en dir_trabajo.
             dummy_entrada = DIR_TRABAJO / "02_cortado.mp4"
@@ -260,6 +280,8 @@ class Handler(BaseHTTPRequestHandler):
                    "--nombre", DIR_TRABAJO.name, "--reaplicar", "--sin-editor-visual"]
             if ajustes is not None:
                 cmd += ["--eventos-manual", str(ajustes)]
+            if ajustes_sfx is not None:
+                cmd += ["--sfx-manual", str(ajustes_sfx)]
 
             dir_log = DIR_TRABAJO / "_editor"
             dir_log.mkdir(exist_ok=True)
@@ -305,7 +327,8 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
           background: #000; overflow: hidden; border-radius: 10px; border: 1px solid var(--linea); }
 .lienzo video { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
 .lienzo .overlay-img { position: absolute; top: 0; left: 0; transform-origin: 0 0;
-                        pointer-events: none; image-rendering: -webkit-optimize-contrast; }
+                        cursor: grab; image-rendering: -webkit-optimize-contrast; }
+.lienzo .overlay-img:active { cursor: grabbing; }
 .controles { display: flex; gap: 8px; align-items: center; }
 .controles button { background: var(--panel); color: var(--fg); border: 1px solid var(--linea);
                      border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 14px; }
@@ -365,6 +388,20 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
 .editor-caja { border: 1px dashed var(--linea); border-radius: 8px; padding: 10px; margin-top: 10px;
                display: none; }
 .editor-caja.activa { display: block; }
+
+.pista-sfx { position: relative; height: 54px; border: 1px solid var(--linea); border-radius: 8px;
+             background: rgba(79,209,217,.06); cursor: pointer; touch-action: none; }
+.franjas-sfx { position: relative; width: 100%; height: 100%; }
+.marca-sfx { position: absolute; bottom: 6px; width: 12px; height: 38px; margin-left: -6px;
+             border-radius: 4px; background: var(--acento); cursor: grab;
+             border: 2px solid var(--panel); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.marca-sfx.sel { background: #ff5566; }
+.marca-sfx:active { cursor: grabbing; }
+#tablaSfx th, #tablaSfx td { text-align: left; padding: 6px; border-bottom: 1px solid var(--linea); }
+#tablaSfx th { font-size: 10px; text-transform: uppercase; color: var(--fg-2); }
+#tablaSfx input, #tablaSfx select { font: inherit; background: var(--bg); color: var(--fg);
+                                     border: 1px solid var(--linea); border-radius: 4px; padding: 3px 5px; }
+#tablaSfx input[type=number] { width: 64px; }
 </style>
 </head>
 <body>
@@ -393,6 +430,27 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
     <div class="pista" id="pista">
       <div class="franjas" id="franjas"></div>
       <div class="palabras" id="palabras"></div>
+    </div>
+  </div>
+
+  <div class="panel" style="grid-column: 1 / -1;">
+    <h2>Efectos de sonido</h2>
+    <p class="hint">Arrastrá los marcadores para moverlos en el tiempo. El sonido de un PiP se
+      mueve solo cuando movés el inserto (Fase 4: "el sonido acompaña al evento visual").</p>
+    <div class="barra-sfx" style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+      <select id="selSonido"></select>
+      <button class="btn-primario" id="btnEscuchar" type="button">▶ Escuchar</button>
+      <button class="btn-primario" id="btnAgregarSfx" type="button">+ Agregar en el centro</button>
+      <span class="hint" id="infoSfx"></span>
+    </div>
+    <div class="pista-sfx" id="pistaSfx">
+      <div class="franjas-sfx" id="franjasSfx"></div>
+    </div>
+    <div class="tabla-wrap" style="overflow-x:auto; margin-top:10px;">
+      <table id="tablaSfx" style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead><tr><th>t</th><th>sonido</th><th>volumen</th><th>motivo</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 
@@ -435,6 +493,18 @@ let edicionPip = [];
 let editandoIdx = null; // índice en edicionPip, o -1 para "nuevo antes de agregar"
 let loopArrancado = false;
 
+let edicionSfx = [];
+let sfxModificado = false;      // si es false, no se manda --sfx-manual: sigue automático
+let sfxSeleccion = null;
+const audioPreview = new Audio();
+
+function escucharSfx(nombre) {
+  if (!DATA.sonidos[nombre]) return;
+  audioPreview.src = DATA.sonidos[nombre];
+  audioPreview.currentTime = 0;
+  audioPreview.play();
+}
+
 async function cargar() {
   const r = await fetch("/datos");
   DATA = await r.json();
@@ -444,7 +514,6 @@ async function cargar() {
   document.getElementById("tTotal").textContent = DATA.duracion.toFixed(2) + "s";
 
   video.src = "/video";
-  construirOverlays();
   construirTimeline();
 
   edicionPip = DATA.movibles.filter(m => m.tipo === "pip-producto").map(m => ({
@@ -453,6 +522,14 @@ async function cargar() {
     archivo: m.archivo, tarjeta: m.overlay,
   }));
   renderPipsLista();
+  construirOverlays(); // depende de edicionPip: tiene que ir después de poblarlo
+
+  edicionSfx = DATA.sfx.map((e, i) => ({ ...e, id: i }));
+  sfxModificado = false;
+  sfxSeleccion = null;
+  construirSelectorSonidos();
+  pintarSfx();
+  tablaSfx();
 
   // cargar() se vuelve a llamar después de cada render (Fase 5): el rAF loop
   // solo se arranca una vez, si no cada recarga sumaría otro loop corriendo
@@ -506,10 +583,128 @@ function renderPipsLista() {
     div.appendChild(btnSust);
     const btnQuitar = document.createElement("button");
     btnQuitar.className = "quitar"; btnQuitar.textContent = "Quitar";
-    btnQuitar.addEventListener("click", () => { edicionPip.splice(i, 1); renderPipsLista(); });
+    btnQuitar.addEventListener("click", () => { edicionPip.splice(i, 1); renderPipsLista(); construirOverlays(); });
     div.appendChild(btnQuitar);
     cont.appendChild(div);
   });
+}
+
+function construirSelectorSonidos() {
+  const sel = document.getElementById("selSonido");
+  sel.innerHTML = "";
+  Object.keys(DATA.sonidos).forEach(n => {
+    const o = document.createElement("option");
+    o.value = n; o.textContent = n;
+    sel.appendChild(o);
+  });
+}
+
+function pintarSfx() {
+  const cont = document.getElementById("franjasSfx");
+  cont.innerHTML = "";
+  const pista = document.getElementById("pistaSfx");
+  edicionSfx.sort((a, b) => a.t - b.t);
+  edicionSfx.forEach(e => {
+    const m = document.createElement("div");
+    m.className = "marca-sfx" + (sfxSeleccion === e.id ? " sel" : "");
+    m.style.left = (e.t / DATA.duracion * 100) + "%";
+    m.title = `${e.archivo} · ${e.t.toFixed(2)}s · ${e.razon}`;
+    m.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault();
+      try { m.setPointerCapture(ev.pointerId); } catch (err) { /* seguimos igual sin captura */ }
+      sfxSeleccion = e.id;
+      escucharSfx(e.archivo);
+      pintarSfx();
+      const mover = (mv) => {
+        const r = pista.getBoundingClientRect();
+        let t = (mv.clientX - r.left) / r.width * DATA.duracion;
+        e.t = Math.max(0, Math.min(DATA.duracion, Math.round(t * 100) / 100));
+        sfxModificado = true;
+        pintarSfx();
+        tablaSfx();
+      };
+      const soltar = () => {
+        window.removeEventListener("pointermove", mover);
+        window.removeEventListener("pointerup", soltar);
+      };
+      window.addEventListener("pointermove", mover);
+      window.addEventListener("pointerup", soltar);
+    });
+    cont.appendChild(m);
+  });
+  document.getElementById("infoSfx").textContent =
+    `${edicionSfx.length} efecto(s)` + (sfxModificado ? " · editado a mano" : " · automático");
+}
+
+function tablaSfx() {
+  const tb = document.querySelector("#tablaSfx tbody");
+  tb.innerHTML = "";
+  edicionSfx.forEach(e => {
+    const tr = document.createElement("tr");
+    const tdT = document.createElement("td");
+    const inT = document.createElement("input");
+    inT.type = "number"; inT.step = "0.05"; inT.min = "0"; inT.max = String(DATA.duracion);
+    inT.value = e.t.toFixed(2);
+    inT.addEventListener("change", () => {
+      e.t = parseFloat(inT.value) || 0; sfxModificado = true; pintarSfx(); tablaSfx();
+    });
+    tdT.appendChild(inT); tr.appendChild(tdT);
+
+    const tdSonido = document.createElement("td");
+    const selFila = document.createElement("select");
+    Object.keys(DATA.sonidos).forEach(n => {
+      const o = document.createElement("option");
+      o.value = n; o.textContent = n;
+      if (n === e.archivo) o.selected = true;
+      selFila.appendChild(o);
+    });
+    selFila.addEventListener("change", () => {
+      e.archivo = selFila.value; sfxModificado = true; escucharSfx(selFila.value);
+    });
+    tdSonido.appendChild(selFila); tr.appendChild(tdSonido);
+
+    const tdVol = document.createElement("td");
+    const inV = document.createElement("input");
+    inV.type = "number"; inV.step = "0.05"; inV.min = "0"; inV.max = "1.5";
+    inV.value = e.volumen;
+    inV.addEventListener("change", () => {
+      e.volumen = parseFloat(inV.value) || 0; sfxModificado = true;
+    });
+    tdVol.appendChild(inV); tr.appendChild(tdVol);
+
+    const tdRazon = document.createElement("td");
+    tdRazon.textContent = e.razon; tr.appendChild(tdRazon);
+
+    const tdBtn = document.createElement("td");
+    const btnQuitar = document.createElement("button");
+    btnQuitar.type = "button"; btnQuitar.textContent = "quitar";
+    btnQuitar.addEventListener("click", () => {
+      edicionSfx = edicionSfx.filter(x => x.id !== e.id);
+      sfxModificado = true; pintarSfx(); tablaSfx();
+    });
+    tdBtn.appendChild(btnQuitar); tr.appendChild(tdBtn);
+
+    tb.appendChild(tr);
+  });
+}
+
+document.getElementById("btnEscuchar").addEventListener("click", () => {
+  escucharSfx(document.getElementById("selSonido").value);
+});
+document.getElementById("btnAgregarSfx").addEventListener("click", () => {
+  const archivo = document.getElementById("selSonido").value;
+  edicionSfx.push({
+    id: Date.now(), t: Math.round(DATA.duracion / 2 * 100) / 100,
+    archivo, volumen: 0.8, razon: "manual",
+  });
+  sfxModificado = true;
+  pintarSfx(); tablaSfx();
+});
+
+function sfxParaGuardar() {
+  return edicionSfx.map(e => ({
+    t: Math.round(e.t * 100) / 100, archivo: e.archivo, volumen: e.volumen, razon: e.razon,
+  })).sort((a, b) => a.t - b.t);
 }
 
 async function abrirCatalogo(idx) {
@@ -562,6 +757,7 @@ function elegirAsset(asset) {
   document.getElementById("cajaCatalogo").classList.remove("activa");
   editandoIdx = null;
   renderPipsLista();
+  construirOverlays();
 }
 
 document.getElementById("btnAñadirPip").addEventListener("click", () => abrirCatalogo(-1));
@@ -580,10 +776,19 @@ function eventosParaGuardar() {
   });
 }
 
+function cuerpoAjustes() {
+  // Si el panel de sonidos no se tocó, no se manda --sfx-manual: el SFX
+  // sigue derivándose automático de los eventos (así "acompaña" cualquier
+  // PiP que se mueva, sustituya o quite — Fase 4, punto 2 del plan).
+  const cuerpo = { eventos: eventosParaGuardar() };
+  if (sfxModificado) cuerpo.sfx = sfxParaGuardar();
+  return cuerpo;
+}
+
 document.getElementById("btnGuardar").addEventListener("click", async () => {
   const r = await fetch("/guardar", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ eventos: eventosParaGuardar() }),
+    body: JSON.stringify(cuerpoAjustes()),
   });
   const datos = await r.json();
   const btn = document.getElementById("btnGuardar");
@@ -602,7 +807,7 @@ async function iniciarRender() {
 
   const r = await fetch("/render", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ eventos: eventosParaGuardar() }),
+    body: JSON.stringify(cuerpoAjustes()),
   });
   const resp = await r.json();
   if (!resp.ok) {
@@ -644,20 +849,52 @@ async function iniciarRender() {
 document.getElementById("btnRender").addEventListener("click", iniciarRender);
 
 function construirOverlays() {
-  // cargar() se vuelve a llamar tras cada render (Fase 5): limpiar lo
-  // anterior primero, si no cada recarga duplicaría los overlays.
+  // Se reconstruye desde `edicionPip` (el estado editable), no desde
+  // DATA.movibles (la foto fija del último /datos): así sustituir/añadir/
+  // quitar en el panel de PiP se refleja también en el lienzo, y arrastrar
+  // en el lienzo actualiza lo mismo que ve el panel.
   lienzo.querySelectorAll(".overlay-img").forEach(el => el.remove());
-  for (const mov of DATA.movibles) {
+  edicionPip.forEach((ev, idx) => {
     const img = document.createElement("img");
     img.className = "overlay-img";
-    img.dataset.ini = mov.ini;
-    img.dataset.fin = mov.fin;
-    img.dataset.x = mov.x;
-    img.dataset.y = mov.y;
-    img.src = mov.overlay ? mov.overlay : "";
+    img.dataset.idx = idx;
+    img.src = ev.tarjeta || (ev.asset_id ? `/tarjeta?asset_id=${encodeURIComponent(ev.asset_id)}` : "");
     img.style.display = "none";
+    img.title = "Arrastrar para reposicionar";
+    img.addEventListener("pointerdown", iniciarArrastrePip);
     lienzo.appendChild(img);
-  }
+  });
+}
+
+function iniciarArrastrePip(ev) {
+  const img = ev.currentTarget;
+  ev.preventDefault();
+  try { img.setPointerCapture(ev.pointerId); } catch (e) { /* seguimos igual sin captura */ }
+  const idx = parseInt(img.dataset.idx, 10);
+  const item = edicionPip[idx];
+  if (!item) return;
+  const s = lienzo.clientWidth / DATA.resolucion_origen[0];
+  const r = img.getBoundingClientRect();
+  const offX = ev.clientX - r.left, offY = ev.clientY - r.top;
+  arrastrandoIdx = idx;
+
+  const mover = (mv) => {
+    const rl = lienzo.getBoundingClientRect();
+    let xPx = mv.clientX - rl.left - offX, yPx = mv.clientY - rl.top - offY;
+    xPx = Math.max(0, Math.min(rl.width - r.width, xPx));
+    yPx = Math.max(0, Math.min(rl.height - r.height, yPx));
+    item.x = Math.round(xPx / s);
+    item.y = Math.round(yPx / s);
+    img.style.transform = `translate(${xPx.toFixed(2)}px, ${yPx.toFixed(2)}px) scale(${s.toFixed(4)})`;
+  };
+  const soltar = () => {
+    window.removeEventListener("pointermove", mover);
+    window.removeEventListener("pointerup", soltar);
+    arrastrandoIdx = null;
+    renderPipsLista();
+  };
+  window.addEventListener("pointermove", mover);
+  window.addEventListener("pointerup", soltar);
 }
 
 function construirTimeline() {
@@ -724,15 +961,18 @@ function aplicarEncuadre(cx, cy, zoom) {
   video.style.transform = `scale(${zoom}) translate(${(-x0 * s).toFixed(2)}px, ${(-y0 * s).toFixed(2)}px)`;
 }
 
+let arrastrandoIdx = null; // mientras se arrastra un PiP, el loop no le pisa la posición
+
 function actualizarOverlays(t) {
   const s = lienzo.clientWidth / DATA.resolucion_origen[0];
   for (const img of lienzo.querySelectorAll(".overlay-img")) {
-    const ini = parseFloat(img.dataset.ini), fin = parseFloat(img.dataset.fin);
-    const visible = t >= ini && t < fin;
+    const idx = parseInt(img.dataset.idx, 10);
+    const item = edicionPip[idx];
+    if (!item) { img.style.display = "none"; continue; }
+    const visible = t >= item.ini && t < item.fin;
     img.style.display = visible ? "" : "none";
-    if (visible) {
-      const x = parseFloat(img.dataset.x), y = parseFloat(img.dataset.y);
-      img.style.transform = `translate(${(x * s).toFixed(2)}px, ${(y * s).toFixed(2)}px) scale(${s.toFixed(4)})`;
+    if (visible && arrastrandoIdx !== idx) {
+      img.style.transform = `translate(${(item.x * s).toFixed(2)}px, ${(item.y * s).toFixed(2)}px) scale(${s.toFixed(4)})`;
     }
   }
 }

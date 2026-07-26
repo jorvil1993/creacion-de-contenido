@@ -1265,3 +1265,121 @@ Las 6 fases del plan v2 están construidas. Lo que queda, por orden de valor:
    (LUFS, picos por ventana), que es lo que se puede hacer sin oídos. La
    rotación nueva de `"sticker"` (`notificacion_1.mp3` alternando con el chime)
    es la única decisión de esta sesión que **nadie ha oído todavía**.
+
+---
+
+# Sesión — Editor visual v2, mejoras post-reparto (2026-07-26, ~16:20–17:00)
+
+José pidió seguir haciendo el editor "más poderoso" mientras la otra sesión
+cerraba Fases 3/4. Se hicieron tres cosas, todas en mi lado del reparto
+(`f11_servidor.py` + un lanzador nuevo), sin tocar nada de la otra sesión.
+
+## 1 · Acceso directo
+
+`editor/abrir_editor.py` (nuevo): sin argumentos, abre la corrida más
+reciente en `C:\ai-video\salida\` (la que tenga `02_cortado.mp4`, ordenada
+por mtime) — así el acceso directo no necesita saber el nombre de la
+corrida. Con argumentos, se los pasa tal cual a `f11_servidor.py` (que ya
+sabe resolver ruta + banderas).
+
+`editor/Abrir Editor DeviceShop.bat` lo invoca con el Python de `venv312` y
+hace `pause` al final para que la ventana no se cierre sola si algo falla.
+Acceso directo real creado en el Escritorio (`Editor DeviceShop.lnk`, vía
+PowerShell/`WScript.Shell`, ícono de `shell32.dll`) apuntando al `.bat`.
+
+**Verificado:** corrido de punta a punta — encontró y sirvió correctamente
+una corrida real (`fase3_anim`, de la otra sesión, prueba de que los datos
+que produce su lado del pipeline son compatibles con mi servidor sin ningún
+ajuste).
+
+## 2 · Arrastrar la posición (x, y) del PiP en el lienzo
+
+Quedó pendiente de la Fase 2. Se implementó reusando el patrón ya probado de
+v1 (`f10_editor_visual.py`, sección "posición de los insertos"): pointer
+capture + `pointermove`/`pointerup` en `window`, clamp a los bordes del
+lienzo.
+
+Cambio de arquitectura necesario: `construirOverlays()` ahora arma las
+`<img>` del lienzo desde `edicionPip` (el estado editable), no desde
+`DATA.movibles` (la foto fija del último `/datos`) — si no, arrastrar en el
+lienzo y sustituir/añadir/quitar en el panel de PiP habrían sido dos
+estados separados que se pisan. `actualizarOverlays()` lee `x`/`y` en vivo
+de `edicionPip` en cada frame; mientras se arrastra un PiP (`arrastrandoIdx`)
+el loop no le pisa la posición a mitad de gesto.
+
+**Bug real encontrado (no de mi harness de prueba): `pointer-events: none`**
+estaba puesto en `.overlay-img` desde la Fase 1 (cuando los overlays eran
+solo decorativos) — con eso, ningún clic real de José habría podido agarrar
+la tarjeta para arrastrarla. Corregido a `cursor: grab` sin `pointer-events`.
+
+**Segundo bug real: `setPointerCapture` puede tirar excepción** (confirmado:
+`"Failed to execute 'setPointerCapture' [...] No active pointer with the
+given id is found"` bajo ciertas condiciones) y, sin `try/catch`, abortaba
+toda la función ANTES de enganchar los listeners de arrastre — el gesto no
+hacía nada, en silencio. Corregido en los dos lugares que usan
+`setPointerCapture` (posición de PiP y marcadores de SFX).
+
+**Cómo se verificó (con matemática, no captura de pantalla — mismo límite de
+entorno que la Fase 1):** el navegador de esta sesión no decodifica video
+real, así que `video.currentTime` no es confiable para pruebas — hubo que
+disparar el arrastre con `PointerEvent` sintéticos ejecutados en el mismo
+bloque síncrono que `actualizarOverlays(t)`, para que el loop de
+`requestAnimationFrame` no alcance a pisar la visibilidad entre medio. Con
+eso: mover un PiP con margen (lejos del borde) dio el resultado esperado con
+3px de diferencia (redondeo del propio script de prueba, no del código).
+Dos "discrepancias" grandes que aparecieron antes de entender esto **no eran
+bugs**: eran el clamp de borde funcionando bien (una tarjeta de 420px en un
+lienzo de 1080px con `x=620` genuinamente no puede moverse 114px más a la
+derecha sin salirse del cuadro).
+
+## 3 · Panel de sonidos (la mitad de interfaz que le faltaba a la Fase 4)
+
+La Fase 4 del plan tiene dos mitades: la lógica automática (que cerró la
+otra sesión — rotación de stickers, LUFS, etc.) y "portar la pista de SFX de
+f10 a la interfaz servida", que es la mitad de UI y le tocaba a mi lado.
+
+Construido en `f11_servidor.py`: panel "Efectos de sonido" con pista de
+marcadores arrastrables (mismo patrón pointer-capture que la posición de
+PiP), selector + botón "Escuchar" (los 13 MP3 ya vienen embebidos en
+`/datos` vía `DATA.sonidos`, sin endpoint nuevo), tabla editable (tiempo,
+sonido, volumen, motivo, quitar), botón "+ Agregar en el centro".
+
+**Decisión de diseño para "el sonido acompaña al evento visual" (Fase 4,
+punto 2):** en vez de tratar de sincronizar a mano cada SFX con su PiP
+cuando se mueve, se aprovechó que `f5_audio.construir_eventos_sfx()` ya
+DERIVA el SFX automático de los eventos visuales actuales. Mientras el panel
+de sonidos no se toque (`sfxModificado == false`), `/guardar` y `/render`
+**no mandan `--sfx-manual`** — así el SFX se sigue recalculando solo y
+"sigue" cualquier PiP que se sustituya, mueva o quite, sin código adicional
+(ya lo probé sin querer en la Fase 2/5: el pop de un PiP se reubicó solo al
+mover el evento). Solo si José edita el panel de sonidos a mano se congela
+la lista completa vía `--sfx-manual` — mismo principio que ya rige
+`--eventos-manual` vs el disparo automático.
+
+**Verificado extremo a extremo:** arrastrar un marcador (10.12s → mitad de
+la pista) dio el tiempo exacto esperado. Con eso mismo aplicado, un
+`--render` real por el botón: el log del render muestra el whoosh movido de
+10.12s a 12.00s exacto, `07_FINAL.mp4` con los mismos 1105 frames de
+siempre.
+
+## Archivos tocados
+
+**Nuevos:** `editor/abrir_editor.py`, `editor/Abrir Editor DeviceShop.bat`,
+`C:\Users\devic\Desktop\Editor DeviceShop.lnk` (fuera del proyecto).
+
+**Modificados:** `editor/f11_servidor.py` (panel de sonidos completo,
+arrastre de posición de PiP, los dos bugs de `pointer-events`/
+`setPointerCapture` corregidos, `/guardar` y `/render` ahora aceptan `sfx`).
+
+## Pendiente / ideas para seguir
+
+- El panel de sonidos no muestra qué SFX está "enganchado" a qué PiP
+  visualmente (solo la columna "motivo" lo dice en texto). Podría resaltarse
+  el marcador correspondiente al pasar el mouse sobre una tarjeta de PiP.
+- La Fase 3c (animaciones visibles/editables en el lienzo y la timeline)
+  sigue sin tocar de mi lado — es la pieza que falta para que el editor
+  cubra el 100% de lo que un render puede tener. Buen candidato para la
+  próxima ronda.
+- No se probó el acceso directo con un doble clic real de Windows (se probó
+  el mismo comando que ejecuta, vía terminal) — debería comportarse igual,
+  pero vale confirmarlo la primera vez que se use de verdad.
