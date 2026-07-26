@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="es" data-resolution="portrait" data-composition-variables='[
+  {"id":"mensaje","type":"string","label":"Texto principal del CTA","default":"¡Pide el tuyo ya!"},
+  {"id":"whatsapp","type":"string","label":"Número de WhatsApp","default":"69214437"},
+  {"id":"handle","type":"string","label":"Usuario de TikTok","default":"@deviceshopbo"},
+  {"id":"eco","type":"string","label":"Eco del hook (cierra el loop). Vacío = no se muestra","default":""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="compositions/_shared.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /*
+        REDISEÑO 2026-07-26 — dos cambios con motivo, no estético porque sí:
+
+        1. SIN banda navy sólida. La versión anterior era un rectángulo opaco
+           abajo; José la describió como "pesada y pegada sobre el video".
+           Mismo criterio que los subtítulos (sección 5.3 del plan): la
+           legibilidad se consigue con contorno/sombra, no con una caja. Así el
+           video respira y se mantiene la proporción 80% metraje / 20% marca.
+
+        2. ARRIBA, no abajo. La banda inferior (bottom:270px, alto 340px) ocupaba
+           de 1310 a 1650px y los subtítulos van al 77% = 1478px: se pisaban.
+           Arriba es además donde van todos los overlays por decisión ya tomada.
+      */
+      html, body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: transparent; /* renderizar con --format mov (ProRes 4444) */
+      }
+      body { font-family: "Poppins", sans-serif; }
+
+      .cta-wrap {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 230px;              /* 12% del alto — franja superior libre */
+        text-align: center;
+      }
+
+      .cta-logo {
+        width: 132px;
+        margin: 0 auto 24px;
+        filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.75));
+      }
+      .cta-logo img { width: 100%; height: auto; display: block; }
+
+      /* El contorno se hace con -webkit-text-stroke + sombra: se lee sobre
+         cualquier fondo sin necesitar una caja detrás. */
+      .cta-mensaje {
+        color: var(--blanco);
+        font-weight: 800;
+        font-size: 66px;
+        line-height: 1.1;
+        -webkit-text-stroke: 9px rgba(0, 0, 0, 0.88);
+        paint-order: stroke fill;
+        text-shadow: 0 8px 26px rgba(0, 0, 0, 0.6);
+        margin-bottom: 26px;
+      }
+
+      .cta-whatsapp {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        color: var(--blanco);
+        font-weight: 800;
+        font-size: 62px;
+        -webkit-text-stroke: 9px rgba(0, 0, 0, 0.88);
+        paint-order: stroke fill;
+        margin-bottom: 22px;
+      }
+
+      .wa-icon {
+        width: 84px;
+        height: 84px;
+        flex: none;
+        color: #25d366;                     /* verde oficial de WhatsApp */
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7));
+        -webkit-text-stroke: 0;
+      }
+
+      .cta-handle {
+        color: var(--cian);
+        font-weight: 700;
+        font-size: 42px;
+        -webkit-text-stroke: 7px rgba(0, 0, 0, 0.85);
+        paint-order: stroke fill;
+      }
+
+      /* Eco del hook: cierra el loop (sección 4.5 del plan — el rewatch es la
+         señal más fuerte del algoritmo). Lo último que se lee es la misma
+         pregunta con la que arrancó el video. */
+      .cta-eco {
+        margin-top: 34px;
+        color: var(--cian);
+        font-weight: 700;
+        font-size: 40px;
+        line-height: 1.2;
+        padding: 0 90px;
+        -webkit-text-stroke: 7px rgba(0, 0, 0, 0.85);
+        paint-order: stroke fill;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="tarjeta-cta"
+      data-start="0"
+      data-duration="6.5"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div id="cta" class="clip cta-wrap" data-start="0" data-duration="6.5" data-track-index="1">
+        <div class="cta-logo" id="cta-logo">
+          <img src="assets/logo/deviceshop-icono-blanco-transparente.png" alt="DeviceShop" />
+        </div>
+        <div class="cta-mensaje" id="cta-mensaje"></div>
+        <div class="cta-whatsapp">
+          <svg class="wa-icon" viewBox="0 0 32 32" fill="currentColor">
+            <path
+              d="M16 3C9.4 3 4 8.4 4 15c0 2.3.6 4.4 1.7 6.3L4 29l7.9-1.6c1.8.9 3.9 1.5 6.1 1.5 6.6 0 12-5.4 12-12S22.6 3 16 3zm0 21.8c-1.9 0-3.7-.5-5.3-1.5l-.4-.2-4.7 1 1-4.6-.3-.4A9.7 9.7 0 0 1 6.3 15c0-5.4 4.4-9.8 9.7-9.8s9.7 4.4 9.7 9.8-4.4 9.8-9.7 9.8zm5.4-7.3c-.3-.1-1.7-.9-2-1s-.5-.1-.7.1-.8 1-.9 1.2-.3.2-.6.1a8 8 0 0 1-2.3-1.4 8.6 8.6 0 0 1-1.6-2c-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5s0-.4 0-.5-.7-1.7-1-2.3-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3 1.9 3 4.7 4.2c.6.3 1.1.4 1.5.6.6.2 1.2.1 1.6.1.5-.1 1.7-.7 1.9-1.3s.2-1.2.2-1.3-.2-.2-.4-.3z"
+            />
+          </svg>
+          <span id="cta-numero"></span>
+        </div>
+        <div class="cta-handle" id="cta-handle"></div>
+        <div class="cta-eco" id="cta-eco"></div>
+      </div>
+
+      <script>
+        const v = window.__hyperframes.getVariables();
+        document.getElementById("cta-mensaje").textContent = v.mensaje;
+        document.getElementById("cta-numero").textContent = v.whatsapp;
+        document.getElementById("cta-handle").textContent = v.handle;
+
+        const eco = (v.eco || "").trim();
+        const elEco = document.getElementById("cta-eco");
+        if (eco) {
+          elEco.textContent = eco;
+        } else {
+          elEco.style.display = "none";
+        }
+      </script>
+
+      <script>
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#cta", { opacity: 0, y: 40 },
+          { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0);
+        tl.fromTo("#cta-logo", { scale: 0, rotate: -20 },
+          { scale: 1, rotate: 0, duration: 0.45, ease: "back.out(2.4)" }, 0.1);
+        tl.fromTo(".cta-whatsapp", { opacity: 0, y: 24 },
+          { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, 0.35);
+        tl.fromTo(".cta-handle", { opacity: 0 },
+          { opacity: 1, duration: 0.3 }, 0.55);
+        // el eco entra al final, cuando ya se leyó el CTA: es el puente al rewatch
+        tl.fromTo(".cta-eco", { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 1.6);
+        // pulso suave del número: llama la atención sin ser estridente
+        tl.to(".cta-whatsapp", { scale: 1.06, duration: 0.5, ease: "sine.inOut",
+          yoyo: true, repeat: 3 }, 1.0);
+
+        window.__timelines["tarjeta-cta"] = tl;
+      </script>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es" data-resolution="portrait" data-composition-variables='[
+  {"id":"tipo","type":"string","label":"Tipo de sticker: destello | envio | bandera","default":"destello"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="compositions/_shared.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /*
+        Construidos en SVG/CSS (no emoji) a propósito: el render local/Docker de Chrome
+        no siempre trae una fuente de emoji a color instalada y el sticker saldría en
+        blanco. Así se ve igual en cualquier máquina.
+      */
+      html, body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: transparent; /* renderizar con --format webm o mov */
+      }
+
+      .sticker-wrap {
+        position: absolute;
+        left: 760px;
+        top: 300px;
+        width: 220px;
+        height: 220px;
+      }
+
+      .badge {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: var(--blanco);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .badge svg { width: 60%; height: 60%; }
+
+      /* --- bandera de Bolivia (tricolor) --- */
+      .flag {
+        width: 66%;
+        height: 46%;
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+        display: flex;
+        flex-direction: column;
+        transform-origin: left center;
+      }
+      .flag div { flex: 1; }
+      .flag .roja { background: #d52b1e; }
+      .flag .amarilla { background: #f9e300; }
+      .flag .verde { background: #007934; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="sticker"
+      data-start="0"
+      data-duration="2.5"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div id="sticker" class="clip sticker-wrap" data-start="0" data-duration="2.5" data-track-index="1">
+        <div class="badge" id="badge">
+          <!-- destello -->
+          <svg id="ico-destello" viewBox="0 0 24 24" fill="none" style="display: none">
+            <path
+              d="M12 2 L14.2 9.2 L21.5 11 L14.2 12.8 L12 20 L9.8 12.8 L2.5 11 L9.8 9.2 Z"
+              fill="#4FD1D9"
+            />
+          </svg>
+          <!-- envío -->
+          <svg id="ico-envio" viewBox="0 0 24 24" fill="none" style="display: none">
+            <rect x="1" y="7" width="12" height="9" rx="1.2" fill="#0A2A3E" />
+            <path d="M13 10h4l4 3.2V16h-8z" fill="#0A2A3E" />
+            <circle cx="6.5" cy="17.5" r="1.8" fill="#4FD1D9" />
+            <circle cx="16.5" cy="17.5" r="1.8" fill="#4FD1D9" />
+          </svg>
+          <!-- bandera -->
+          <div class="flag" id="ico-bandera" style="display: none">
+            <div class="roja"></div>
+            <div class="amarilla"></div>
+            <div class="verde"></div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        const { tipo } = window.__hyperframes.getVariables();
+        const map = { destello: "ico-destello", envio: "ico-envio", bandera: "ico-bandera" };
+        const activeId = map[tipo] || map.destello;
+        document.getElementById(activeId).style.display = tipo === "bandera" ? "flex" : "block";
+      </script>
+
+      <script>
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo(
+          "#sticker",
+          { opacity: 0, scale: 0.3, rotate: -25 },
+          { opacity: 1, scale: 1, rotate: 0, duration: 0.4, ease: "back.out(3)" },
+          0
+        );
+
+        // pulso continuo suave mientras está en pantalla
+        tl.to("#badge", { scale: 1.08, duration: 0.5, ease: "sine.inOut", yoyo: true, repeat: 2 }, 0.4);
+
+        // la bandera además hace un pequeño "wave" (sin efecto si no está visible)
+        tl.to(
+          "#ico-bandera",
+          { skewY: 4, duration: 0.4, ease: "sine.inOut", yoyo: true, repeat: 3 },
+          0.4
+        );
+
+        tl.to("#sticker", { opacity: 0, scale: 0.85, duration: 0.25, ease: "power1.in" }, 2.15);
+
+        window.__timelines["sticker"] = tl;
+      </script>
+    </div>
+  </body>
+</html>

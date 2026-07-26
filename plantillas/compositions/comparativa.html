@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="es" data-resolution="portrait" data-composition-variables='[
+  {"id":"modeloA","type":"string","label":"Nombre modelo A","default":"Kindle Basic"},
+  {"id":"specA1","type":"string","label":"Modelo A - spec 1","default":"6\" · 16GB"},
+  {"id":"specA2","type":"string","label":"Modelo A - spec 2","default":"6 semanas"},
+  {"id":"specA3","type":"string","label":"Modelo A - spec 3","default":"No sumergible"},
+  {"id":"modeloB","type":"string","label":"Nombre modelo B","default":"Kindle Paperwhite"},
+  {"id":"specB1","type":"string","label":"Modelo B - spec 1","default":"7\" · 16GB"},
+  {"id":"specB2","type":"string","label":"Modelo B - spec 2","default":"12 semanas"},
+  {"id":"specB3","type":"string","label":"Modelo B - spec 3","default":"Sumergible IPX8"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="compositions/_shared.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      html, body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: transparent; /* renderizar con --format webm o mov */
+      }
+      body { font-family: "Poppins", sans-serif; }
+
+      /*
+        FRANJA SUPERIOR (~10-35% del alto), igual que el resto de overlays.
+        Centrada (top:960 + translateY(-50%)) caía sobre la cara del presentador
+        — el mismo defecto que tenía tarjeta-specs y que se corrigió mirando
+        frames del video real. Ver config.OVERLAY_BANDA_SUPERIOR_PCT.
+        `left` fijo en vez de left:50%+translateX: GSAP anima `x` sobre las
+        columnas y conviene no pelear con la propiedad transform.
+      */
+      .comp-wrap {
+        position: absolute;
+        left: 70px;      /* (1080 - 940) / 2 */
+        top: 210px;
+        width: 940px;
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+      }
+
+      .col {
+        flex: 1;
+        background: linear-gradient(165deg, var(--navy-soft), var(--navy));
+        padding: 48px 36px;
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+      }
+      .col-a { border-radius: 32px 0 0 32px; }
+      .col-b { border-radius: 0 32px 32px 0; }
+
+      .col-nombre {
+        color: var(--blanco);
+        font-weight: 800;
+        font-size: 40px;
+        line-height: 1.15;
+        min-height: 100px;
+      }
+
+      /* La primera spec de cada columna deja hueco para el badge VS, que va
+         justo en la costura entre ambas. Sin esto el círculo tapaba el texto
+         de la columna derecha (`npm run check` lo reportaba como
+         `text_occluded #specB1t inside #vs`). */
+      .col-a .col-spec:first-of-type { padding-right: 62px; }
+      .col-b .col-spec:first-of-type { padding-left: 62px; }
+
+      .col-spec {
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 30px;
+        font-weight: 400;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        padding-top: 18px;
+      }
+      .col-spec:first-of-type { border-top: none; padding-top: 0; }
+
+      .vs-badge {
+        position: absolute;
+        left: 420px;    /* (940 - 100) / 2 — centrado en la costura de las dos columnas */
+        top: 190px;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: var(--cian);
+        color: var(--navy);
+        font-weight: 800;
+        font-size: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        border: 6px solid var(--navy);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="comparativa"
+      data-start="0"
+      data-duration="5"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div id="comp" class="clip comp-wrap" data-start="0" data-duration="5" data-track-index="1">
+        <div class="col col-a" id="col-a">
+          <div class="col-nombre" id="nombreA"></div>
+          <div class="col-spec" id="specA1t"></div>
+          <div class="col-spec" id="specA2t"></div>
+          <div class="col-spec" id="specA3t"></div>
+        </div>
+        <div class="col col-b" id="col-b">
+          <div class="col-nombre" id="nombreB"></div>
+          <div class="col-spec" id="specB1t"></div>
+          <div class="col-spec" id="specB2t"></div>
+          <div class="col-spec" id="specB3t"></div>
+        </div>
+        <div class="vs-badge" id="vs">VS</div>
+      </div>
+
+      <script>
+        const v = window.__hyperframes.getVariables();
+        document.getElementById("nombreA").textContent = v.modeloA;
+        document.getElementById("specA1t").textContent = v.specA1;
+        document.getElementById("specA2t").textContent = v.specA2;
+        document.getElementById("specA3t").textContent = v.specA3;
+        document.getElementById("nombreB").textContent = v.modeloB;
+        document.getElementById("specB1t").textContent = v.specB1;
+        document.getElementById("specB2t").textContent = v.specB2;
+        document.getElementById("specB3t").textContent = v.specB3;
+      </script>
+
+      <script>
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#col-a", { opacity: 0, x: -60 }, { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, 0);
+        tl.fromTo("#col-b", { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, 0);
+        tl.fromTo(
+          "#vs",
+          { opacity: 0, scale: 0 },
+          { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(3)" },
+          0.35
+        );
+        tl.to("#comp", { opacity: 0, duration: 0.3, ease: "power1.in" }, 4.6);
+
+        window.__timelines["comparativa"] = tl;
+      </script>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #1a1a1a;
+      }
+      body {
+        font-family: "Inter", sans-serif;
+      }
+
+      /*
+        Galería de demostración: NO es un video final. Simula el fondo (la toma de José)
+        con un degradé + guías de zona segura, para ver cómo se comportarían las 6
+        plantillas si se superpusieran sobre metraje real. Cada plantilla se renderiza
+        con fondo transparente (--format webm o mov) para composición real en Fase 5.
+      */
+      .fondo-simulado {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 50% 35%, #2a4a5c 0%, #10202b 60%, #0a141a 100%);
+      }
+
+      .zona-segura {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 2px dashed rgba(255, 255, 255, 0.25);
+        border-bottom: 2px dashed rgba(255, 255, 255, 0.25);
+        pointer-events: none;
+      }
+      .zona-superior { top: 0; height: 192px; border-top: none; }
+      .zona-inferior { bottom: 0; height: 288px; border-bottom: none; }
+
+      .etiqueta-escena {
+        position: absolute;
+        top: 40px;
+        left: 40px;
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="29.5"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div class="fondo-simulado"></div>
+      <div class="zona-segura zona-superior"></div>
+      <div class="zona-segura zona-inferior"></div>
+      <div class="etiqueta-escena" id="etiqueta"></div>
+
+      <div
+        id="demo-hook"
+        data-composition-id="demo-hook"
+        data-composition-src="compositions/banner-hook.html"
+        data-start="0"
+        data-duration="3"
+        data-track-index="2"
+        data-variable-values='{"texto":"Esto lee bajo el agua, mira."}'
+      ></div>
+
+      <div
+        id="demo-pip"
+        data-composition-id="demo-pip"
+        data-composition-src="compositions/pip-producto.html"
+        data-start="3"
+        data-duration="4"
+        data-track-index="2"
+        data-variable-values='{"etiqueta":"Kindle Paperwhite"}'
+      ></div>
+
+      <div
+        id="demo-specs"
+        data-composition-id="demo-specs"
+        data-composition-src="compositions/tarjeta-specs.html"
+        data-start="7.5"
+        data-duration="4.5"
+        data-track-index="2"
+      ></div>
+
+      <div
+        id="demo-comparativa"
+        data-composition-id="demo-comparativa"
+        data-composition-src="compositions/comparativa.html"
+        data-start="12"
+        data-duration="5"
+        data-track-index="2"
+      ></div>
+
+      <div
+        id="demo-sticker-destello"
+        data-composition-id="demo-sticker-destello"
+        data-composition-src="compositions/stickers.html"
+        data-start="17"
+        data-duration="2.5"
+        data-track-index="2"
+        data-variable-values='{"tipo":"destello"}'
+      ></div>
+
+      <div
+        id="demo-sticker-envio"
+        data-composition-id="demo-sticker-envio"
+        data-composition-src="compositions/stickers.html"
+        data-start="19.5"
+        data-duration="2.5"
+        data-track-index="2"
+        data-variable-values='{"tipo":"envio"}'
+      ></div>
+
+      <div
+        id="demo-sticker-bandera"
+        data-composition-id="demo-sticker-bandera"
+        data-composition-src="compositions/stickers.html"
+        data-start="22"
+        data-duration="2.5"
+        data-track-index="2"
+        data-variable-values='{"tipo":"bandera"}'
+      ></div>
+
+      <div
+        id="demo-cta"
+        data-composition-id="demo-cta"
+        data-composition-src="compositions/tarjeta-cta.html"
+        data-start="24.5"
+        data-duration="5"
+        data-track-index="2"
+      ></div>
+    </div>
+
+    <script>
+      const escenas = [
+        [0, "1. banner-hook.html"],
+        [3, "2. pip-producto.html"],
+        [7.5, "3. tarjeta-specs.html"],
+        [12, "4. comparativa.html"],
+        [17, "5. stickers.html (destello)"],
+        [19.5, "5. stickers.html (envío)"],
+        [22, "5. stickers.html (bandera)"],
+        [24.5, "6. tarjeta-cta.html"],
+      ];
+
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const etiqueta = document.getElementById("etiqueta");
+
+      escenas.forEach(([t, texto], i) => {
+        const next = escenas[i + 1] ? escenas[i + 1][0] : 29.5;
+        tl.call(() => (etiqueta.textContent = texto), null, t);
+        tl.call(() => {}, null, next - 0.001);
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

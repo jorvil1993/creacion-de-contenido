@@ -1,0 +1,15 @@
+{
+  "impacto_dramatico.mp3": -9.4,
+  "impacto_grave.mp3": -2.4,
+  "impacto_hit.mp3": -5.0,
+  "notificacion_1.mp3": -14.6,
+  "notificacion_chime.mp3": -3.5,
+  "notificacion_success.mp3": -14.2,
+  "pop.mp3": -11.6,
+  "transicion_corte.mp3": -11.2,
+  "transicion_swipe.mp3": -5.8,
+  "whoosh_deep_1.mp3": -1.9,
+  "whoosh_deep_2.mp3": -2.4,
+  "whoosh_rapido.mp3": -4.9,
+  "whoosh_simple.mp3": -10.3
+}

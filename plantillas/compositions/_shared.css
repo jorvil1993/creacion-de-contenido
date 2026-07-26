@@ -1,0 +1,45 @@
+/* DeviceShop — estilos compartidos entre plantillas. Ver contexto/PLAN-EDITOR-VIDEO.md sección 5.3 */
+
+/*
+  ⚠️ OJO CON LA RUTA — es la excepción a la regla de plantillas/README.md.
+
+  En el HTML las rutas van root-relativas (`assets/...`), porque Hyperframes
+  resuelve cada composición contra la raíz del proyecto. Pero dentro de un
+  archivo .css el navegador resuelve `url()` contra la ubicación del PROPIO CSS,
+  que aquí es `compositions/`. Con `url("assets/fuentes/...")` pedía
+  `compositions/assets/fuentes/...` -> 404, y las seis plantillas venían
+  renderizando con la sans-serif por defecto en vez de Poppins.
+  Detectado con `npm run check` (sección Runtime: `404 loading
+  compositions/assets/fuentes/Poppins-*.ttf`). Aquí SÍ hace falta `../`.
+*/
+@font-face {
+  font-family: "Poppins";
+  src: url("../assets/fuentes/Poppins-Regular.ttf") format("truetype");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../assets/fuentes/Poppins-Bold.ttf") format("truetype");
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../assets/fuentes/Poppins-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+}
+@font-face {
+  font-family: "Montserrat";
+  src: url("../assets/fuentes/Montserrat-Bold.ttf") format("truetype");
+  font-weight: 700;
+}
+
+:root {
+  --navy: #0a2a3e;
+  --navy-soft: #123952;
+  --cian: #4fd1d9;
+  --blanco: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}

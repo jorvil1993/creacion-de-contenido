@@ -1,0 +1,26 @@
+{
+  "78f8eb4aac13": {
+    "archivo": "assets/generado/auto/agua_78f8eb4aac13.png",
+    "prompt": "close-up of clear water droplets splashing on a dark waterproof surface, poolside sunlight, refreshing summer mood, scene inspired by: el Kindle es resistente al agua, lo puedes usar en la piscina o en la tina, natural editorial photography, soft warm daylight, shallow depth of field, clean minimal composition, no text, no watermark, no logo, no people's faces",
+    "tag": "#agua",
+    "nombre": "agua",
+    "semilla": 195661301581687,
+    "tamano": "768x1024"
+  },
+  "7a0786b8c1ec": {
+    "archivo": "assets/generado/auto/libros_7a0786b8c1ec.png",
+    "prompt": "heavy stack of thick hardcover books on a table, dramatic side light, scene inspired by: más este año, pero te da pereza cargar libros pesados? Tienes que ver esto. Esta, natural editorial photography, soft warm daylight, shallow depth of field, clean minimal composition, no text, no watermark, no logo, no people's faces",
+    "tag": "#libros",
+    "nombre": "libros",
+    "semilla": 26934680836316,
+    "tamano": "768x1024"
+  },
+  "7df6c3bb3194": {
+    "archivo": "assets/generado/auto/libros_7df6c3bb3194.png",
+    "prompt": "heavy stack of thick hardcover books on a table, dramatic side light, scene inspired by: sin miedo. Llevas miles de libros en tu bolsillo. Y la pantalla se ve perfecta, natural editorial photography, soft warm daylight, shallow depth of field, clean minimal composition, no text, no watermark, no logo, no people's faces",
+    "tag": "#libros",
+    "nombre": "libros",
+    "semilla": 127987426578397,
+    "tamano": "768x1024"
+  }
+}

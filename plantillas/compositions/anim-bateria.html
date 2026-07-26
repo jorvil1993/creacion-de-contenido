@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es" data-resolution="portrait" data-composition-variables='[
+  {"id":"variante","type":"string","label":"Variante determinista 0|1|2","default":"0"},
+  {"id":"lado","type":"string","label":"izquierda | derecha | centro","default":"derecha"},
+  {"id":"etiqueta","type":"string","label":"Texto bajo la batería","default":"semanas de batería"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="compositions/_shared.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /*
+        Reemplaza la batería dibujada con PIL (f7_animaciones.py), que era un
+        rectángulo llenándose de forma lineal, sin tipografía ni easing.
+        Aquí hay easing real de GSAP, degradado, sombra, contador de semanas y
+        una etiqueta legible.
+
+        Variación determinista: `variante` (0|1|2) cambia el color de llegada, la
+        cuenta de semanas y el rebote de entrada. La semilla la deriva el
+        pipeline del nombre del archivo de video (f6_overlays), nunca al azar —
+        el plan exige render reproducible.
+      */
+      html, body {
+        margin: 0; width: 1080px; height: 1920px;
+        overflow: hidden; background: transparent;
+      }
+      body { font-family: "Poppins", sans-serif; }
+
+      .wrap { position: absolute; top: 210px; width: 480px; }
+
+      .bat {
+        position: relative;
+        width: 440px; height: 216px;
+        border: 11px solid var(--blanco);
+        border-radius: 34px;
+        background: rgba(10, 42, 62, 0.72);
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+      }
+      .bat::after {                        /* borne */
+        content: "";
+        position: absolute;
+        right: -35px; top: 62px;
+        width: 26px; height: 70px;
+        background: var(--blanco);
+        border-radius: 0 10px 10px 0;
+      }
+
+      .relleno {
+        position: absolute;
+        left: 10px; top: 10px; bottom: 10px;
+        width: 398px;
+        border-radius: 22px;
+        transform-origin: left center;
+      }
+      /* dos capas apiladas: la de "lleno" se revela por opacidad al final.
+         GSAP no interpola linear-gradient de forma fiable, así que se cruzan
+         dos fondos en vez de animar el degradado. */
+      .relleno.base  { background: linear-gradient(90deg, #2f9fae, #4fd1d9); }
+      .relleno.lleno { opacity: 0; }
+
+      .rayo {
+        position: absolute;
+        left: 174px; top: 42px;
+        width: 92px; height: 132px;
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
+      }
+
+      .etiqueta {
+        margin-top: 28px;
+        width: 440px;
+        text-align: center;
+        color: var(--blanco);
+        font-weight: 800;
+        font-size: 40px;
+        -webkit-text-stroke: 8px rgba(0, 0, 0, 0.85);
+        paint-order: stroke fill;
+      }
+      .etiqueta b { color: var(--cian); font-size: 54px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="anim-bateria" data-start="0" data-duration="2.4"
+         data-width="1080" data-height="1920">
+      <div id="anim" class="clip wrap" data-start="0" data-duration="2.4" data-track-index="1">
+        <div class="bat">
+          <div class="relleno base" id="relleno"></div>
+          <div class="relleno lleno" id="relleno-lleno"></div>
+          <svg class="rayo" id="rayo" viewBox="0 0 40 56">
+            <path d="M23 0 L6 32 h11 L14 56 L34 22 H22 Z" fill="#ffffff" />
+          </svg>
+        </div>
+        <div class="etiqueta"><b id="numero">0</b> <span id="txt"></span></div>
+      </div>
+
+      <script>
+        const v = window.__hyperframes.getVariables();
+        const VARIANTES = [
+          { fin: "linear-gradient(90deg, #4fd1d9, #7ef0d4)", semanas: 12, rebote: 1.9 },
+          { fin: "linear-gradient(90deg, #4fd1d9, #64e08f)", semanas: 10, rebote: 2.6 },
+          { fin: "linear-gradient(90deg, #5ad2ff, #4fd1d9)", semanas: 8,  rebote: 2.2 },
+        ];
+        const cfg = VARIANTES[(parseInt(v.variante, 10) || 0) % VARIANTES.length];
+
+        // posición horizontal: la decide el pipeline según dónde esté el rostro
+        const X = { izquierda: 70, derecha: 1080 - 480 - 70, centro: (1080 - 480) / 2 };
+        document.getElementById("anim").style.left =
+          (X[v.lado] !== undefined ? X[v.lado] : X.derecha) + "px";
+
+        document.getElementById("txt").textContent = v.etiqueta;
+        document.getElementById("relleno-lleno").style.background = cfg.fin;
+
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+        const contador = { n: 0 };
+        const elNum = document.getElementById("numero");
+
+        tl.fromTo("#anim", { opacity: 0, scale: 0.82, y: -20 },
+          { opacity: 1, scale: 1, y: 0, duration: 0.32,
+            ease: "back.out(" + cfg.rebote + ")" }, 0);
+
+        // la carga arranca rápido y frena al final, como una batería de verdad
+        tl.fromTo(["#relleno", "#relleno-lleno"], { scaleX: 0.04 },
+          { scaleX: 1, duration: 1.25, ease: "power2.inOut" }, 0.25);
+        tl.to("#relleno-lleno", { opacity: 1, duration: 0.4 }, 1.2);
+
+        tl.to(contador, {
+          n: cfg.semanas, duration: 1.25, ease: "power2.inOut",
+          onUpdate: function () { elNum.textContent = Math.round(contador.n); },
+        }, 0.25);
+
+        tl.fromTo("#rayo", { opacity: 0, scale: 0.3 },
+          { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(3)" }, 1.5);
+        tl.to("#anim", { opacity: 0, scale: 0.94, duration: 0.3, ease: "power1.in" }, 2.1);
+
+        window.__timelines["anim-bateria"] = tl;
+      </script>
+    </div>
+  </body>
+</html>

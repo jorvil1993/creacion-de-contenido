@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="es" data-resolution="portrait" data-composition-variables='[
+  {"id":"variante","type":"string","label":"Variante determinista 0|1|2","default":"0"},
+  {"id":"lado","type":"string","label":"izquierda | derecha | centro","default":"derecha"},
+  {"id":"etiqueta","type":"string","label":"Texto bajo la animación","default":"sin reflejos al sol"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="compositions/_shared.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      html, body {
+        margin: 0; width: 1080px; height: 1920px;
+        overflow: hidden; background: transparent;
+      }
+      body { font-family: "Poppins", sans-serif; }
+
+      .wrap { position: absolute; top: 190px; width: 500px; height: 540px; }
+
+      .escena { position: relative; width: 500px; height: 440px; }
+
+      /* Dispositivo Kindle */
+      .kindle-device {
+        position: absolute;
+        left: 50%; bottom: 30px;
+        width: 240px; height: 330px;
+        margin-left: -120px;
+        background: #111a24;
+        border: 4px solid #2e3e50;
+        border-radius: 20px;
+        box-shadow: 0 16px 45px rgba(0, 0, 0, 0.6);
+        box-sizing: border-box;
+        padding: 24px 18px;
+        overflow: hidden;
+      }
+
+      .kindle-screen {
+        width: 100%; height: 100%;
+        background: #e8e6df;
+        border-radius: 8px;
+        box-sizing: border-box;
+        padding: 20px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .linea-texto {
+        height: 8px;
+        background: #333333;
+        border-radius: 4px;
+        opacity: 0.8;
+      }
+
+      .linea-texto.corta { width: 65%; }
+
+      /* Destello de luz sobre la pantalla sin reflejo */
+      .luz-sol {
+        position: absolute;
+        top: -50%; left: -50%;
+        width: 200%; height: 200%;
+        background: linear-gradient(135deg, rgba(255,230,120,0.35) 0%, rgba(255,255,255,0) 60%);
+        pointer-events: none;
+        opacity: 0;
+      }
+
+      /* Sol radiante */
+      .sol-contenedor {
+        position: absolute;
+        top: 10px; right: 40px;
+        width: 140px; height: 140px;
+      }
+
+      .sol-disco {
+        position: absolute;
+        left: 50%; top: 50%;
+        width: 70px; height: 70px;
+        margin-left: -35px; margin-top: -35px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #fff7aa 0%, #ffd034 60%, #ff9800 100%);
+        box-shadow: 0 0 40px #ffc107, 0 0 80px #ff9800;
+      }
+
+      .sol-rayos {
+        position: absolute;
+        left: 0; top: 0;
+        width: 140px; height: 140px;
+        transform-origin: center center;
+      }
+
+      .rayo {
+        position: absolute;
+        left: 65px; top: 10px;
+        width: 10px; height: 25px;
+        background: linear-gradient(to top, #ffca28, transparent);
+        border-radius: 5px;
+        transform-origin: 5px 60px;
+      }
+
+      .etiqueta {
+        position: absolute;
+        top: 450px; left: 0; width: 500px;
+        text-align: center;
+        color: var(--blanco);
+        font-weight: 800;
+        font-size: 40px;
+        -webkit-text-stroke: 8px rgba(0, 0, 0, 0.85);
+        paint-order: stroke fill;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="anim-sol" data-start="0" data-duration="2.4"
+         data-width="1080" data-height="1920">
+      <div id="anim" class="clip wrap" data-start="0" data-duration="2.4" data-track-index="1">
+        <div class="escena">
+          <div class="sol-contenedor" id="sol">
+            <div class="sol-rayos" id="rayos">
+              <div class="rayo" style="transform: rotate(0deg);"></div>
+              <div class="rayo" style="transform: rotate(45deg);"></div>
+              <div class="rayo" style="transform: rotate(90deg);"></div>
+              <div class="rayo" style="transform: rotate(135deg);"></div>
+              <div class="rayo" style="transform: rotate(180deg);"></div>
+              <div class="rayo" style="transform: rotate(225deg);"></div>
+              <div class="rayo" style="transform: rotate(270deg);"></div>
+              <div class="rayo" style="transform: rotate(315deg);"></div>
+            </div>
+            <div class="sol-disco" id="disco"></div>
+          </div>
+
+          <div class="kindle-device" id="kindle">
+            <div class="kindle-screen">
+              <div class="luz-sol" id="luz"></div>
+              <div class="linea-texto"></div>
+              <div class="linea-texto"></div>
+              <div class="linea-texto corta"></div>
+              <div class="linea-texto" style="margin-top:10px;"></div>
+              <div class="linea-texto"></div>
+              <div class="linea-texto corta"></div>
+            </div>
+          </div>
+
+          <div class="etiqueta" id="etiqueta"></div>
+        </div>
+      </div>
+
+      <script>
+        const v = window.__hyperframes ? window.__hyperframes.getVariables() : {};
+        const X = { izquierda: 70, derecha: 1080 - 500 - 70, centro: (1080 - 500) / 2 };
+        const lado = v.lado || "derecha";
+        document.getElementById("anim").style.left = (X[lado] !== undefined ? X[lado] : X.derecha) + "px";
+        document.getElementById("etiqueta").textContent = v.etiqueta || "sin reflejos al sol";
+
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#anim", { opacity: 0, scale: 0.8 },
+          { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(1.7)" }, 0);
+
+        tl.fromTo("#sol", { scale: 0.2, opacity: 0 },
+          { scale: 1.15, opacity: 1, duration: 0.45, ease: "back.out(2)" }, 0.15);
+
+        tl.to("#sol", { scale: 1, duration: 0.3, ease: "power1.out" }, 0.6);
+
+        tl.to("#rayos", { rotation: 90, duration: 2.0, ease: "none" }, 0.2);
+
+        tl.fromTo("#luz", { opacity: 0, x: -30 },
+          { opacity: 1, x: 20, duration: 0.7, ease: "power2.inOut" }, 0.4);
+
+        tl.to("#anim", { opacity: 0, scale: 0.9, duration: 0.3, ease: "power1.in" }, 2.1);
+
+        window.__timelines["anim-sol"] = tl;
+      </script>
+    </div>
+  </body>
+</html>

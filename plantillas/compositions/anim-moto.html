@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es" data-resolution="portrait" data-composition-variables='[
+  {"id":"variante","type":"string","label":"Variante determinista 0|1|2","default":"0"},
+  {"id":"etiqueta","type":"string","label":"Texto que acompaña","default":"Envíos a todo Bolivia"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="compositions/_shared.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /*
+        Moto de reparto cruzando la pantalla, para "te lo enviamos a todo Bolivia"
+        (punto 6 de MEJORAS-PENDIENTES, pedido textual de José).
+        Reemplaza la silueta de PIL: aquí las ruedas giran de verdad, la moto
+        rebota con la suspensión y hay estela de velocidad.
+
+        Variación determinista por `variante`: sentido de la marcha, velocidad y
+        altura de la franja.
+      */
+      html, body {
+        margin: 0; width: 1080px; height: 1920px;
+        overflow: hidden; background: transparent;
+      }
+      body { font-family: "Poppins", sans-serif; }
+
+      .carril { position: absolute; left: 0; width: 1080px; height: 300px; top: 230px; }
+
+      .moto { position: absolute; left: 0; top: 60px; width: 380px; height: 240px; }
+
+      .estela {
+        position: absolute;
+        height: 10px;
+        border-radius: 6px;
+        background: linear-gradient(90deg, rgba(79, 209, 217, 0), var(--cian));
+        opacity: 0;
+      }
+
+      .etiqueta {
+        position: absolute;
+        left: 0; top: 0; width: 1080px;
+        text-align: center;
+        color: var(--blanco);
+        font-weight: 800;
+        font-size: 46px;
+        -webkit-text-stroke: 8px rgba(0, 0, 0, 0.85);
+        paint-order: stroke fill;
+        opacity: 0;
+      }
+      .bandera { display: inline-flex; vertical-align: -6px; margin-left: 14px;
+                 width: 62px; height: 42px; border-radius: 5px; overflow: hidden;
+                 flex-direction: column; box-shadow: 0 3px 8px rgba(0,0,0,.5);
+                 -webkit-text-stroke: 0; }
+      .bandera div { flex: 1; }
+      .bandera .r { background: #d52b1e; }
+      .bandera .a { background: #f9e300; }
+      .bandera .v { background: #007934; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="anim-moto" data-start="0" data-duration="2.6"
+         data-width="1080" data-height="1920">
+      <div id="anim" class="clip carril" data-start="0" data-duration="2.6" data-track-index="1">
+        <div class="etiqueta" id="etiqueta"></div>
+
+        <div class="estela" id="e1" style="width: 150px; top: 120px"></div>
+        <div class="estela" id="e2" style="width: 110px; top: 152px"></div>
+        <div class="estela" id="e3" style="width: 190px; top: 186px"></div>
+
+        <svg class="moto" id="moto" viewBox="0 0 380 240">
+          <!-- cuerpo -->
+          <path d="M62 172 L118 118 L236 118 L292 172 Z" fill="#4FD1D9" />
+          <!-- caja de reparto -->
+          <rect x="176" y="46" width="104" height="78" rx="12" fill="#0A2A3E" />
+          <rect x="190" y="60" width="76" height="50" rx="8" fill="#4FD1D9" />
+          <!-- conductor -->
+          <circle cx="150" cy="80" r="34" fill="#0A2A3E" />
+          <path d="M236 118 L288 66" stroke="#0A2A3E" stroke-width="13" stroke-linecap="round" />
+          <!-- ruedas -->
+          <g id="rueda1">
+            <circle cx="86" cy="180" r="46" fill="#0A2A3E" />
+            <circle cx="86" cy="180" r="30" fill="#FFFFFF" />
+            <circle cx="86" cy="180" r="10" fill="#0A2A3E" />
+            <rect x="82" y="150" width="8" height="60" fill="#0A2A3E" opacity="0.55" />
+          </g>
+          <g id="rueda2">
+            <circle cx="286" cy="180" r="46" fill="#0A2A3E" />
+            <circle cx="286" cy="180" r="30" fill="#FFFFFF" />
+            <circle cx="286" cy="180" r="10" fill="#0A2A3E" />
+            <rect x="282" y="150" width="8" height="60" fill="#0A2A3E" opacity="0.55" />
+          </g>
+        </svg>
+      </div>
+
+      <script>
+        const v = window.__hyperframes.getVariables();
+        const VARIANTES = [
+          { sentido: 1,  dur: 1.9, top: 230, rebote: 9 },
+          { sentido: -1, dur: 2.1, top: 200, rebote: 6 },
+          { sentido: 1,  dur: 1.7, top: 260, rebote: 12 },
+        ];
+        const cfg = VARIANTES[(parseInt(v.variante, 10) || 0) % VARIANTES.length];
+
+        document.getElementById("anim").style.top = cfg.top + "px";
+        document.getElementById("etiqueta").innerHTML =
+          v.etiqueta + '<span class="bandera"><div class="r"></div><div class="a"></div><div class="v"></div></span>';
+
+        const moto = document.getElementById("moto");
+        const ANCHO_MOTO = 380;
+        const desde = cfg.sentido > 0 ? -ANCHO_MOTO : 1080;
+        const hasta = cfg.sentido > 0 ? 1080 : -ANCHO_MOTO;
+        // si va al revés, se espeja para que siga mirando hacia donde avanza
+        if (cfg.sentido < 0) moto.style.transform = "scaleX(-1)";
+
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#moto", { x: desde }, { x: hasta, duration: cfg.dur, ease: "power1.inOut" }, 0);
+        // suspensión: rebote vertical continuo mientras cruza
+        tl.to("#moto", { y: -8, duration: 0.12, ease: "sine.inOut",
+                         yoyo: true, repeat: cfg.rebote }, 0.1);
+        // las ruedas giran
+        tl.to(["#rueda1", "#rueda2"],
+          { rotation: 360 * cfg.sentido * 3, transformOrigin: "50% 50%",
+            duration: cfg.dur, ease: "none" }, 0);
+
+        // estela: entra detrás de la moto
+        [["#e1", 0.05], ["#e2", 0.12], ["#e3", 0.2]].forEach(function (par, i) {
+          const x0 = cfg.sentido > 0 ? -200 : 1080;
+          const x1 = cfg.sentido > 0 ? 1080 : -200;
+          tl.fromTo(par[0], { x: x0, opacity: 0 },
+            { x: x1, opacity: 0.85, duration: cfg.dur * 0.9, ease: "power1.inOut" }, par[1]);
+          tl.to(par[0], { opacity: 0, duration: 0.3 }, cfg.dur * 0.8);
+        });
+
+        tl.fromTo("#etiqueta", { opacity: 0, y: -14 },
+          { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, 0.25);
+        tl.to("#anim", { opacity: 0, duration: 0.3, ease: "power1.in" }, 2.3);
+
+        window.__timelines["anim-moto"] = tl;
+      </script>
+    </div>
+  </body>
+</html>

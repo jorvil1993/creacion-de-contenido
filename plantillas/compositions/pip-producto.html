@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es" data-resolution="portrait" data-composition-variables='[
+  {"id":"imagen","type":"string","label":"Ruta de imagen/video del producto (relativa)","default":""},
+  {"id":"etiqueta","type":"string","label":"Etiqueta opcional sobre el inserto","default":""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="compositions/_shared.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      html, body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: transparent; /* renderizar con --format webm o mov para conservar alfa */
+      }
+      body { font-family: "Poppins", sans-serif; }
+
+      .pip-wrap {
+        position: absolute;
+        left: 50%;
+        top: 960px;
+        transform: translate(-50%, -50%);
+        width: 760px;
+        height: 860px;
+      }
+
+      .pip-frame {
+        width: 100%;
+        height: 100%;
+        border-radius: 40px;
+        border: 10px solid var(--blanco);
+        box-shadow:
+          0 20px 60px rgba(0, 0, 0, 0.45),
+          0 0 0 3px rgba(79, 209, 217, 0.55); /* acento cian sutil sobre el borde blanco — sección 5.3 */
+        overflow: hidden;
+        background: #10202b;
+        position: relative;
+      }
+
+      .pip-media {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .pip-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.6);
+        font-weight: 700;
+        font-size: 32px;
+        padding: 40px;
+        background: linear-gradient(155deg, #123952, #0a2a3e);
+      }
+
+      .pip-etiqueta {
+        position: absolute;
+        top: -26px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--cian);
+        color: var(--navy);
+        font-weight: 800;
+        font-size: 30px;
+        padding: 10px 32px;
+        border-radius: 999px;
+        white-space: nowrap;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="pip-producto"
+      data-start="0"
+      data-duration="4"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div id="pip" class="clip pip-wrap" data-start="0" data-duration="4" data-track-index="1">
+        <div class="pip-frame">
+          <img id="pip-img" class="pip-media" style="display: none" />
+          <div id="pip-placeholder" class="pip-placeholder">FOTO / CLIP<br />DEL PRODUCTO</div>
+        </div>
+        <div id="pip-etiqueta" class="pip-etiqueta" style="display: none"></div>
+      </div>
+    </div>
+
+    <script>
+      const { imagen, etiqueta } = window.__hyperframes.getVariables();
+
+      if (imagen) {
+        const img = document.getElementById("pip-img");
+        const placeholder = document.getElementById("pip-placeholder");
+        img.src = imagen;
+        img.style.display = "block";
+        placeholder.style.display = "none";
+      }
+      if (etiqueta) {
+        const tag = document.getElementById("pip-etiqueta");
+        tag.textContent = etiqueta;
+        tag.style.display = "block";
+      }
+
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo(
+        "#pip",
+        { opacity: 0, scale: 0.7, y: 40 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.45, ease: "back.out(2.2)" },
+        0
+      );
+      tl.to("#pip", { opacity: 0, scale: 0.94, duration: 0.3, ease: "power1.in" }, 3.65);
+
+      window.__timelines["pip-producto"] = tl;
+    </script>
+  </body>
+</html>

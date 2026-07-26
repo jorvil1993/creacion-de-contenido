@@ -1,0 +1,7416 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "id": "fotos-fundas\\kobo-clara\\negra-tapa-desmontable\\20260417-161748",
+      "ruta": "contexto/fotos y videos/fotos fundas/kobo clara/negra tapa desmontable/20260417_161748.jpg",
+      "producto": "kobo-clara",
+      "color": "negra-tapa-desmontable",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#color-negra-tapa-desmontable",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\kobo-clara\\negra-tapa-desmontable\\20260417-161755",
+      "ruta": "contexto/fotos y videos/fotos fundas/kobo clara/negra tapa desmontable/20260417_161755.jpg",
+      "producto": "kobo-clara",
+      "color": "negra-tapa-desmontable",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#color-negra-tapa-desmontable",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\kobo-clara\\negra-tapa-desmontable\\20260417-161802",
+      "ruta": "contexto/fotos y videos/fotos fundas/kobo clara/negra tapa desmontable/20260417_161802.jpg",
+      "producto": "kobo-clara",
+      "color": "negra-tapa-desmontable",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#color-negra-tapa-desmontable",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\kobo-clara\\negra-tapa-desmontable\\20260417-161821",
+      "ruta": "contexto/fotos y videos/fotos fundas/kobo clara/negra tapa desmontable/20260417_161821.jpg",
+      "producto": "kobo-clara",
+      "color": "negra-tapa-desmontable",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#color-negra-tapa-desmontable",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\kobo-clara\\negra-tapa-desmontable\\20260417-161831",
+      "ruta": "contexto/fotos y videos/fotos fundas/kobo clara/negra tapa desmontable/20260417_161831.jpg",
+      "producto": "kobo-clara",
+      "color": "negra-tapa-desmontable",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#color-negra-tapa-desmontable",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\kobo-clara\\negra-tapa-desmontable\\20260417-161856",
+      "ruta": "contexto/fotos y videos/fotos fundas/kobo clara/negra tapa desmontable/20260417_161856.jpg",
+      "producto": "kobo-clara",
+      "color": "negra-tapa-desmontable",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#color-negra-tapa-desmontable",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\brazo-para-agarrar\\principal",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/brazo para agarrar/PRINCIPAL.avif",
+      "producto": "brazo-para-agarrar",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        800,
+        800
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#soporte",
+        "#mano",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\brazo-para-agarrar\\ruid25733d10a06b481eb3aa9ce8aa9643a9",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/brazo para agarrar/RUID25733d10a06b481eb3aa9ce8aa9643a9.jpg",
+      "producto": "brazo-para-agarrar",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#soporte",
+        "#mano",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\brazo-para-agarrar\\ruid3f209faf604843efbc08fcf04ea65a5a",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/brazo para agarrar/RUID3f209faf604843efbc08fcf04ea65a5a.jpg",
+      "producto": "brazo-para-agarrar",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#soporte",
+        "#mano",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\brazo-para-agarrar\\ruid519f11b3fa5643aeadda3bafb8d23742",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/brazo para agarrar/RUID519f11b3fa5643aeadda3bafb8d23742.jpg",
+      "producto": "brazo-para-agarrar",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#soporte",
+        "#mano",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\brazo-para-agarrar\\ruid5ba7a3fc739b4788836f4a58f14205fe",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/brazo para agarrar/RUID5ba7a3fc739b4788836f4a58f14205fe.jpg",
+      "producto": "brazo-para-agarrar",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#soporte",
+        "#mano",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\brazo-para-agarrar\\ruid8617769f191a47f79b7b51de41a6bf90",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/brazo para agarrar/RUID8617769f191a47f79b7b51de41a6bf90.jpg",
+      "producto": "brazo-para-agarrar",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#soporte",
+        "#mano",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\brazo-para-agarrar\\ruidbbbeb5f9cf5a4fafb45468cd88d55981",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/brazo para agarrar/RUIDbbbeb5f9cf5a4fafb45468cd88d55981.jpg",
+      "producto": "brazo-para-agarrar",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#soporte",
+        "#mano",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\cargador-9w-amazon\\principal",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/cargador 9w Amazon/PRINCIPAL.jpg",
+      "producto": "cargador-9w-amazon",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1500,
+        1109
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#carga",
+        "#bateria",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\cargador-9w-amazon\\ruid056fff7f56b6497c800c98f79eb946f2",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/cargador 9w Amazon/RUID056fff7f56b6497c800c98f79eb946f2.jpg",
+      "producto": "cargador-9w-amazon",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#carga",
+        "#bateria",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\cargador-9w-amazon\\ruid82805f93dda84eeeb2ba6929bfced4eb",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/cargador 9w Amazon/RUID82805f93dda84eeeb2ba6929bfced4eb.jpg",
+      "producto": "cargador-9w-amazon",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#carga",
+        "#bateria",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\pasa-paginas\\20260623-172020",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/pasa paginas/20260623_172020.jpg",
+      "producto": "pasa-paginas",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#pasapaginas",
+        "#lectura",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\pasa-paginas\\20260623-172040",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/pasa paginas/20260623_172040.jpg",
+      "producto": "pasa-paginas",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#pasapaginas",
+        "#lectura",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-accesorios\\pasa-paginas\\captura-de-pantalla-2026-07-16-233332",
+      "ruta": "contexto/fotos y videos/fotos-accesorios/pasa paginas/Captura de pantalla 2026-07-16 233332.png",
+      "producto": "pasa-paginas",
+      "color": null,
+      "tipo": "accesorio",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        595,
+        326
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#accesorio",
+        "#pasapaginas",
+        "#lectura",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\colorsoft-16gb\\ruid857e5be7421946eab735928ac5e090cc",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/colorsoft 16gb/RUID857e5be7421946eab735928ac5e090cc.jpg",
+      "producto": "colorsoft-16gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#colorsoft",
+        "#color",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\colorsoft-16gb\\ruide67154c777ca4434a59e4e5c66232ba2",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/colorsoft 16gb/RUIDe67154c777ca4434a59e4e5c66232ba2.jpg",
+      "producto": "colorsoft-16gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#colorsoft",
+        "#color",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\colorsoft-32gb\\ruid80c048a1c50b4d7cb5a4c62d6ae2c655",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/colorsoft 32gb/RUID80c048a1c50b4d7cb5a4c62d6ae2c655.jpg",
+      "producto": "colorsoft-32gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#colorsoft",
+        "#color",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\colorsoft-32gb\\ruid9793b8decc2a4d2d9b99d73383bb2e48",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/colorsoft 32gb/RUID9793b8decc2a4d2d9b99d73383bb2e48.jpg",
+      "producto": "colorsoft-32gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#colorsoft",
+        "#color",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-basic\\20250915-115420",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle basic/20250915_115420.jpg",
+      "producto": "kindle-basic",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#basic",
+        "#economico",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-basic\\20250915-115432",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle basic/20250915_115432.jpg",
+      "producto": "kindle-basic",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#basic",
+        "#economico",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-basic\\20250915-115438",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle basic/20250915_115438.jpg",
+      "producto": "kindle-basic",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#basic",
+        "#economico",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-basic\\20250915-115520",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle basic/20250915_115520.jpg",
+      "producto": "kindle-basic",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#basic",
+        "#economico",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-paperwhite-16-gb\\atras-jade",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle paperwhite 16 gb/atras-jade.jpg",
+      "producto": "kindle-paperwhite-16-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-paperwhite-16-gb\\atras-negra",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle paperwhite 16 gb/atras-negra.jpg",
+      "producto": "kindle-paperwhite-16-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-paperwhite-16-gb\\atras-raspberry",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle paperwhite 16 gb/atras-raspberry.jpg",
+      "producto": "kindle-paperwhite-16-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-paperwhite-16-gb\\jade",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle paperwhite 16 gb/jade.jpg",
+      "producto": "kindle-paperwhite-16-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-paperwhite-16-gb\\negro",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle paperwhite 16 gb/negro.jpg",
+      "producto": "kindle-paperwhite-16-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-paperwhite-16-gb\\paperwhite-jade",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle paperwhite 16 gb/paperwhite-jade.jpg",
+      "producto": "kindle-paperwhite-16-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "vertical",
+      "dimensiones": [
+        1439,
+        2090
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#catalogo",
+        "#vertical"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-paperwhite-16-gb\\paperwhite-negro",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle paperwhite 16 gb/paperwhite-negro.jpg",
+      "producto": "kindle-paperwhite-16-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "vertical",
+      "dimensiones": [
+        1439,
+        1830
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#catalogo",
+        "#vertical"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-paperwhite-16-gb\\paperwhite-raspberry",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle paperwhite 16 gb/paperwhite-raspberry.jpg",
+      "producto": "kindle-paperwhite-16-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "vertical",
+      "dimensiones": [
+        1439,
+        1971
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#catalogo",
+        "#vertical"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-paperwhite-16-gb\\rasbpberry",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle paperwhite 16 gb/rasbpberry.jpg",
+      "producto": "kindle-paperwhite-16-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-scribe-2025-32-gb\\ruid97201f8c97674022905bee63e3ec79b9",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle scribe 2025 32 gb/RUID97201f8c97674022905bee63e3ec79b9.jpg",
+      "producto": "kindle-scribe-2025-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#scribe",
+        "#escribir",
+        "#stylus",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-scribe-2025-32-gb\\ruidf1ef985ec8bd408fa3740b2545c1ebc4",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle scribe 2025 32 gb/RUIDf1ef985ec8bd408fa3740b2545c1ebc4.jpg",
+      "producto": "kindle-scribe-2025-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#scribe",
+        "#escribir",
+        "#stylus",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-scribe-2025-64-gb\\ruid71cce1c9c01e4c4097fe992ab064ab94",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle scribe 2025 64 gb/RUID71cce1c9c01e4c4097fe992ab064ab94.jpg",
+      "producto": "kindle-scribe-2025-64-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#scribe",
+        "#escribir",
+        "#stylus",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-scribe-2025-64-gb\\ruidcd389bcbbbd341aeac8fa246ce3da60d",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle scribe 2025 64 gb/RUIDcd389bcbbbd341aeac8fa246ce3da60d.jpg",
+      "producto": "kindle-scribe-2025-64-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#scribe",
+        "#escribir",
+        "#stylus",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-scribe-colorsoft-32-gb\\ruid794e9ebffdc44f3493069192f3f9d9a4",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle scribe colorsoft 32 gb/RUID794e9ebffdc44f3493069192f3f9d9a4.jpg",
+      "producto": "kindle-scribe-colorsoft-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#colorsoft",
+        "#color",
+        "#scribe",
+        "#escribir",
+        "#stylus",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-scribe-colorsoft-32-gb\\ruid8005286baff74f41a1d37aeb4799594c",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle scribe colorsoft 32 gb/RUID8005286baff74f41a1d37aeb4799594c.jpg",
+      "producto": "kindle-scribe-colorsoft-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#colorsoft",
+        "#color",
+        "#scribe",
+        "#escribir",
+        "#stylus",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-scribe-colorsoft-64gb\\ruid3a05dd6b04f74acd82dfa51d1d1abbd1",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle scribe colorsoft 64gb/RUID3a05dd6b04f74acd82dfa51d1d1abbd1.jpg",
+      "producto": "kindle-scribe-colorsoft-64gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#colorsoft",
+        "#color",
+        "#scribe",
+        "#escribir",
+        "#stylus",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kindle-scribe-colorsoft-64gb\\ruid8a610b1ef983492bb4a4c21149935f63",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kindle scribe colorsoft 64gb/RUID8a610b1ef983492bb4a4c21149935f63.jpg",
+      "producto": "kindle-scribe-colorsoft-64gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#colorsoft",
+        "#color",
+        "#scribe",
+        "#escribir",
+        "#stylus",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kinlde-paperwhite-32gb\\atras-jade",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kinlde paperwhite 32gb/atras-jade.jpg",
+      "producto": "kinlde-paperwhite-32gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kinlde-paperwhite-32gb\\atras-negro",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kinlde paperwhite 32gb/atras-negro.jpg",
+      "producto": "kinlde-paperwhite-32gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kinlde-paperwhite-32gb\\atras-raspberry",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kinlde paperwhite 32gb/atras-raspberry.jpg",
+      "producto": "kinlde-paperwhite-32gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kinlde-paperwhite-32gb\\caja-jade",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kinlde paperwhite 32gb/caja-jade.jpg",
+      "producto": "kinlde-paperwhite-32gb",
+      "color": null,
+      "tipo": "caja",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "confianza"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#caja",
+        "#sellado",
+        "#confianza",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kinlde-paperwhite-32gb\\caja-negro",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kinlde paperwhite 32gb/caja-negro.jpg",
+      "producto": "kinlde-paperwhite-32gb",
+      "color": null,
+      "tipo": "caja",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "confianza"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#caja",
+        "#sellado",
+        "#confianza",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kinlde-paperwhite-32gb\\caja-raspberry",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kinlde paperwhite 32gb/caja-raspberry.jpg",
+      "producto": "kinlde-paperwhite-32gb",
+      "color": null,
+      "tipo": "caja",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "confianza"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#caja",
+        "#sellado",
+        "#confianza",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kinlde-paperwhite-32gb\\jade",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kinlde paperwhite 32gb/jade.jpg",
+      "producto": "kinlde-paperwhite-32gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "vertical",
+      "dimensiones": [
+        1439,
+        2090
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#catalogo",
+        "#vertical"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kinlde-paperwhite-32gb\\negro",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kinlde paperwhite 32gb/negro.jpg",
+      "producto": "kinlde-paperwhite-32gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "vertical",
+      "dimensiones": [
+        1439,
+        1830
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#catalogo",
+        "#vertical"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kinlde-paperwhite-32gb\\raspberry",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kinlde paperwhite 32gb/raspberry.jpg",
+      "producto": "kinlde-paperwhite-32gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "vertical",
+      "dimensiones": [
+        1439,
+        1971
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#catalogo",
+        "#vertical"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-clara-colour-16gb\\20250915-120201",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo clara colour 16gb/20250915_120201.jpg",
+      "producto": "kobo-clara-colour-16gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#compacto",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-clara-colour-16gb\\20250915-120210",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo clara colour 16gb/20250915_120210.jpg",
+      "producto": "kobo-clara-colour-16gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#compacto",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-clara-colour-16gb\\blanco-color",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo clara colour 16gb/blanco color.jpg",
+      "producto": "kobo-clara-colour-16gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "vertical",
+      "dimensiones": [
+        1038,
+        1500
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#compacto",
+        "#ambiente",
+        "#vertical"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-clara-colour-16gb\\ruid851ff40808a749a8b0c3fd0d73955980",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo clara colour 16gb/RUID851ff40808a749a8b0c3fd0d73955980.jpg",
+      "producto": "kobo-clara-colour-16gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#compacto",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-clara-colour-16gb\\ruidf32a90d7226a45458e775aabbdf1325c",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo clara colour 16gb/RUIDf32a90d7226a45458e775aabbdf1325c.jpg",
+      "producto": "kobo-clara-colour-16gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#compacto",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-libra-colour-32-gb\\20250915-120234",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo libra colour 32 gb/20250915_120234.jpg",
+      "producto": "kobo-libra-colour-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#botones",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-libra-colour-32-gb\\20250915-120252",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo libra colour 32 gb/20250915_120252.jpg",
+      "producto": "kobo-libra-colour-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#botones",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-libra-colour-32-gb\\blanco-caja",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo libra colour 32 gb/blanco caja.jpg",
+      "producto": "kobo-libra-colour-32-gb",
+      "color": null,
+      "tipo": "caja",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "confianza"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#caja",
+        "#sellado",
+        "#confianza",
+        "#kobo",
+        "#botones",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-libra-colour-32-gb\\blanco1",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo libra colour 32 gb/blanco1.jpg",
+      "producto": "kobo-libra-colour-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        775,
+        865
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#botones",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-libra-colour-32-gb\\blanco2",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo libra colour 32 gb/blanco2.jpg",
+      "producto": "kobo-libra-colour-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "vertical",
+      "dimensiones": [
+        656,
+        887
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#botones",
+        "#catalogo",
+        "#vertical"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-libra-colour-32-gb\\blanco3",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo libra colour 32 gb/blanco3.jpg",
+      "producto": "kobo-libra-colour-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        767,
+        698
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#botones",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-libra-colour-32-gb\\blanco4",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo libra colour 32 gb/blanco4.jpg",
+      "producto": "kobo-libra-colour-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        962,
+        661
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#botones",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-libra-colour-32-gb\\negro-caja",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo libra colour 32 gb/negro caja.jpg",
+      "producto": "kobo-libra-colour-32-gb",
+      "color": null,
+      "tipo": "caja",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "confianza"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#caja",
+        "#sellado",
+        "#confianza",
+        "#kobo",
+        "#botones",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-libra-colour-32-gb\\negro",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo libra colour 32 gb/negro.jpg",
+      "producto": "kobo-libra-colour-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        773,
+        869
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#botones",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-libra-colour-32-gb\\negro2",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo libra colour 32 gb/negro2.jpg",
+      "producto": "kobo-libra-colour-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "vertical",
+      "dimensiones": [
+        657,
+        886
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#botones",
+        "#catalogo",
+        "#vertical"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-libra-colour-32-gb\\negro3",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo libra colour 32 gb/negro3.jpg",
+      "producto": "kobo-libra-colour-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        768,
+        701
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#botones",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-libra-colour-32-gb\\negro4",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo libra colour 32 gb/negro4.jpg",
+      "producto": "kobo-libra-colour-32-gb",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        982,
+        673
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#botones",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-stylus\\20250915-120539",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo stylus/20250915_120539.jpg",
+      "producto": "kobo-stylus",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#stylus",
+        "#escribir",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-stylus\\20250915-120545",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo stylus/20250915_120545.jpg",
+      "producto": "kobo-stylus",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#stylus",
+        "#escribir",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-stylus\\blanco-atras",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo stylus/blanco-atras.jpg",
+      "producto": "kobo-stylus",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#stylus",
+        "#escribir",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\kobo-stylus\\blanco",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/kobo stylus/blanco.jpg",
+      "producto": "kobo-stylus",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#kobo",
+        "#stylus",
+        "#escribir",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\paperwhite-kids\\20250915-115831",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/paperwhite kids/20250915_115831.jpg",
+      "producto": "paperwhite-kids",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ninos",
+        "#regalo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\paperwhite-kids\\20250915-115838",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/paperwhite kids/20250915_115838.jpg",
+      "producto": "paperwhite-kids",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ninos",
+        "#regalo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\paperwhite-kids\\20250915-115900",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/paperwhite kids/20250915_115900.jpg",
+      "producto": "paperwhite-kids",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ninos",
+        "#regalo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\paperwhite-kids\\starfish-caja",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/paperwhite kids/starfish caja.jpg",
+      "producto": "paperwhite-kids",
+      "color": null,
+      "tipo": "caja",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "confianza"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#caja",
+        "#sellado",
+        "#confianza",
+        "#paperwhite",
+        "#agua",
+        "#ninos",
+        "#regalo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\paperwhite-kids\\starfish",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/paperwhite kids/starfish.jpg",
+      "producto": "paperwhite-kids",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        1438,
+        1500
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#paperwhite",
+        "#agua",
+        "#ninos",
+        "#regalo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\varios-modelos-en-la-misma-foto\\20250702-120004",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/varios modelos en la misma foto/20250702_120004.jpg",
+      "producto": "varios-modelos-en-la-misma-foto",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#comparativa",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\varios-modelos-en-la-misma-foto\\20250702-120451",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/varios modelos en la misma foto/20250702_120451.jpg",
+      "producto": "varios-modelos-en-la-misma-foto",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        12000,
+        9000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#comparativa",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\varios-modelos-en-la-misma-foto\\20250702-120517",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/varios modelos en la misma foto/20250702_120517.jpg",
+      "producto": "varios-modelos-en-la-misma-foto",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#comparativa",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\varios-modelos-en-la-misma-foto\\20250702-120609",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/varios modelos en la misma foto/20250702_120609.jpg",
+      "producto": "varios-modelos-en-la-misma-foto",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        12000,
+        9000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#comparativa",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\varios-modelos-en-la-misma-foto\\20250702-120652",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/varios modelos en la misma foto/20250702_120652.jpg",
+      "producto": "varios-modelos-en-la-misma-foto",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        12000,
+        9000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#comparativa",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\varios-modelos-en-la-misma-foto\\20250702-120922",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/varios modelos en la misma foto/20250702_120922.jpg",
+      "producto": "varios-modelos-en-la-misma-foto",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        12000,
+        9000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#comparativa",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-dispositivos\\varios-modelos-en-la-misma-foto\\20250702-120959",
+      "ruta": "contexto/fotos y videos/fotos-dispósitivos/varios modelos en la misma foto/20250702_120959.jpg",
+      "producto": "varios-modelos-en-la-misma-foto",
+      "color": null,
+      "tipo": "producto",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "hero"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#producto",
+        "#comparativa",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-10ma\\negro\\ruid26ea453e48c2445e80614a208f1c21eb-(1)",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-10ma/Negro/RUID26ea453e48c2445e80614a208f1c21eb (1).jpg",
+      "producto": "funda-kindle-basic-10ma",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-10ma\\negro\\ruid739255eaf8a64e999e512e1c5ec49498-(1)",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-10ma/Negro/RUID739255eaf8a64e999e512e1c5ec49498 (1).jpg",
+      "producto": "funda-kindle-basic-10ma",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-10ma\\negro\\ruid7c85d50e69ca46b7962708642425a86a",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-10ma/Negro/RUID7c85d50e69ca46b7962708642425a86a.jpg",
+      "producto": "funda-kindle-basic-10ma",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\azul\\20260623-171335",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Azul/20260623_171335.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "azul",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-azul",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\azul\\20260623-171343",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Azul/20260623_171343.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "azul",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-azul",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\azul\\20260623-171348",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Azul/20260623_171348.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "azul",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-azul",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\negro\\20260623-171245",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Negro/20260623_171245.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\negro\\20260623-171253",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Negro/20260623_171253.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\negro\\20260623-171259",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Negro/20260623_171259.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\negro-transparente\\20260623-165718",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Negro Transparente/20260623_165718.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\negro-transparente\\20260623-165729",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Negro Transparente/20260623_165729.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\negro-transparente\\20260623-165733",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Negro Transparente/20260623_165733.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\plomo\\20260623-171317",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Plomo/20260623_171317.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "plomo",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-plomo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\plomo\\20260623-171324",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Plomo/20260623_171324.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "plomo",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-plomo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\plomo\\20260623-171328",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Plomo/20260623_171328.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "plomo",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-plomo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\rosado\\20260623-165558",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Rosado/20260623_165558.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "rosado",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-rosado",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\rosado\\20260623-165615",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Rosado/20260623_165615.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "rosado",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-rosado",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\rosado\\20260623-165621",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Rosado/20260623_165621.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "rosado",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#color-rosado",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\rosado-transparente\\20260623-165630",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Rosado Transparente/20260623_165630.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "rosado-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#transparente",
+        "#color-rosado-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\rosado-transparente\\20260623-165645",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Rosado Transparente/20260623_165645.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "rosado-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#transparente",
+        "#color-rosado-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\rosado-transparente\\20260623-165653",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Rosado Transparente/20260623_165653.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "rosado-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#transparente",
+        "#color-rosado-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-basic-11va\\rosado-transparente\\20260623-165705",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-basic-11va/Rosado Transparente/20260623_165705.jpg",
+      "producto": "funda-kindle-basic-11va",
+      "color": "rosado-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#transparente",
+        "#color-rosado-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-11va\\rosado\\ruidaddae7e9f04a4b97861b963f7f6382ce",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-11va/Rosado/RUIDaddae7e9f04a4b97861b963f7f6382ce.jpg",
+      "producto": "funda-kindle-paperwhite-11va",
+      "color": "rosado",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#color-rosado",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-11va\\rosado\\ruidb1658b4045884ea99e683de97e28575c-(1)",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-11va/Rosado/RUIDb1658b4045884ea99e683de97e28575c (1).jpg",
+      "producto": "funda-kindle-paperwhite-11va",
+      "color": "rosado",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#color-rosado",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-11va\\rosado\\ruidc778bdb96aca47198b797ebe88de6f91",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-11va/Rosado/RUIDc778bdb96aca47198b797ebe88de6f91.jpg",
+      "producto": "funda-kindle-paperwhite-11va",
+      "color": "rosado",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#color-rosado",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-11va\\transparente\\ruid1c41661c250844fd9a17a922e11ba421",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-11va/Transparente/RUID1c41661c250844fd9a17a922e11ba421.jpg",
+      "producto": "funda-kindle-paperwhite-11va",
+      "color": "transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#transparente",
+        "#color-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-11va\\transparente\\ruid70c15d1880014515bb49c58674105157",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-11va/Transparente/RUID70c15d1880014515bb49c58674105157.jpg",
+      "producto": "funda-kindle-paperwhite-11va",
+      "color": "transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#transparente",
+        "#color-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\azul-marino\\ruid0d033065516246edad59923a0472a9d6",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Azul Marino/RUID0d033065516246edad59923a0472a9d6.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "azul-marino",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#color-azul-marino",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\azul-marino\\ruid5e0e9e9b8f3a41e9ab76a0b0c8bcc3e1",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Azul Marino/RUID5e0e9e9b8f3a41e9ab76a0b0c8bcc3e1.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "azul-marino",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#color-azul-marino",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\azul-marino\\ruid9ed8fbe6f1d149c39edc79c0214539f2",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Azul Marino/RUID9ed8fbe6f1d149c39edc79c0214539f2.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "azul-marino",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#color-azul-marino",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\azul-marino-transparente\\20260623-101911",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Azul Marino Transparente/20260623_101911.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "azul-marino-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#transparente",
+        "#color-azul-marino-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\azul-marino-transparente\\20260623-101925",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Azul Marino Transparente/20260623_101925.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "azul-marino-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#transparente",
+        "#color-azul-marino-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\azul-marino-transparente\\20260623-101934",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Azul Marino Transparente/20260623_101934.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "azul-marino-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#transparente",
+        "#color-azul-marino-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\bolsita-de-viaje\\ruid1a5f2479e1184d43960bb486d46c51f0",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Bolsita de Viaje/RUID1a5f2479e1184d43960bb486d46c51f0.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "bolsita-de-viaje",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#viaje",
+        "#transporte",
+        "#color-bolsita-de-viaje",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\bolsita-de-viaje\\ruid315e3690cef44a03b70884b029ee23f4",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Bolsita de Viaje/RUID315e3690cef44a03b70884b029ee23f4.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "bolsita-de-viaje",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#viaje",
+        "#transporte",
+        "#color-bolsita-de-viaje",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\bolsita-de-viaje\\ruida889f8052a454021947a01faa9f0c0a5",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Bolsita de Viaje/RUIDa889f8052a454021947a01faa9f0c0a5.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "bolsita-de-viaje",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#viaje",
+        "#transporte",
+        "#color-bolsita-de-viaje",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\bolsita-de-viaje\\ruide6e09e57b24e475a91f396c0d698f268",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Bolsita de Viaje/RUIDe6e09e57b24e475a91f396c0d698f268.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "bolsita-de-viaje",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#viaje",
+        "#transporte",
+        "#color-bolsita-de-viaje",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\bolsita-de-viaje\\ruidf266947425504b288244d01f08c8105b",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Bolsita de Viaje/RUIDf266947425504b288244d01f08c8105b.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "bolsita-de-viaje",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#viaje",
+        "#transporte",
+        "#color-bolsita-de-viaje",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\negro\\ruid31273c3ae2f040c6b6bdc7e003b90f85",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Negro/RUID31273c3ae2f040c6b6bdc7e003b90f85.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\negro\\ruidd6025f5864a9456a8fc3a9fe3b6f2077",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Negro/RUIDd6025f5864a9456a8fc3a9fe3b6f2077.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\negro\\ruide30f20bce49444ec9cca49fabae0698a",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Negro/RUIDe30f20bce49444ec9cca49fabae0698a.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\negro-transparente\\20260623-101716",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Negro Transparente/20260623_101716.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\negro-transparente\\20260623-101728",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Negro Transparente/20260623_101728.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\negro-transparente\\20260623-101745",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Negro Transparente/20260623_101745.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\negro-transparente\\20260623-101752",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Negro Transparente/20260623_101752.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\plomo-transparente\\20260622-115251",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Plomo Transparente/20260622_115251.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "plomo-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#transparente",
+        "#color-plomo-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\plomo-transparente\\20260623-100815",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Plomo Transparente/20260623_100815.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "plomo-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#transparente",
+        "#color-plomo-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\plomo-transparente\\20260623-100822",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Plomo Transparente/20260623_100822.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "plomo-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#transparente",
+        "#color-plomo-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\rosado\\ruid0e93e2b15380418ba0383a388dad665a",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Rosado/RUID0e93e2b15380418ba0383a388dad665a.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "rosado",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#color-rosado",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\rosado\\ruid104d5be406364ec083b02f089b699cc9",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Rosado/RUID104d5be406364ec083b02f089b699cc9.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "rosado",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#color-rosado",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\rosado\\ruida0aac1ecf11647398dc7ee7a85fe4680",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Rosado/RUIDa0aac1ecf11647398dc7ee7a85fe4680.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "rosado",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#color-rosado",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\transparente\\ruid066c420e4f8d4e16b965152d96fcfefa",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Transparente/RUID066c420e4f8d4e16b965152d96fcfefa.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#transparente",
+        "#color-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft\\transparente\\ruid98158e7953334403a795e01acef9e091",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft/Transparente/RUID98158e7953334403a795e01acef9e091.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft",
+      "color": "transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#transparente",
+        "#color-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft-original\\negro\\3",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft-original/Negro/3.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft-original",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        1500,
+        1478
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#color-negro",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft-original\\negro\\ruid0ca3fab00ac34851b0fd62bee3e4b6da",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft-original/Negro/RUID0ca3fab00ac34851b0fd62bee3e4b6da.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft-original",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft-original\\negro\\ruidc9ddc399715d4b8096766d57965bf4df",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft-original/Negro/RUIDc9ddc399715d4b8096766d57965bf4df.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft-original",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft-outlet\\negro-transparente\\20260314-111625",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft-outlet/Negro Transparente/20260314_111625.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft-outlet",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#outlet",
+        "#honestidad",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft-outlet\\negro-transparente\\20260314-111634",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft-outlet/Negro Transparente/20260314_111634.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft-outlet",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#outlet",
+        "#honestidad",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft-outlet\\negro-transparente\\20260314-111638",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft-outlet/Negro Transparente/20260314_111638.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft-outlet",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#outlet",
+        "#honestidad",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft-outlet\\negro-transparente\\20260314-111649",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft-outlet/Negro Transparente/20260314_111649.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft-outlet",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#outlet",
+        "#honestidad",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft-outlet\\negro-transparente\\20260623-103322",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft-outlet/Negro Transparente/20260623_103322.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft-outlet",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#outlet",
+        "#honestidad",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft-outlet\\negro-transparente\\20260623-103331",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft-outlet/Negro Transparente/20260623_103331.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft-outlet",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#outlet",
+        "#honestidad",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-paperwhite-colorsoft-outlet\\negro-transparente\\20260623-103351",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-paperwhite-colorsoft-outlet/Negro Transparente/20260623_103351.jpg",
+      "producto": "funda-kindle-paperwhite-colorsoft-outlet",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#outlet",
+        "#honestidad",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe\\negro\\20260606-113938",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe/Negro/20260606_113938.jpg",
+      "producto": "funda-kindle-scribe",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#scribe",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe\\negro\\20260606-113942",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe/Negro/20260606_113942.jpg",
+      "producto": "funda-kindle-scribe",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#scribe",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe\\negro\\20260606-113950",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe/Negro/20260606_113950.jpg",
+      "producto": "funda-kindle-scribe",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#scribe",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe\\negro\\20260606-114003",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe/Negro/20260606_114003.jpg",
+      "producto": "funda-kindle-scribe",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#scribe",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe\\negro\\20260606-114010",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe/Negro/20260606_114010.jpg",
+      "producto": "funda-kindle-scribe",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#scribe",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe\\plomo\\20260606-114026",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe/Plomo/20260606_114026.jpg",
+      "producto": "funda-kindle-scribe",
+      "color": "plomo",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#scribe",
+        "#color-plomo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe\\plomo\\20260606-114032",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe/Plomo/20260606_114032.jpg",
+      "producto": "funda-kindle-scribe",
+      "color": "plomo",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#scribe",
+        "#color-plomo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe\\plomo\\20260606-114041",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe/Plomo/20260606_114041.jpg",
+      "producto": "funda-kindle-scribe",
+      "color": "plomo",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#scribe",
+        "#color-plomo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe\\plomo\\20260606-114047",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe/Plomo/20260606_114047.jpg",
+      "producto": "funda-kindle-scribe",
+      "color": "plomo",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#scribe",
+        "#color-plomo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe\\plomo\\20260606-114056",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe/Plomo/20260606_114056.jpg",
+      "producto": "funda-kindle-scribe",
+      "color": "plomo",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#scribe",
+        "#color-plomo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe-colorsoft\\negro\\ruid4764681cd9114249a2ba0fcc55dd2954",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe-colorsoft/Negro/RUID4764681cd9114249a2ba0fcc55dd2954.jpg",
+      "producto": "funda-kindle-scribe-colorsoft",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#colorsoft",
+        "#color",
+        "#scribe",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe-colorsoft\\negro\\ruid76b74c7c59bd4466bb9ffdf20fbe3e9a",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe-colorsoft/Negro/RUID76b74c7c59bd4466bb9ffdf20fbe3e9a.jpg",
+      "producto": "funda-kindle-scribe-colorsoft",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#colorsoft",
+        "#color",
+        "#scribe",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe-colorsoft\\negro\\ruid8d61a83a7cf341e2868ae70b01461e09",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe-colorsoft/Negro/RUID8d61a83a7cf341e2868ae70b01461e09.jpg",
+      "producto": "funda-kindle-scribe-colorsoft",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#colorsoft",
+        "#color",
+        "#scribe",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kindle-scribe-colorsoft\\negro\\ruidc85096eab0d140c3aa26594353024706",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kindle-scribe-colorsoft/Negro/RUIDc85096eab0d140c3aa26594353024706.jpg",
+      "producto": "funda-kindle-scribe-colorsoft",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#colorsoft",
+        "#color",
+        "#scribe",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-clara-colour\\negro\\ruidb46b0f07adbc4596a223228477c1f2df",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-clara-colour/Negro/RUIDb46b0f07adbc4596a223228477c1f2df.jpg",
+      "producto": "funda-kobo-clara-colour",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-clara-colour\\negro\\ruidb9dc6d9e94674c71b3d6d22d81403fa7",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-clara-colour/Negro/RUIDb9dc6d9e94674c71b3d6d22d81403fa7.jpg",
+      "producto": "funda-kobo-clara-colour",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-clara-colour\\negro\\ruidff3477e3ef4640c3b3e27521db2735f8",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-clara-colour/Negro/RUIDff3477e3ef4640c3b3e27521db2735f8.jpg",
+      "producto": "funda-kobo-clara-colour",
+      "color": "negro",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#color-negro",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-clara-colour\\negro-transparente\\20260417-161748",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-clara-colour/Negro Transparente/20260417_161748.jpg",
+      "producto": "funda-kobo-clara-colour",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-clara-colour\\negro-transparente\\20260417-161755",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-clara-colour/Negro Transparente/20260417_161755.jpg",
+      "producto": "funda-kobo-clara-colour",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-clara-colour\\negro-transparente\\20260417-161802",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-clara-colour/Negro Transparente/20260417_161802.jpg",
+      "producto": "funda-kobo-clara-colour",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-clara-colour\\negro-transparente\\20260417-161821",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-clara-colour/Negro Transparente/20260417_161821.jpg",
+      "producto": "funda-kobo-clara-colour",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-clara-colour\\negro-transparente\\20260417-161831",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-clara-colour/Negro Transparente/20260417_161831.jpg",
+      "producto": "funda-kobo-clara-colour",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-clara-colour\\negro-transparente\\20260417-161856",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-clara-colour/Negro Transparente/20260417_161856.jpg",
+      "producto": "funda-kobo-clara-colour",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-clara-colour\\rosado-transparente\\20260623-171023",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-clara-colour/Rosado Transparente/20260623_171023.jpg",
+      "producto": "funda-kobo-clara-colour",
+      "color": "rosado-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-rosado-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-clara-colour\\rosado-transparente\\20260623-171034",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-clara-colour/Rosado Transparente/20260623_171034.jpg",
+      "producto": "funda-kobo-clara-colour",
+      "color": "rosado-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-rosado-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-clara-colour\\rosado-transparente\\20260623-171039",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-clara-colour/Rosado Transparente/20260623_171039.jpg",
+      "producto": "funda-kobo-clara-colour",
+      "color": "rosado-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-rosado-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\azul-marino-transparente\\20260605-124009",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Azul Marino Transparente/20260605_124009.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "azul-marino-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-azul-marino-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\azul-marino-transparente\\20260605-124030",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Azul Marino Transparente/20260605_124030.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "azul-marino-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-azul-marino-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\azul-marino-transparente\\20260605-124038",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Azul Marino Transparente/20260605_124038.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "azul-marino-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-azul-marino-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\gris-transparente\\ruid7e05b4a4429a445ebd0b06e5c0787dee",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Gris Transparente/RUID7e05b4a4429a445ebd0b06e5c0787dee.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "gris-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-gris-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\gris-transparente\\ruidd2366670dd7e418095f42ada3e263ea5",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Gris Transparente/RUIDd2366670dd7e418095f42ada3e263ea5.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "gris-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-gris-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\gris-transparente\\ruiddef8e547ca414826847a5c5724820491",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Gris Transparente/RUIDdef8e547ca414826847a5c5724820491.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "gris-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-gris-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\negro-transparente\\20260324-161550",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Negro Transparente/20260324_161550.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\negro-transparente\\20260324-161603",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Negro Transparente/20260324_161603.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\negro-transparente\\20260324-161609",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Negro Transparente/20260324_161609.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "negro-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-negro-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\rosado-transparente\\20260324-161739",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Rosado Transparente/20260324_161739.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "rosado-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-rosado-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\rosado-transparente\\20260324-161752",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Rosado Transparente/20260324_161752.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "rosado-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-rosado-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\rosado-transparente\\20260324-161758",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Rosado Transparente/20260324_161758.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "rosado-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-rosado-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\verde-transparente\\20260605-124321",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Verde Transparente/20260605_124321.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "verde-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-verde-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\verde-transparente\\20260605-124334",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Verde Transparente/20260605_124334.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "verde-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-verde-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\funda-kobo-libra-colour\\verde-transparente\\20260605-124342",
+      "ruta": "contexto/fotos y videos/fotos-fundas/funda-kobo-libra-colour/Verde Transparente/20260605_124342.jpg",
+      "producto": "funda-kobo-libra-colour",
+      "color": "verde-transparente",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4000,
+        3000
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#transparente",
+        "#color-verde-transparente",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\protector-kindle-basic-2024\\mate\\f3d9e436-f29e-4633-a443-fe5cf3415801",
+      "ruta": "contexto/fotos y videos/fotos-fundas/protector-kindle-basic-2024/Mate/f3d9e436-f29e-4633-a443-fe5cf3415801.jpg",
+      "producto": "protector-kindle-basic-2024",
+      "color": "mate",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        916,
+        1024
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#basic",
+        "#economico",
+        "#protector",
+        "#pantalla",
+        "#color-mate",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\protector-kindle-paperwhite-colorsoft\\mate\\watermarked-img-8315840391883114400",
+      "ruta": "contexto/fotos y videos/fotos-fundas/protector-kindle-paperwhite-colorsoft/Mate/watermarked_img_8315840391883114400.jpg",
+      "producto": "protector-kindle-paperwhite-colorsoft",
+      "color": "mate",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        1024,
+        1024
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#paperwhite",
+        "#colorsoft",
+        "#color",
+        "#protector",
+        "#pantalla",
+        "#marca-de-agua",
+        "#no-usar-en-video",
+        "#color-mate",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\protector-kindle-scribe\\mate\\92b83705-23bc-422d-83a8-6a4c1e630a5f",
+      "ruta": "contexto/fotos y videos/fotos-fundas/protector-kindle-scribe/Mate/92b83705-23bc-422d-83a8-6a4c1e630a5f.png",
+      "producto": "protector-kindle-scribe",
+      "color": "mate",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        1254,
+        1254
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#scribe",
+        "#protector",
+        "#pantalla",
+        "#color-mate",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\protector-kindle-scribe-colorsoft\\mate\\watermarked-img-6542599868467552678",
+      "ruta": "contexto/fotos y videos/fotos-fundas/protector-kindle-scribe-colorsoft/Mate/watermarked_img_6542599868467552678.jpg",
+      "producto": "protector-kindle-scribe-colorsoft",
+      "color": "mate",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        979,
+        1024
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#colorsoft",
+        "#color",
+        "#scribe",
+        "#protector",
+        "#pantalla",
+        "#marca-de-agua",
+        "#no-usar-en-video",
+        "#color-mate",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\protector-kobo-clara-colour\\mate\\watermarked-img-111268597948062375",
+      "ruta": "contexto/fotos y videos/fotos-fundas/protector-kobo-clara-colour/Mate/watermarked_img_111268597948062375.jpg",
+      "producto": "protector-kobo-clara-colour",
+      "color": "mate",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        934,
+        1024
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#protector",
+        "#pantalla",
+        "#marca-de-agua",
+        "#no-usar-en-video",
+        "#color-mate",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "fotos-fundas\\protector-kobo-libra-colour\\mate\\6a67cb09-404f-4467-bb61-ae37fe43dbf3",
+      "ruta": "contexto/fotos y videos/fotos-fundas/protector-kobo-libra-colour/Mate/6a67cb09-404f-4467-bb61-ae37fe43dbf3.png",
+      "producto": "protector-kobo-libra-colour",
+      "color": "mate",
+      "tipo": "funda",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        1254,
+        1254
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "pip",
+        "detalle"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#funda",
+        "#proteccion",
+        "#kobo",
+        "#protector",
+        "#pantalla",
+        "#color-mate",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\basic\\caracteristicas-tecnicas",
+      "ruta": "contexto/fotos y videos/pagina amazon/basic/caracteristicas tecnicas.png",
+      "producto": "basic",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1508,
+        676
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#basic",
+        "#economico",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\basic\\nwflyzvkzdmt.-cb544957238",
+      "ruta": "contexto/fotos y videos/pagina amazon/basic/NWFlYzVkZDMt._CB544957238_.jpg",
+      "producto": "basic",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1500,
+        607
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#basic",
+        "#economico",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\basic\\nze3nzdjmgit.-cb544957425",
+      "ruta": "contexto/fotos y videos/pagina amazon/basic/NzE3NzdjMGIt._CB544957425_.jpg",
+      "producto": "basic",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        2928,
+        1648
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#basic",
+        "#economico",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\basic\\para-replicar-2",
+      "ruta": "contexto/fotos y videos/pagina amazon/basic/para replicar 2.png",
+      "producto": "basic",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1368,
+        296
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#basic",
+        "#economico",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\basic\\para-replicar-3",
+      "ruta": "contexto/fotos y videos/pagina amazon/basic/para replicar 3.png",
+      "producto": "basic",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1001,
+        715
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#basic",
+        "#economico",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\basic\\para-replicar-4",
+      "ruta": "contexto/fotos y videos/pagina amazon/basic/para replicar 4.png",
+      "producto": "basic",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1097,
+        506
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#basic",
+        "#economico",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\basic\\para-replicar-5",
+      "ruta": "contexto/fotos y videos/pagina amazon/basic/para replicar 5.png",
+      "producto": "basic",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1001,
+        770
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#basic",
+        "#economico",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\basic\\para-replicar",
+      "ruta": "contexto/fotos y videos/pagina amazon/basic/para replicar.png",
+      "producto": "basic",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1446,
+        888
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#basic",
+        "#economico",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\basic\\ymzhytvlnzat.-cb544957425",
+      "ruta": "contexto/fotos y videos/pagina amazon/basic/YmZhYTVlNzAt._CB544957425_.jpg",
+      "producto": "basic",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        604,
+        604
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#basic",
+        "#economico",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\basic\\zdc0mdvlzjat.-cb544957425",
+      "ruta": "contexto/fotos y videos/pagina amazon/basic/ZDc0MDVlZjAt._CB544957425_.jpg",
+      "producto": "basic",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        2928,
+        1648
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#basic",
+        "#economico",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\1",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/1.jpg",
+      "producto": "paperwhite",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        2928,
+        1648
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\2",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/2.mp4",
+      "producto": "paperwhite",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4096,
+        2304
+      ],
+      "duracion_s": 9.8,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\3",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/3.jpg",
+      "producto": "paperwhite",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        2928,
+        1648
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\4",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/4.mp4",
+      "producto": "paperwhite",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4096,
+        2304
+      ],
+      "duracion_s": 17.4,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\5",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/5.jpg",
+      "producto": "paperwhite",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1536
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\6",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/6.jpg",
+      "producto": "paperwhite",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        1920,
+        1920
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\7",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/7.png",
+      "producto": "paperwhite",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        2488,
+        1076
+      ],
+      "duracion_s": null,
+      "fondo": "transparente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#sin-fondo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\caracteristicas",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/caracteristicas.png",
+      "producto": "paperwhite",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1424,
+        617
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\para-replicar\\captura-de-pantalla-2026-07-09-174309",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/PARA REPLICAR/Captura de pantalla 2026-07-09 174309.png",
+      "producto": "paperwhite",
+      "color": "para-replicar",
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        807,
+        647
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#color-para-replicar",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\para-replicar\\captura-de-pantalla-2026-07-09-174316",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/PARA REPLICAR/Captura de pantalla 2026-07-09 174316.png",
+      "producto": "paperwhite",
+      "color": "para-replicar",
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        687,
+        224
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#color-para-replicar",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\para-replicar\\captura-de-pantalla-2026-07-09-174321",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/PARA REPLICAR/Captura de pantalla 2026-07-09 174321.png",
+      "producto": "paperwhite",
+      "color": "para-replicar",
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        780,
+        594
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#color-para-replicar",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\para-replicar\\captura-de-pantalla-2026-07-09-174326",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/PARA REPLICAR/Captura de pantalla 2026-07-09 174326.png",
+      "producto": "paperwhite",
+      "color": "para-replicar",
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        738,
+        498
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#color-para-replicar",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\para-replicar\\captura-de-pantalla-2026-07-09-174331",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/PARA REPLICAR/Captura de pantalla 2026-07-09 174331.png",
+      "producto": "paperwhite",
+      "color": "para-replicar",
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        821,
+        541
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#color-para-replicar",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\para-replicar\\captura-de-pantalla-2026-07-09-174337",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/PARA REPLICAR/Captura de pantalla 2026-07-09 174337.png",
+      "producto": "paperwhite",
+      "color": "para-replicar",
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        808,
+        306
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#color-para-replicar",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite\\para-replicar\\captura-de-pantalla-2026-07-09-174341",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite/PARA REPLICAR/Captura de pantalla 2026-07-09 174341.png",
+      "producto": "paperwhite",
+      "color": "para-replicar",
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        801,
+        353
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#color-para-replicar",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite-kids\\captura-de-pantalla-2026-07-15-111558",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite kids/Captura de pantalla 2026-07-15 111558.png",
+      "producto": "paperwhite-kids",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1621,
+        786
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ninos",
+        "#regalo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite-kids\\captura-de-pantalla-2026-07-15-111730",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite kids/Captura de pantalla 2026-07-15 111730.png",
+      "producto": "paperwhite-kids",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1379,
+        714
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ninos",
+        "#regalo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite-kids\\captura-de-pantalla-2026-07-15-111754",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite kids/Captura de pantalla 2026-07-15 111754.png",
+      "producto": "paperwhite-kids",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1173,
+        781
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ninos",
+        "#regalo",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite-kids\\mtazmgjimtat",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite kids/MTAzMGJiMTAt.mp4",
+      "producto": "paperwhite-kids",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1950,
+        980
+      ],
+      "duracion_s": 21.7,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ninos",
+        "#regalo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite-kids\\otq5nzgxnwmt",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite kids/OTQ5NzgxNWMt.mp4",
+      "producto": "paperwhite-kids",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4096,
+        2304
+      ],
+      "duracion_s": 11.3,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ninos",
+        "#regalo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite-kids\\yjm5mthmntut.-cb544937189",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite kids/YjM5MThmNTUt._CB544937189_.jpg",
+      "producto": "paperwhite-kids",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        2928,
+        1648
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ninos",
+        "#regalo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-amazon\\paperwhite-kids\\ymrintq0nzqt.-cb545054142",
+      "ruta": "contexto/fotos y videos/pagina amazon/paperwhite kids/YmRiNTQ0NzQt._CB545054142_.png",
+      "producto": "paperwhite-kids",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        2486,
+        1119
+      ],
+      "duracion_s": null,
+      "fondo": "transparente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#paperwhite",
+        "#ninos",
+        "#regalo",
+        "#sin-fondo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-kobo\\kobo-libra\\1",
+      "ruta": "contexto/fotos y videos/pagina kobo/kobo libra/1.mp4",
+      "producto": "kobo-libra",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "video",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        608,
+        720
+      ],
+      "duracion_s": 5.0,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#kobo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-kobo\\kobo-libra\\2",
+      "ruta": "contexto/fotos y videos/pagina kobo/kobo libra/2.mp4",
+      "producto": "kobo-libra",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "video",
+      "orientacion": "vertical",
+      "dimensiones": [
+        590,
+        720
+      ],
+      "duracion_s": 19.0,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#kobo",
+        "#ambiente",
+        "#vertical"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-kobo\\kobo-libra\\3",
+      "ruta": "contexto/fotos y videos/pagina kobo/kobo libra/3.mp4",
+      "producto": "kobo-libra",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "video",
+      "orientacion": "cuadrada",
+      "dimensiones": [
+        656,
+        720
+      ],
+      "duracion_s": 5.7,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#kobo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-kobo\\kobo-libra\\ejemplo-1",
+      "ruta": "contexto/fotos y videos/pagina kobo/kobo libra/ejemplo 1.png",
+      "producto": "kobo-libra",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1268,
+        748
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#kobo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-kobo\\kobo-libra\\ejemplo-2",
+      "ruta": "contexto/fotos y videos/pagina kobo/kobo libra/ejemplo 2.png",
+      "producto": "kobo-libra",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1356,
+        818
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#kobo",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "pagina-kobo\\kobo-libra\\ejemplo-3",
+      "ruta": "contexto/fotos y videos/pagina kobo/kobo libra/ejemplo 3.png",
+      "producto": "kobo-libra",
+      "color": null,
+      "tipo": "captura-web",
+      "medio": "imagen",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1286,
+        733
+      ],
+      "duracion_s": null,
+      "fondo": "blanco",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#specs",
+        "#prueba-social",
+        "#kobo",
+        "#catalogo"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "resenas\\1",
+      "ruta": "contexto/fotos y videos/RESEÑAS/1.jpeg",
+      "producto": "resenas",
+      "color": null,
+      "tipo": "resena",
+      "medio": "imagen",
+      "orientacion": "vertical",
+      "dimensiones": [
+        1202,
+        1600
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#resena",
+        "#prueba-social",
+        "#ambiente",
+        "#vertical"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "resenas\\2",
+      "ruta": "contexto/fotos y videos/RESEÑAS/2.jpeg",
+      "producto": "resenas",
+      "color": null,
+      "tipo": "resena",
+      "medio": "imagen",
+      "orientacion": "vertical",
+      "dimensiones": [
+        1200,
+        1600
+      ],
+      "duracion_s": null,
+      "fondo": "ambiente",
+      "usos": [
+        "prueba-social"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#resena",
+        "#prueba-social",
+        "#ambiente",
+        "#vertical"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\basic",
+      "ruta": "contexto/fotos y videos/videos/BASIC.mp4",
+      "producto": "videos",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 8.0,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#basic",
+        "#economico",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\en-cajas\\basic\\ruid35c369002fcb4841a18ec3bce33a71f3",
+      "ruta": "contexto/fotos y videos/videos/en cajas/basic/RUID35c369002fcb4841a18ec3bce33a71f3.mp4",
+      "producto": "en-cajas",
+      "color": "basic",
+      "tipo": "caja",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 17.8,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "confianza"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#caja",
+        "#sellado",
+        "#confianza",
+        "#basic",
+        "#economico",
+        "#color-basic",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\en-cajas\\basic\\ruid3f51888d1ac2458f9dae716cd54aea0f",
+      "ruta": "contexto/fotos y videos/videos/en cajas/basic/RUID3f51888d1ac2458f9dae716cd54aea0f.mp4",
+      "producto": "en-cajas",
+      "color": "basic",
+      "tipo": "caja",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 15.4,
+      "fondo": "ambiente",
+      "usos": [
+        "pip",
+        "confianza"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#caja",
+        "#sellado",
+        "#confianza",
+        "#basic",
+        "#economico",
+        "#color-basic",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\paperwhite-video-mostrando",
+      "ruta": "contexto/fotos y videos/videos/PAPERWHITE VIDEO MOSTRANDO.mp4",
+      "producto": "videos",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        4096,
+        2304
+      ],
+      "duracion_s": 9.8,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\basic-negro",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/basic-negro.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 12.5,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#basic",
+        "#economico",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\basic-verde",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/basic-verde.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 11.9,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#basic",
+        "#economico",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\colorsfot16gb",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/colorsfot16gb.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 13.9,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\colorsfot32gb",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/colorsfot32gb.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 13.5,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\garantia-kindle-1",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/garantia-kindle-1.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 19.2,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\garantia-kindle-2",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/garantia-kindle-2.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 24.0,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\garantia-kobo",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/garantia-kobo.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 18.9,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#kobo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\kobo-stylus-negro",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/kobo stylus-negro.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 9.2,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#kobo",
+        "#stylus",
+        "#escribir",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\kobo-clara-blanco",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/kobo-clara-blanco.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 11.5,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#kobo",
+        "#compacto",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\kobo-clara-negro",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/kobo-clara-negro.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 11.5,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#kobo",
+        "#compacto",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\kobo-libra-blanco",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/kobo-libra-blanco.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 11.7,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#kobo",
+        "#botones",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\kobo-libra-negro",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/kobo-libra-negro.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 11.1,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#kobo",
+        "#botones",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\kobo-stylus-blanco",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/kobo-stylus-blanco.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 7.9,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#kobo",
+        "#stylus",
+        "#escribir",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\paperwhite-kids",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/paperwhite-kids.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 12.7,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#paperwhite",
+        "#agua",
+        "#ninos",
+        "#regalo",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\paperwhite16gb-jade",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/paperwhite16gb-jade.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 11.6,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\paperwhite16gb-negro",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/paperwhite16gb-negro.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 11.9,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\paperwhite16gb-raspberry",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/paperwhite16gb-raspberry.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 11.5,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\paperwhite32gb-jade",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/paperwhite32gb-jade.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 11.2,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\paperwhite32gb-negro",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/paperwhite32gb-negro.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 11.6,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#paperwhite",
+        "#agua",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\scribe-2026-32gb",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/scribe-2026-32gb.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 18.8,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#scribe",
+        "#escribir",
+        "#stylus",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\scribe-colorsoft-32gb",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/scribe-colorsoft-32gb.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 17.3,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#colorsoft",
+        "#color",
+        "#scribe",
+        "#escribir",
+        "#stylus",
+        "#ambiente"
+      ],
+      "revisado": false
+    },
+    {
+      "id": "videos\\videos-pagina-web\\scribe-colorsoft-64gb",
+      "ruta": "contexto/fotos y videos/videos/videos pagina web/scribe-colorsoft-64gb.mp4",
+      "producto": "videos-pagina-web",
+      "color": null,
+      "tipo": "video",
+      "medio": "video",
+      "orientacion": "horizontal",
+      "dimensiones": [
+        1920,
+        1080
+      ],
+      "duracion_s": 13.7,
+      "fondo": "ambiente",
+      "usos": [
+        "broll"
+      ],
+      "origen": "propio",
+      "tags": [
+        "#broll",
+        "#colorsoft",
+        "#color",
+        "#scribe",
+        "#escribir",
+        "#stylus",
+        "#ambiente"
+      ],
+      "revisado": false
+    }
+  ]
+}

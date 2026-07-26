@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es" data-resolution="portrait" data-composition-variables='[
+  {"id":"producto","type":"string","label":"Nombre del producto","default":"Kindle Paperwhite"},
+  {"id":"spec1_label","type":"string","label":"Spec 1 - etiqueta","default":"Batería"},
+  {"id":"spec1_valor","type":"string","label":"Spec 1 - valor","default":"Hasta 12 semanas"},
+  {"id":"spec2_label","type":"string","label":"Spec 2 - etiqueta","default":"Pantalla"},
+  {"id":"spec2_valor","type":"string","label":"Spec 2 - valor","default":"7\" · 300 ppi"},
+  {"id":"spec3_label","type":"string","label":"Spec 3 - etiqueta","default":"Resistencia"},
+  {"id":"spec3_valor","type":"string","label":"Spec 3 - valor","default":"Sumergible IPX8"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="compositions/_shared.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      html, body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: transparent; /* renderizar con --format webm o mov */
+      }
+      body { font-family: "Poppins", sans-serif; }
+
+      /*
+        FRANJA SUPERIOR (~10-35% del alto), no el centro.
+        Centrada verticalmente (top:960 + translateY(-50%)) la tarjeta caía justo
+        encima de la cara de José y del producto que sostiene en la mano —
+        verificado extrayendo frames del video real. En un talking-head sentado la
+        cabeza ocupa la franja media y la parte de arriba queda vacía, que es
+        donde van TODOS los overlays por decisión ya tomada
+        (config.INSERTO_Y_PCT / OVERLAY_BANDA_SUPERIOR_PCT).
+        200px = 10.4% del alto; la tarjeta mide ~470px, así que termina cerca del 35%.
+      */
+      /* left fijo en vez de left:50% + translateX(-50%): GSAP anima `y`/`scale`
+         sobre este mismo elemento y reescribe la propiedad transform. */
+      .card-wrap {
+        position: absolute;
+        left: 130px;   /* (1080 - 820) / 2 */
+        top: 200px;
+        width: 820px;
+      }
+
+      .card {
+        background: linear-gradient(165deg, var(--navy-soft), var(--navy));
+        border-radius: 36px;
+        padding: 56px 60px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+        border: 2px solid rgba(79, 209, 217, 0.35);
+      }
+
+      .card-titulo {
+        color: var(--blanco);
+        font-family: "Poppins", sans-serif;
+        font-weight: 800;
+        font-size: 52px;
+        margin-bottom: 12px;
+      }
+
+      .card-linea {
+        width: 90px;
+        height: 6px;
+        background: var(--cian);
+        border-radius: 4px;
+        margin-bottom: 40px;
+      }
+
+      .spec-row {
+        display: flex;
+        align-items: baseline;
+        gap: 20px;
+        padding: 22px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .spec-row:last-child { border-bottom: none; }
+
+      .spec-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--cian);
+        flex: none;
+      }
+
+      .spec-label {
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 34px;
+        font-weight: 400;
+        flex: 1;
+      }
+
+      .spec-valor {
+        color: var(--blanco);
+        font-size: 38px;
+        font-weight: 700;
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="tarjeta-specs"
+      data-start="0"
+      data-duration="4.5"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div id="card" class="clip card-wrap" data-start="0" data-duration="4.5" data-track-index="1">
+        <div class="card">
+          <div id="titulo" class="card-titulo"></div>
+          <div class="card-linea"></div>
+          <div class="spec-row" id="row1">
+            <div class="spec-dot"></div>
+            <div class="spec-label" id="label1"></div>
+            <div class="spec-valor" id="valor1"></div>
+          </div>
+          <div class="spec-row" id="row2">
+            <div class="spec-dot"></div>
+            <div class="spec-label" id="label2"></div>
+            <div class="spec-valor" id="valor2"></div>
+          </div>
+          <div class="spec-row" id="row3">
+            <div class="spec-dot"></div>
+            <div class="spec-label" id="label3"></div>
+            <div class="spec-valor" id="valor3"></div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        const v = window.__hyperframes.getVariables();
+        document.getElementById("titulo").textContent = v.producto;
+        document.getElementById("label1").textContent = v.spec1_label;
+        document.getElementById("valor1").textContent = v.spec1_valor;
+        document.getElementById("label2").textContent = v.spec2_label;
+        document.getElementById("valor2").textContent = v.spec2_valor;
+        document.getElementById("label3").textContent = v.spec3_label;
+        document.getElementById("valor3").textContent = v.spec3_valor;
+      </script>
+
+      <script>
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo(
+          "#card",
+          { opacity: 0, y: 60, scale: 0.92 },
+          { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: "power2.out" },
+          0
+        );
+        tl.fromTo(
+          "#row1, #row2, #row3",
+          { opacity: 0, x: -30 },
+          { opacity: 1, x: 0, duration: 0.35, stagger: 0.15, ease: "power2.out" },
+          0.25
+        );
+        tl.to("#card", { opacity: 0, y: -30, duration: 0.3, ease: "power1.in" }, 4.15);
+
+        window.__timelines["tarjeta-specs"] = tl;
+      </script>
+    </div>
+  </body>
+</html>

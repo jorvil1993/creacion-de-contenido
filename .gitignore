@@ -1,0 +1,20 @@
+# Snapshot de seguridad: solo código y documentos, nada de medios pesados.
+*.mp4
+*.mov
+*.mp3
+*.wav
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.psd
+*.zip
+
+salida/
+entrada/
+_editor/
+_tmp_overlays/
+__pycache__/
+*.pyc
+.DS_Store

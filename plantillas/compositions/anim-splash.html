@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es" data-resolution="portrait" data-composition-variables='[
+  {"id":"variante","type":"string","label":"Variante determinista 0|1|2","default":"0"},
+  {"id":"lado","type":"string","label":"izquierda | derecha | centro","default":"izquierda"},
+  {"id":"etiqueta","type":"string","label":"Texto bajo el splash","default":"resistente al agua"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="compositions/_shared.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /*
+        Reemplaza el splash de PIL. Verificado en un frame del video real: el de
+        PIL se veía como una manchita cian de ~40px — invisible en un celular.
+        Aquí las ondas son grandes, con grosor y opacidad que se leen, y las
+        gotas salen en abanico con gravedad.
+
+        Variación determinista por `variante` (0|1|2): cambia el número de gotas,
+        la apertura del abanico y el tamaño de la onda.
+      */
+      html, body {
+        margin: 0; width: 1080px; height: 1920px;
+        overflow: hidden; background: transparent;
+      }
+      body { font-family: "Poppins", sans-serif; }
+
+      .wrap { position: absolute; top: 190px; width: 520px; height: 560px; }
+
+      .escena { position: relative; width: 520px; height: 460px; }
+
+      /* Borde fino a propósito: la onda crece con `scale`, y scale multiplica
+         también el grosor del borde. Con 12px de borde y escala 7.5 el anillo
+         terminaba en 90px y se veía como una mancha, no como una onda.
+         5px × escala 5 = 25px finales, que sí se lee como anillo. */
+      .onda {
+        position: absolute;
+        left: 50%; top: 296px;
+        width: 96px; height: 54px;
+        margin-left: -48px;
+        border: 5px solid var(--cian);
+        border-radius: 50%;
+        opacity: 0;
+        filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.45));
+      }
+
+      .gota {
+        position: absolute;
+        left: 50%; top: 290px;
+        width: 34px; height: 44px;
+        margin-left: -17px;
+        border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+        background: radial-gradient(circle at 34% 30%, #ffffff 0%, #9beef3 32%, #4fd1d9 78%);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        opacity: 0;
+      }
+
+      .nucleo {
+        position: absolute;
+        left: 50%; top: 236px;
+        width: 128px; height: 128px;
+        margin-left: -64px;
+        border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%;
+        background: radial-gradient(circle at 38% 28%, #ffffff 0%, #a6f0f5 30%, #4fd1d9 80%);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        opacity: 0;
+      }
+
+      .etiqueta {
+        position: absolute;
+        top: 430px; left: 0; width: 520px;
+        text-align: center;
+        color: var(--blanco);
+        font-weight: 800;
+        font-size: 42px;
+        -webkit-text-stroke: 8px rgba(0, 0, 0, 0.85);
+        paint-order: stroke fill;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="anim-splash" data-start="0" data-duration="2.2"
+         data-width="1080" data-height="1920">
+      <div id="anim" class="clip wrap" data-start="0" data-duration="2.2" data-track-index="1">
+        <div class="escena" id="escena">
+          <div class="nucleo" id="nucleo"></div>
+          <div class="etiqueta" id="etiqueta"></div>
+        </div>
+      </div>
+
+      <script>
+        const v = window.__hyperframes.getVariables();
+        const VARIANTES = [
+          { gotas: 9,  apertura: 150, alcance: 210, ondas: 3, escala: 1.0 },
+          { gotas: 7,  apertura: 128, alcance: 240, ondas: 4, escala: 1.1 },
+          { gotas: 11, apertura: 168, alcance: 190, ondas: 3, escala: 0.94 },
+        ];
+        const cfg = VARIANTES[(parseInt(v.variante, 10) || 0) % VARIANTES.length];
+
+        const X = { izquierda: 60, derecha: 1080 - 520 - 60, centro: (1080 - 520) / 2 };
+        document.getElementById("anim").style.left =
+          (X[v.lado] !== undefined ? X[v.lado] : X.izquierda) + "px";
+        document.getElementById("etiqueta").textContent = v.etiqueta;
+
+        const escena = document.getElementById("escena");
+
+        // ondas y gotas se crean por código para que la variante cambie cuántas
+        // hay — sin azar: todo sale de `variante`.
+        const ondas = [];
+        for (let i = 0; i < cfg.ondas; i++) {
+          const el = document.createElement("div");
+          el.className = "onda";
+          escena.insertBefore(el, escena.firstChild);
+          ondas.push(el);
+        }
+        const gotas = [];
+        for (let i = 0; i < cfg.gotas; i++) {
+          const el = document.createElement("div");
+          el.className = "gota";
+          escena.appendChild(el);
+          gotas.push(el);
+        }
+
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#anim", { opacity: 0 }, { opacity: 1, duration: 0.18 }, 0);
+
+        // el chorro central: sube, se estira y cae
+        tl.fromTo("#nucleo",
+          { opacity: 0, scaleX: 0.4, scaleY: 0.4, y: 40 },
+          { opacity: 1, scaleX: 1, scaleY: 1.25, y: -30, duration: 0.42, ease: "power3.out" }, 0.05);
+        tl.to("#nucleo", { scaleY: 0.75, y: 26, duration: 0.5, ease: "power2.in" }, 0.5);
+        tl.to("#nucleo", { opacity: 0, duration: 0.35 }, 1.0);
+
+        // ondas concéntricas, desfasadas
+        ondas.forEach((el, i) => {
+          tl.fromTo(el,
+            { opacity: 1, scale: 0.5 },
+            { opacity: 0, scale: 5.0 * cfg.escala, duration: 1.25, ease: "power2.out" },
+            0.18 + i * 0.17);
+        });
+
+        // gotas en abanico con gravedad: subida rápida + caída acelerada
+        gotas.forEach((el, i) => {
+          const t = cfg.gotas === 1 ? 0.5 : i / (cfg.gotas - 1);
+          const ang = (-cfg.apertura / 2 + cfg.apertura * t) * Math.PI / 180;
+          const alcance = cfg.alcance * (0.72 + 0.28 * (((i * 37) % 10) / 10));
+          const dx = Math.sin(ang) * alcance;
+          const dy = -Math.cos(ang) * alcance * 0.9;
+          tl.fromTo(el,
+            { opacity: 0, x: 0, y: 0, scale: 0.4 },
+            { opacity: 1, x: dx, y: dy, scale: 1, duration: 0.45, ease: "power2.out" },
+            0.1 + i * 0.02);
+          tl.to(el,
+            { x: dx * 1.22, y: dy + 300, opacity: 0, scale: 0.55, duration: 0.75, ease: "power2.in" },
+            0.55 + i * 0.02);
+        });
+
+        tl.fromTo("#etiqueta", { opacity: 0, y: 14 },
+          { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, 0.35);
+        tl.to("#anim", { opacity: 0, duration: 0.28, ease: "power1.in" }, 1.92);
+
+        window.__timelines["anim-splash"] = tl;
+      </script>
+    </div>
+  </body>
+</html>
