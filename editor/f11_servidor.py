@@ -17,6 +17,7 @@ import argparse
 import json
 import mimetypes
 import re
+import subprocess
 import sys
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -30,6 +31,18 @@ import f10_editor_visual as f10
 DIR_TRABAJO: Path = None
 RAICES_PERMITIDAS: list = None
 _CATALOGO_CACHE: list = None
+ESTADO_RENDER = {"proceso": None, "log": None}
+
+
+def _guardar_eventos(eventos: list) -> Path:
+    """Escritura atómica de los ajustes (sección 3 del plan): a .tmp y
+    renombrar, para que un José con el JSON abierto en otra parte nunca vea
+    un archivo a medio escribir."""
+    destino = DIR_TRABAJO / "ajustes.eventos.json"
+    tmp = destino.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"eventos": eventos}, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(destino)
+    return destino
 
 
 def _catalogo() -> list:
@@ -52,6 +65,36 @@ def _archivo_permitido(ruta: Path) -> bool:
     except OSError:
         return False
     return any(ruta.is_relative_to(raiz) for raiz in RAICES_PERMITIDAS)
+
+
+def _estado_render() -> dict:
+    proceso = ESTADO_RENDER.get("proceso")
+    log_path = ESTADO_RENDER.get("log")
+    if proceso is None:
+        return {"activo": False, "corrio_alguna_vez": False}
+
+    activo = proceso.poll() is None
+    if not activo and ESTADO_RENDER.get("archivo_log"):
+        try:
+            ESTADO_RENDER["archivo_log"].close()
+        except Exception:
+            pass
+        ESTADO_RENDER["archivo_log"] = None
+
+    texto = ""
+    if log_path and log_path.exists():
+        texto = log_path.read_text(encoding="utf-8", errors="replace")
+    progreso = re.findall(r"render: (\d+)/(\d+) frames", texto)
+    ultimo = progreso[-1] if progreso else None
+
+    return {
+        "activo": activo,
+        "corrio_alguna_vez": True,
+        "ok": (not activo) and proceso.returncode == 0,
+        "error": (not activo) and proceso.returncode != 0,
+        "progreso": {"actual": int(ultimo[0]), "total": int(ultimo[1])} if ultimo else None,
+        "cola_log": texto[-2000:],
+    }
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -170,6 +213,8 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_error(404, "no se pudo renderizar la tarjeta")
                     return
                 self._archivo(ruta_tarjeta, "image/png")
+            elif ruta == "/render/estado":
+                self._json(_estado_render())
             else:
                 self.send_error(404, "Ruta desconocida")
         except FileNotFoundError as e:
@@ -179,23 +224,56 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         partes = urlparse(self.path)
+        largo = int(self.headers.get("Content-Length", 0))
+        cuerpo = self.rfile.read(largo) if largo else b"{}"
+        try:
+            datos = json.loads(cuerpo.decode("utf-8")) if cuerpo else {}
+        except Exception as e:
+            self.send_error(400, f"JSON inválido: {e}")
+            return
+
         if partes.path == "/guardar":
-            largo = int(self.headers.get("Content-Length", 0))
-            cuerpo = self.rfile.read(largo) if largo else b"{}"
-            try:
-                datos = json.loads(cuerpo.decode("utf-8"))
-            except Exception as e:
-                self.send_error(400, f"JSON inválido: {e}")
-                return
             eventos = datos.get("eventos", [])
-            destino = DIR_TRABAJO / "ajustes.eventos.json"
-            tmp = destino.with_suffix(".tmp")
-            # escritura atómica (sección 3 del plan): si José tiene el JSON
-            # abierto en otra parte, nunca debe quedar a medio escribir.
-            tmp.write_text(json.dumps({"eventos": eventos}, ensure_ascii=False, indent=2),
-                            encoding="utf-8")
-            tmp.replace(destino)
+            destino = _guardar_eventos(eventos)
             self._json({"ok": True, "ruta": str(destino), "n": len(eventos)})
+
+        elif partes.path == "/render":
+            proceso_previo = ESTADO_RENDER.get("proceso")
+            if proceso_previo is not None and proceso_previo.poll() is None:
+                self._json({"ok": False, "error": "ya hay un render en curso"}, code=409)
+                return
+
+            # "Guardar siempre antes de renderizar" (Fase 5, punto 4): que un
+            # fallo de ffmpeg nunca pierda los ajustes que se iban a probar.
+            ajustes = None
+            if "eventos" in datos:
+                ajustes = _guardar_eventos(datos["eventos"])
+            else:
+                candidato = DIR_TRABAJO / "ajustes.eventos.json"
+                if candidato.exists():
+                    ajustes = candidato
+
+            # editor.py solo necesita que "entrada" exista — en --reaplicar no
+            # se lee: la transcripción/corte/análisis ya están en dir_trabajo.
+            dummy_entrada = DIR_TRABAJO / "02_cortado.mp4"
+            cmd = [sys.executable, "editor.py", str(dummy_entrada),
+                   "--nombre", DIR_TRABAJO.name, "--reaplicar", "--sin-editor-visual"]
+            if ajustes is not None:
+                cmd += ["--eventos-manual", str(ajustes)]
+
+            dir_log = DIR_TRABAJO / "_editor"
+            dir_log.mkdir(exist_ok=True)
+            log_path = dir_log / "render.log"
+            # stdout/stderr a un archivo, NUNCA a un pipe sin leer (trampa #5
+            # del plan: ffmpeg se cuelga si nadie vacía el buffer).
+            archivo_log = open(log_path, "wb")
+            proceso = subprocess.Popen(cmd, cwd=str(Path(__file__).resolve().parent),
+                                       stdout=archivo_log, stderr=subprocess.STDOUT)
+            ESTADO_RENDER["proceso"] = proceso
+            ESTADO_RENDER["log"] = log_path
+            ESTADO_RENDER["archivo_log"] = archivo_log
+            self._json({"ok": True, "pid": proceso.pid, "log": str(log_path)})
+
         else:
             self.send_error(404, "Ruta desconocida")
 
@@ -336,10 +414,15 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
 
     <p class="hint" style="margin-top:10px;">
       <button class="btn-primario" id="btnGuardar" type="button">Guardar cambios</button>
-      Escribe <code id="rutaAjustes"></code>. Para aplicarlos (la Fase 5 lo hará con un botón):
+      <button class="btn-primario" id="btnRender" type="button">Re-renderizar</button>
+      Guarda siempre antes de renderizar. El video final tarda ~34s en actualizarse.
     </p>
-    <pre class="cmd" id="comandoReaplicar" style="background:var(--acento-suave); border:1px solid var(--linea);
-         border-radius:6px; padding:8px; font-size:11px; overflow-x:auto;"></pre>
+    <div id="cajaProgreso" style="display:none;">
+      <div style="background:var(--linea); border-radius:6px; height:8px; overflow:hidden; margin-bottom:6px;">
+        <div id="barraProgreso" style="background:var(--acento); height:100%; width:0%; transition:width .3s;"></div>
+      </div>
+      <p class="hint" id="textoProgreso"></p>
+    </div>
   </div>
 </main>
 
@@ -350,6 +433,7 @@ const lienzo = document.getElementById("lienzo");
 
 let edicionPip = [];
 let editandoIdx = null; // índice en edicionPip, o -1 para "nuevo antes de agregar"
+let loopArrancado = false;
 
 async function cargar() {
   const r = await fetch("/datos");
@@ -358,7 +442,6 @@ async function cargar() {
   document.getElementById("resumen").textContent =
     `${DATA.duracion.toFixed(1)}s · ${DATA.overlays.length} overlays · ${DATA.palabras.length} palabras`;
   document.getElementById("tTotal").textContent = DATA.duracion.toFixed(2) + "s";
-  document.getElementById("rutaAjustes").textContent = "ajustes.eventos.json";
 
   video.src = "/video";
   construirOverlays();
@@ -370,9 +453,14 @@ async function cargar() {
     archivo: m.archivo, tarjeta: m.overlay,
   }));
   renderPipsLista();
-  actualizarComando();
 
-  requestAnimationFrame(loop);
+  // cargar() se vuelve a llamar después de cada render (Fase 5): el rAF loop
+  // solo se arranca una vez, si no cada recarga sumaría otro loop corriendo
+  // en paralelo.
+  if (!loopArrancado) {
+    loopArrancado = true;
+    requestAnimationFrame(loop);
+  }
 }
 
 function avisosPip() {
@@ -418,7 +506,7 @@ function renderPipsLista() {
     div.appendChild(btnSust);
     const btnQuitar = document.createElement("button");
     btnQuitar.className = "quitar"; btnQuitar.textContent = "Quitar";
-    btnQuitar.addEventListener("click", () => { edicionPip.splice(i, 1); renderPipsLista(); actualizarComando(); });
+    btnQuitar.addEventListener("click", () => { edicionPip.splice(i, 1); renderPipsLista(); });
     div.appendChild(btnQuitar);
     cont.appendChild(div);
   });
@@ -474,13 +562,6 @@ function elegirAsset(asset) {
   document.getElementById("cajaCatalogo").classList.remove("activa");
   editandoIdx = null;
   renderPipsLista();
-  actualizarComando();
-}
-
-function actualizarComando() {
-  document.getElementById("comandoReaplicar").textContent =
-    `python editor.py "<video original>" --nombre ${DATA.nombre} --reaplicar --sin-editor-visual ` +
-    `--eventos-manual "ajustes.eventos.json"`;
 }
 
 document.getElementById("btnAñadirPip").addEventListener("click", () => abrirCatalogo(-1));
@@ -490,16 +571,19 @@ document.getElementById("btnCancelarEdicion").addEventListener("click", () => {
   renderPipsLista();
 });
 document.getElementById("chkTodos").addEventListener("change", cargarGridCatalogo);
-document.getElementById("btnGuardar").addEventListener("click", async () => {
-  const eventos = edicionPip.map(ev => {
+function eventosParaGuardar() {
+  return edicionPip.map(ev => {
     const base = { ini: ev.ini, fin: ev.fin, x: ev.x, y: ev.y };
     if (ev.asset_id) base.asset_id = ev.asset_id;
     else if (ev.archivo) base.archivo = ev.archivo;
     return base;
   });
+}
+
+document.getElementById("btnGuardar").addEventListener("click", async () => {
   const r = await fetch("/guardar", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ eventos }),
+    body: JSON.stringify({ eventos: eventosParaGuardar() }),
   });
   const datos = await r.json();
   const btn = document.getElementById("btnGuardar");
@@ -508,7 +592,61 @@ document.getElementById("btnGuardar").addEventListener("click", async () => {
   setTimeout(() => { btn.textContent = original; }, 2000);
 });
 
+let sondeoRender = null;
+
+async function iniciarRender() {
+  const btn = document.getElementById("btnRender");
+  const caja = document.getElementById("cajaProgreso");
+  const barra = document.getElementById("barraProgreso");
+  const texto = document.getElementById("textoProgreso");
+
+  const r = await fetch("/render", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ eventos: eventosParaGuardar() }),
+  });
+  const resp = await r.json();
+  if (!resp.ok) {
+    texto.textContent = "No se pudo iniciar: " + (resp.error || "");
+    caja.style.display = "";
+    return;
+  }
+
+  btn.disabled = true;
+  caja.style.display = "";
+  barra.style.width = "0%";
+  texto.textContent = "Renderizando...";
+
+  sondeoRender = setInterval(async () => {
+    const er = await fetch("/render/estado");
+    const est = await er.json();
+    if (est.progreso) {
+      const pct = Math.round(100 * est.progreso.actual / est.progreso.total);
+      barra.style.width = pct + "%";
+      texto.textContent = `Renderizando: ${est.progreso.actual}/${est.progreso.total} frames (${pct}%)`;
+    }
+    if (!est.activo) {
+      clearInterval(sondeoRender);
+      btn.disabled = false;
+      if (est.ok) {
+        barra.style.width = "100%";
+        texto.textContent = "Listo — recargando preview...";
+        await cargar(); // recarga /datos y el <video src> con los cambios ya aplicados
+        video.load();
+        texto.textContent = "Listo. El preview ya muestra el resultado nuevo.";
+      } else {
+        texto.textContent = "Error en el render — revisar " + (est.cola_log ? "el log" : "");
+        console.error("Render falló:", est.cola_log);
+      }
+    }
+  }, 1000);
+}
+
+document.getElementById("btnRender").addEventListener("click", iniciarRender);
+
 function construirOverlays() {
+  // cargar() se vuelve a llamar tras cada render (Fase 5): limpiar lo
+  // anterior primero, si no cada recarga duplicaría los overlays.
+  lienzo.querySelectorAll(".overlay-img").forEach(el => el.remove());
   for (const mov of DATA.movibles) {
     const img = document.createElement("img");
     img.className = "overlay-img";
@@ -524,6 +662,9 @@ function construirOverlays() {
 
 function construirTimeline() {
   const franjas = document.getElementById("franjas");
+  const palabrasEl = document.getElementById("palabras");
+  franjas.innerHTML = "";
+  palabrasEl.innerHTML = "";
   const dur = DATA.duracion;
   for (const ov of DATA.overlays) {
     const div = document.createElement("div");
@@ -538,25 +679,25 @@ function construirTimeline() {
   playhead.id = "playhead";
   franjas.appendChild(playhead);
 
-  const cont = document.getElementById("palabras");
   for (const p of DATA.palabras) {
     const span = document.createElement("span");
     span.className = "palabra";
     span.textContent = p.texto;
     span.dataset.t = p.t;
     span.addEventListener("click", () => { video.currentTime = p.t; });
-    cont.appendChild(span);
+    palabrasEl.appendChild(span);
   }
-
-  document.getElementById("pista").addEventListener("click", (ev) => {
-    if (ev.target.closest(".palabra")) return;
-    const franjasEl = document.getElementById("franjas");
-    const rect = franjasEl.getBoundingClientRect();
-    if (ev.clientY < rect.top || ev.clientY > rect.bottom) return;
-    const frac = (ev.clientX - rect.left) / rect.width;
-    video.currentTime = Math.max(0, Math.min(DATA.duracion, frac * DATA.duracion));
-  });
 }
+
+document.getElementById("pista").addEventListener("click", (ev) => {
+  if (!DATA) return;
+  if (ev.target.closest(".palabra")) return;
+  const franjasEl = document.getElementById("franjas");
+  const rect = franjasEl.getBoundingClientRect();
+  if (ev.clientY < rect.top || ev.clientY > rect.bottom) return;
+  const frac = (ev.clientX - rect.left) / rect.width;
+  video.currentTime = Math.max(0, Math.min(DATA.duracion, frac * DATA.duracion));
+});
 
 function muestraEn(t) {
   const arr = DATA.encuadre;

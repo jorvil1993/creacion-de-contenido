@@ -528,11 +528,14 @@ motivo. Coherente con "Generar una sola vez" del plan.
 `assets/productos/`: 31 carpetas con recortes (16 nuevas: fundas y
 accesorios).
 
-## Punto de retome (actualizado tras cerrar la Fase 2)
+## Punto de retome (actualizado tras cerrar la Fase 5)
 
-Fases 0, 1 y 2 cerradas y verificadas. Sigue la Fase 5 (ciclo cerrado) de mi
-lado — la Fase 3 y 4 las está construyendo otra sesión en paralelo (ver aviso
-de reparto más abajo). Detalle de la Fase 2 al final de este archivo.
+**Fases 0, 1, 2 y 5 cerradas y verificadas** (mi parte del reparto). La
+Fase 3 y 4 las cerró/está cerrando la otra sesión en paralelo — ver su(s)
+entrada(s) de bitácora si aparecen después de esta. El editor visual v2 tiene
+su ciclo completo funcionando: abrir, editar PiPs, re-renderizar con un
+botón, ver el resultado. Detalle de la Fase 2 y la Fase 5 al final de este
+archivo.
 
 ---
 
@@ -787,3 +790,130 @@ terminar. Apertura automática al terminar `editor.py` + apertura manual con
 sesión). La Fase 4 (sonidos) la está cerrando la otra sesión — cuando
 termine, revisar `git log` antes de tocar `f5_audio.py` o el panel de SFX de
 `f11_servidor.py` si se llega a construir ahí.
+
+---
+
+# Sesión — Editor visual v2, Fase 5 (2026-07-26, ~15:55–16:15)
+
+## Qué se construyó
+
+1. **`POST /render`** en `f11_servidor.py`: guarda siempre los ajustes antes
+   de renderizar (punto 4 del plan — reusa el mismo helper atómico que
+   `/guardar`), lanza `editor.py "<dummy>" --nombre <nombre> --reaplicar
+   --sin-editor-visual [--eventos-manual ajustes.eventos.json]` como
+   subproceso con `stdout=archivo_log` (nunca un pipe sin leer — trampa #5),
+   y devuelve de inmediato con el PID. El "`<dummy>`" es
+   `02_cortado.mp4` de la propia carpeta: en `--reaplicar` la fase de
+   transcripción/corte ni se toca, así que el argumento posicional
+   `entrada` de `editor.py` solo necesita *existir*, no ser el video crudo
+   real. Devuelve 409 si ya hay un render corriendo (mutex simple con
+   `ESTADO_RENDER`).
+2. **`GET /render/estado`**: lee el log de texto (no un pipe) y busca las
+   líneas `render: N/M frames` que ya imprime `f4_retencion` — no hizo falta
+   tocar ese archivo. Devuelve `{activo, ok, error, progreso, cola_log}`.
+3. **Botón "Re-renderizar"** en la interfaz: guarda, dispara `/render`,
+   sondea `/render/estado` cada 1s con una barra de progreso real (frames,
+   no un spinner falso), y al terminar vuelve a llamar `cargar()` para
+   refrescar `/datos` y los overlays del preview — el video de origen
+   (`02_cortado.mp4` → proxy) no cambia entre corridas porque el crop/overlay
+   se dibuja en el navegador, así que solo hace falta refrescar los datos,
+   no el archivo de video.
+4. **Apertura manual ya soportada de antes** (Fase 1): `f11_servidor.py
+   "<carpeta>"` abre cualquier corrida existente sin reprocesar nada — es
+   justo cómo se probó toda esta sesión. La apertura automática al terminar
+   `editor.py` (que hoy sigue abriendo el HTML v1) queda pendiente — ver
+   "Qué quedó pendiente".
+
+## Bugs encontrados y corregidos en el camino
+
+Al construir el ciclo "editar -> re-renderizar -> ver de nuevo" se ejecuta
+`cargar()` una segunda vez, cosa que nunca había pasado en la Fase 1/2 (se
+llamaba una sola vez al abrir la página). Eso destapó tres bugs reales que
+antes eran invisibles:
+1. `construirOverlays()` no limpiaba las `<img>` anteriores: cada
+   re-render iba a duplicar los overlays en el DOM.
+2. `construirTimeline()` tampoco limpiaba `franjas`/`palabras`, y además
+   volvía a registrar el listener de clic en `#pista` cada vez — un segundo
+   clic habría saltado el video dos veces.
+3. `requestAnimationFrame(loop)` se disparaba de nuevo en cada `cargar()`,
+   así que habría quedado un segundo loop de animación corriendo en paralelo
+   con el primero (guardado con una bandera `loopArrancado`).
+
+Los tres se corrigieron. Ninguno se había notado en las Fases 1/2 porque ahí
+`cargar()` solo corría una vez por carga de página.
+
+Aparte, un bug de copiar-pegar propio: al reemplazar el bloque HTML que
+mostraba el comando `--eventos-manual` por los botones de Guardar/Re-renderizar,
+quedaron dos referencias JS (`rutaAjustes`, `comandoReaplicar`) a elementos
+que ya no existían — crasheaba `cargar()` con `Cannot set properties of null`.
+Se encontró de inmediato porque se probó en el navegador real, no solo se
+asumió que "compilaba".
+
+## Cómo se verificó — el criterio de aceptación completo, con el botón real
+
+**No until it actually happened, twice.** Primer intento: el clic disparó el
+render pero falló con `AttributeError: module 'f7_animaciones' has no
+attribute 'miniatura'` — no era un bug mío: `git diff` confirmó que la otra
+sesión (Fase 3) ya había agregado en `f6_overlays.py` una llamada a
+`f7_animaciones.miniatura()` que todavía no habían terminado de escribir.
+Es la colisión que el plan anticipaba en la sección 0 — la única diferencia
+es que esta vez la disparó una ejecución real en vez de una edición
+simultánea del mismo archivo. No se tocó código de la otra sesión: se
+esperó, se confirmó con `grep "def miniatura"` que ya existía, y se
+reintentó.
+
+**Segundo intento, con la otra sesión ya con `miniatura()` escrita:**
+1. En el navegador real (vía `javascript_exec`, clics de verdad): sustituir
+   el primer PiP, quitar el segundo, añadir uno nuevo en el segundo 0 (el
+   `currentTime` del video, que no se había movido).
+2. Clic en "Re-renderizar". Sondeo de `/render/estado` desde afuera (bash)
+   mostró el progreso real: 300 → 750 → 1050 → terminado, `ok: true`.
+3. `ffprobe -count_frames` sobre el `07_FINAL.mp4` resultante: **1105
+   frames**, igual que todas las corridas anteriores de este video.
+4. Fotogramas extraídos y mirados en 1.0s/4.5s/21.0s/25.5s: el sustituido se
+   ve, el quitado ya no está, el añadido aparece a los 0-2.8s (superpuesto al
+   hook, porque el `currentTime` era 0 cuando se pidió "añadir aquí" — es el
+   comportamiento correcto de la función, la posición temporal la eligió
+   quien probaba, no un bug).
+
+Hallazgo aparte sin relación con el pipeline: la miniatura del nuevo PiP
+(`kinlde-paperwhite-32gb\atras-negro` — el "kinlde" es un typo real del
+catálogo, no mío) resultó ser una foto de la PANTALLA, no de la parte de
+atrás como sugiere "atras-negro" en el nombre. Se verificó abriendo el PNG
+cacheado directamente: la foto que trae el catálogo para ese id es así. Es
+un dato de catalogación posiblemente mal etiquetado, no un bug del editor —
+queda anotado para quien mantenga `catalogo-assets.json`, fuera de alcance
+de esta sesión.
+
+## Qué quedó pendiente
+
+- **Apertura automática al terminar `editor.py`.** Hoy sigue abriendo
+  `09_editor-visual.html` (v1) al final de una corrida normal. Cambiarlo a
+  abrir `f11_servidor.py` en su lugar es una edición pequeña en `editor.py`
+  (reemplazar el paso "EXTRA: Editor visual" por lanzar el servidor y un
+  `webbrowser.open`), pero no se tocó por ser Fase 5 tardía y porque
+  `editor.py` también lo toca la Fase 3/4 — mejor coordinarlo primero.
+- El progreso del render se sondea por polling HTTP cada 1s, no Server-Sent
+  Events. Es más simple y ya cumple el criterio ("progreso en vivo"); SSE
+  sería una mejora, no una corrección.
+- No se probó qué pasa si se cierra el navegador a mitad de un render: el
+  proceso sigue corriendo en el servidor (es un `subprocess.Popen`
+  independiente), así que no debería perderse nada, pero no se verificó
+  explícitamente.
+
+## Archivos tocados esta fase
+
+**Modificados:** `editor/f11_servidor.py` (`POST /render`, `GET
+/render/estado`, botón y barra de progreso, y los 3 bugs de "segunda carga"
+corregidos arriba).
+
+## Estado final de la sesión (mi parte del reparto)
+
+Fases 0, 1, 2 y 5 del plan v2 completas y verificadas con evidencia real
+(frames, SSIM, fotogramas mirados, interacción de navegador real). No se
+tocó ningún archivo asignado a la otra sesión (`f7_animaciones.py`,
+`f8_hyperframes.py`, `plantillas/compositions/anim-sol.html`, `f5_audio.py`)
+más allá de leerlos para diagnosticar la colisión de arriba. Si alguien
+retoma esto: lo único que falta de mi parte es la apertura automática
+(arriba) y, si José lo pide, arrastrar la posición (x,y) del PiP en el
+lienzo (pendiente de la Fase 2).
