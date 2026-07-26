@@ -185,6 +185,15 @@ def fondo_pendiente(asset: dict) -> bool:
     return f6_overlays._version_sin_fondo(asset) is None
 
 
+def inventario_animaciones() -> list:
+    """Animaciones (bateria/splash/moto/sol) disponibles para añadir a mano
+    desde el editor (§3c del plan) — reusa f8_hyperframes.inventario_animaciones(),
+    ya pensada para esto."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import f8_hyperframes
+    return f8_hyperframes.inventario_animaciones()
+
+
 def catalogo_pip(dir_trabajo: Path | None = None, todos: bool = False) -> dict:
     """Los assets aptos para PiP (`"pip" in usos`), filtrados por el producto
     dominante del video salvo que `todos=True` (Fase 2, punto 1-2)."""
@@ -282,6 +291,12 @@ def recolectar(dir_trabajo: Path) -> dict:
             "medio": ev.get("medio", "imagen"),
             # ruta absoluta: f11_servidor la sirve por /archivo con lista blanca de raíces
             "archivo": str(Path(ev["archivo"]).resolve()) if ev.get("archivo") else None,
+            "miniatura_archivo": str(Path(ev["miniatura"]).resolve())
+            if ev.get("miniatura") and Path(ev["miniatura"]).exists() else None,
+            # metadatos §3c: solo presentes en hook/cta/animaciones
+            "texto": ev.get("texto"), "eco": ev.get("eco"),
+            "anim": ev.get("anim"), "variante": ev.get("variante"), "motor": ev.get("motor"),
+            "palabra": ev.get("palabra", ""),
         } for i, ev in enumerate(eventos)],
         "movibles": movibles,
         "sonidos": sonidos,

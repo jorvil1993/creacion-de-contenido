@@ -1383,3 +1383,129 @@ arrastre de posición de PiP, los dos bugs de `pointer-events`/
 - No se probó el acceso directo con un doble clic real de Windows (se probó
   el mismo comando que ejecuta, vía terminal) — debería comportarse igual,
   pero vale confirmarlo la primera vez que se use de verdad.
+
+---
+
+# Sesión — Editor visual v2, hook/CTA/animaciones + investigación LTX-Video (2026-07-26, ~17:00–17:45)
+
+José pidió completar lo último que quedaba fuera del editor (hook, CTA,
+animaciones Hyperframes) y, aparte, investigar generación de video local.
+Los dos quedan documentados acá porque pasaron en la misma sesión, pero son
+independientes.
+
+## 1 · Hook, CTA y animaciones en el editor (cierra la Fase 3c)
+
+La otra sesión ya había dejado el backend listo: `--animaciones-manual`,
+`cargar_animaciones_manual()`, `f8_hyperframes.inventario_animaciones()` y
+`f7_animaciones.miniatura()` — pensados explícitamente para que el editor los
+consumiera (los eventos de animación ya traían `anim`/`variante`/`motor`/
+`miniatura`). Confirmé con `git log` y `git status` que no había nada
+pendiente de commitear de su parte antes de tocar `f6_overlays.py`.
+
+**Cambios propios (pequeños, aditivos) en `f6_overlays.py`:** los eventos de
+`hook` y `cta` no traían el texto usado ni una miniatura — se agregó
+`"texto": texto_hook` al evento hook, `"eco": eco` al evento cta, y
+`"miniatura": str(f7_animaciones.miniatura(clip) or "")` a los dos (la misma
+función que ya usan las animaciones, generaliza bien porque solo hace un
+`ffmpeg -ss` sobre cualquier .mov).
+
+**`f10_editor_visual.py`:** `recolectar()` ahora pasa `miniatura_archivo`,
+`texto`, `eco`, `anim`, `variante`, `motor`, `palabra` en cada overlay (antes
+solo tipo/ini/fin/x/y/archivo). Nueva `inventario_animaciones()` (envuelve la
+de `f8_hyperframes`).
+
+**`f11_servidor.py`:** endpoint `GET /animaciones-disponibles`. `/guardar` y
+`/render` aceptan `animaciones` (mismo patrón que `sfx`: si el panel no se
+toca, no se manda `--animaciones-manual` y sigue automático) y `hook`
+(**este SÍ se manda siempre**, a diferencia de sfx/animaciones — si no, cada
+`--reaplicar` volvería a derivar el hook de la transcripción y pisaría en
+silencio un texto que José ya hubiera elegido a mano).
+
+Interfaz: panel "Hook y CTA" (textarea + miniaturas de las dos tarjetas) y
+panel "Animaciones" (tarjetas con miniatura + input de tiempo + quitar, más
+"+ Añadir" que abre el inventario de 4 animaciones disponibles).
+
+**Verificado con tres renders reales completos, no solo con el JSON de
+`/datos`:**
+1. Quitar la animación de "sol" → el log del render la muestra ausente de
+   los 9 overlays (quedaron 8), 1105 frames intactos.
+2. Cambiar el texto del hook a "¿Tu Kindle aguanta el sol y la lluvia?" →
+   extraje el fotograma a 1.5s y se lee el texto nuevo en el video real (la
+   tarjeta se re-renderizó con Hyperframes, cache miss correcto porque el
+   texto cambió).
+3. Añadir una animación desde el inventario (mecánica probada: 3→4 en
+   `edicionAnimaciones`, selector se cierra solo) — no se volvió a renderizar
+   por tercera vez porque el mecanismo (`--animaciones-manual`) ya se probó
+   extremo a extremo con la prueba de "quitar" de arriba; añadir usa la misma
+   función de guardado.
+
+**Dato que sorprendió mirándolo:** al recargar `/datos` con la corrida vieja
+(antes de re-renderizar), `texto`/`eco`/`miniatura` salían `null` — no era un
+bug, era que `recolectar()` lee `05_overlays.eventos.json`, un archivo
+**del último render**, escrito antes de que estos campos existieran. Se
+resolvió solo al disparar el primer render de esta sesión. Vale la lección
+para la próxima vez que se agregue un campo nuevo a los eventos: no aparece
+hasta el siguiente render, no hay que asustarse.
+
+## 2 · LTX-Video: investigado, NO instalado — el pipeline completo no entra en 16GB
+
+José pidió instalar LTX-Video 2.3 para generación de video local. Antes de
+bajar nada revisé el entorno: **ComfyUI usa su propio venv separado
+(`C:\ai-video\venv-comfy`), no `venv312`** — instalar ahí no puede romper
+WhisperX/mediapipe. torch 2.11.0+cu128 ya está en los dos venvs, consistente
+con la RTX 5070 Ti.
+
+Cloné `Lightricks/ComfyUI-LTXVideo` en `custom_nodes/` (liviano, ~28MB, sirve
+para cualquier variante que se elija). Antes de bajar los pesos (~30-40GB),
+leí el README oficial del repo — no blogs — y **dice explícitamente que el
+pipeline completo necesita 32GB+ VRAM incluso en modo "low VRAM"** (22B de
+difusión + text encoder Gemma-3 de 12B + upscalers espacial/temporal, todo
+junto). Los blogs de "mejores modelos 2026" que había citado antes decían
+"la variante FP8 entra en 16GB" — la fuente primaria contradice eso para el
+sistema completo. No bajé el modelo: hubiera sido apostar 30-40GB de ancho de
+banda a una afirmación de blog SEO contra la documentación del propio autor.
+Anoté esto en memoria (`feedback-verificar-fuentes-modelos-ia.md`) porque es
+una lección reutilizable, no específica de este proyecto.
+
+**No se tocó nada del pipeline de video existente.** Esto es 100% aparte —
+Flux Schnell sigue funcionando igual que antes.
+
+## Qué queda pendiente
+
+- **LTX-Video: decisión de José.** Opciones sin bajar nada todavía: (a) una
+  cuantización GGUF más agresiva del propio LTX-2.3 (existe
+  `unsloth/LTX-2.3-GGUF`, sin confirmar si entra en 16GB con el text encoder
+  Gemma incluido — no lo verifiqué a fondo), (b) Wan 2.2 en su variante
+  liviana (5B, ~8GB VRAM, mejor documentado para hardware modesto), o (c) no
+  instalar nada por ahora. El nodo de ComfyUI ya está clonado, no hace falta
+  repetir ese paso.
+- **Posicionar animaciones (x, y).** Igual que el PiP, las animaciones hoy
+  usan la posición automática (`_posicion_inserto`); no se armó arrastre para
+  ellas. Menor prioridad que el PiP porque las Hyperframes grandes (hook,
+  cta, specs) ocupan el lienzo completo y no tienen "posición" que mover —
+  solo bateria/splash/moto/sol la tienen, y son las 4 más chicas.
+- El input de "ini" de una animación no avisa si la nueva posición se pisa
+  con otro overlay — el backend ya lo maneja como aviso (no bloqueo, ver
+  `f6_overlays.py` línea ~907), pero la interfaz no lo muestra en el
+  panel de animaciones como sí lo hace el de PiP (`avisosPip()`). Extensión
+  natural si hace falta.
+
+## Archivos tocados
+
+**Modificados:** `editor/f6_overlays.py` (texto/eco/miniatura en hook y cta),
+`editor/f10_editor_visual.py` (overlays con más metadata,
+`inventario_animaciones()`), `editor/f11_servidor.py` (paneles de Hook/CTA y
+Animaciones, endpoints y guardado correspondientes).
+
+**Nuevo fuera del proyecto:** `C:\ai-video\comfyui\custom_nodes\ComfyUI-LTXVideo\`
+(nodo clonado, sin modelo).
+
+## Estado final de esta sesión
+
+El editor visual v2 cubre ahora las 6 fases del plan completas: preview con
+encuadre real, PiP (sustituir/añadir/quitar/arrastrar posición), sonidos
+(pista arrastrable), animaciones (quitar/añadir/mover), hook/CTA editables,
+ciclo cerrado con botón de re-render y progreso en vivo. Todo verificado con
+renders reales, no solo con el JSON de `/datos`. LTX-Video queda investigado
+y documentado pero sin instalar — decisión pendiente de José con la
+información de arriba.

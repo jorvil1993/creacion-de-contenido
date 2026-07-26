@@ -52,6 +52,10 @@ def _guardar_sfx(sfx: list) -> Path:
     return _escritura_atomica(DIR_TRABAJO / "ajustes.sfx.json", sfx)
 
 
+def _guardar_animaciones(animaciones: list) -> Path:
+    return _escritura_atomica(DIR_TRABAJO / "ajustes.animaciones.json", {"animaciones": animaciones})
+
+
 def _catalogo() -> list:
     global _CATALOGO_CACHE
     if _CATALOGO_CACHE is None:
@@ -222,6 +226,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._archivo(ruta_tarjeta, "image/png")
             elif ruta == "/render/estado":
                 self._json(_estado_render())
+            elif ruta == "/animaciones-disponibles":
+                self._json({"inventario": f10.inventario_animaciones()})
             else:
                 self.send_error(404, "Ruta desconocida")
         except FileNotFoundError as e:
@@ -247,6 +253,10 @@ class Handler(BaseHTTPRequestHandler):
                 destino_sfx = _guardar_sfx(datos["sfx"])
                 resultado["ruta_sfx"] = str(destino_sfx)
                 resultado["n_sfx"] = len(datos["sfx"])
+            if "animaciones" in datos:
+                destino_anim = _guardar_animaciones(datos["animaciones"])
+                resultado["ruta_animaciones"] = str(destino_anim)
+                resultado["n_animaciones"] = len(datos["animaciones"])
             self._json(resultado)
 
         elif partes.path == "/render":
@@ -273,6 +283,14 @@ class Handler(BaseHTTPRequestHandler):
                 if candidato_sfx.exists():
                     ajustes_sfx = candidato_sfx
 
+            ajustes_anim = None
+            if "animaciones" in datos:
+                ajustes_anim = _guardar_animaciones(datos["animaciones"])
+            else:
+                candidato_anim = DIR_TRABAJO / "ajustes.animaciones.json"
+                if candidato_anim.exists():
+                    ajustes_anim = candidato_anim
+
             # editor.py solo necesita que "entrada" exista — en --reaplicar no
             # se lee: la transcripción/corte/análisis ya están en dir_trabajo.
             dummy_entrada = DIR_TRABAJO / "02_cortado.mp4"
@@ -282,6 +300,10 @@ class Handler(BaseHTTPRequestHandler):
                 cmd += ["--eventos-manual", str(ajustes)]
             if ajustes_sfx is not None:
                 cmd += ["--sfx-manual", str(ajustes_sfx)]
+            if ajustes_anim is not None:
+                cmd += ["--animaciones-manual", str(ajustes_anim)]
+            if datos.get("hook"):
+                cmd += ["--hook", datos["hook"]]
 
             dir_log = DIR_TRABAJO / "_editor"
             dir_log.mkdir(exist_ok=True)
@@ -402,6 +424,24 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
 #tablaSfx input, #tablaSfx select { font: inherit; background: var(--bg); color: var(--fg);
                                      border: 1px solid var(--linea); border-radius: 4px; padding: 3px 5px; }
 #tablaSfx input[type=number] { width: 64px; }
+
+.hook-caja { display: flex; flex-direction: column; gap: 8px; }
+.hook-caja textarea { font: inherit; background: var(--bg); color: var(--fg); border: 1px solid var(--linea);
+                       border-radius: 6px; padding: 8px; resize: vertical; min-height: 44px; }
+.hook-preview { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.hook-preview img { width: 90px; border-radius: 6px; background: #000; }
+.anim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.anim-card { border: 1px solid var(--linea); border-radius: 8px; padding: 8px; display: flex;
+             flex-direction: column; gap: 6px; }
+.anim-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 4px; background: #000; }
+.anim-card .info { font-size: 12px; color: var(--fg-2); }
+.anim-card .info b { color: var(--fg); }
+.anim-card .fila-botones { display: flex; gap: 6px; }
+.inventario-item { border: 1px solid var(--linea); border-radius: 8px; padding: 8px; cursor: pointer;
+                    display: flex; flex-direction: column; gap: 4px; }
+.inventario-item:hover { border-color: var(--acento); }
+.inventario-item .nombre { font-weight: 600; }
+.inventario-item .detalle { font-size: 11px; color: var(--fg-2); }
 </style>
 </head>
 <body>
@@ -456,8 +496,7 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
 
   <div class="panel" style="grid-column: 1 / -1;">
     <h2>Colección de PiP <span class="hint" id="dominanteInfo"></span></h2>
-    <p class="hint">Sustituí, añadí o quitá los insertos de producto. Los overlays con animación
-      (hook, ficha, batería, splash, sol, cta) no se editan todavía acá — llega en la Fase 3.</p>
+    <p class="hint">Sustituí, añadí o quitá los insertos de producto.</p>
     <div class="pips-lista" id="pipsLista"></div>
     <button class="btn-primario" id="btnAñadirPip" type="button">+ Añadir PiP en el segundo actual</button>
 
@@ -469,8 +508,42 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
       </div>
       <div class="grid-catalogo" id="gridCatalogo"></div>
     </div>
+  </div>
 
-    <p class="hint" style="margin-top:10px;">
+  <div class="panel" style="grid-column: 1 / -1;">
+    <h2>Hook y CTA</h2>
+    <p class="hint">El hook (primeros segundos) y el CTA (cierre) son tarjetas de Hyperframes —
+      no se ven animadas acá (ningún navegador reproduce ProRes 4444), solo un fotograma
+      representativo. El CTA repite un eco corto del hook para cerrar el loop; cambia solo.</p>
+    <div class="hook-caja">
+      <label class="hint" for="hookTexto">Texto del hook</label>
+      <textarea id="hookTexto" maxlength="140"></textarea>
+      <div class="hook-preview">
+        <div><img id="hookMiniatura" alt="hook"><p class="hint">hook · 0-<span id="hookFin"></span>s</p></div>
+        <div><img id="ctaMiniatura" alt="cta"><p class="hint">cta · eco: "<span id="ctaEco"></span>"</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="grid-column: 1 / -1;">
+    <h2>Animaciones</h2>
+    <p class="hint">Batería, splash, moto y sol — Hyperframes. Se ven como un fotograma
+      representativo (al 45% del clip, no el primero: todas entran con fade). Quitar, mover o
+      añadir acá reemplaza el disparo automático por palabra para TODAS las animaciones del video.</p>
+    <div class="anim-grid" id="animGrid"></div>
+    <button class="btn-primario" id="btnAñadirAnim" type="button" style="margin-top:8px;">+ Añadir animación en el segundo actual</button>
+
+    <div class="editor-caja" id="cajaInventario">
+      <div class="filtros">
+        <strong>Elegí una animación del inventario:</strong>
+        <button type="button" id="btnCancelarAnim">cancelar</button>
+      </div>
+      <div class="anim-grid" id="gridInventario"></div>
+    </div>
+  </div>
+
+  <div class="panel" style="grid-column: 1 / -1;">
+    <p class="hint">
       <button class="btn-primario" id="btnGuardar" type="button">Guardar cambios</button>
       <button class="btn-primario" id="btnRender" type="button">Re-renderizar</button>
       Guarda siempre antes de renderizar. El video final tarda ~34s en actualizarse.
@@ -497,6 +570,10 @@ let edicionSfx = [];
 let sfxModificado = false;      // si es false, no se manda --sfx-manual: sigue automático
 let sfxSeleccion = null;
 const audioPreview = new Audio();
+
+let edicionAnimaciones = [];
+let animacionesModificado = false;  // si es false, no se manda --animaciones-manual: sigue automático
+let editandoAnimIdx = null;         // índice en edicionAnimaciones, o -1 para "nueva antes de agregar"
 
 function escucharSfx(nombre) {
   if (!DATA.sonidos[nombre]) return;
@@ -530,6 +607,24 @@ async function cargar() {
   construirSelectorSonidos();
   pintarSfx();
   tablaSfx();
+
+  const hook = DATA.overlays.find(o => o.tipo === "hook");
+  const cta = DATA.overlays.find(o => o.tipo === "cta");
+  document.getElementById("hookTexto").value = hook?.texto || "";
+  document.getElementById("hookFin").textContent = hook ? hook.fin.toFixed(1) : "?";
+  document.getElementById("hookMiniatura").src = hook?.miniatura_archivo
+    ? `/archivo?ruta=${encodeURIComponent(hook.miniatura_archivo)}` : "";
+  document.getElementById("ctaMiniatura").src = cta?.miniatura_archivo
+    ? `/archivo?ruta=${encodeURIComponent(cta.miniatura_archivo)}` : "";
+  document.getElementById("ctaEco").textContent = cta?.eco || "";
+
+  edicionAnimaciones = DATA.overlays.filter(o => o.tipo.startsWith("anim-")).map(o => ({
+    nombre: o.anim || o.tipo.replace("anim-", ""), ini: o.ini, fin: o.fin,
+    variante: o.variante, palabra: o.palabra, miniatura_archivo: o.miniatura_archivo,
+  }));
+  animacionesModificado = false;
+  editandoAnimIdx = null;
+  renderAnimGrid();
 
   // cargar() se vuelve a llamar después de cada render (Fase 5): el rAF loop
   // solo se arranca una vez, si no cada recarga sumaría otro loop corriendo
@@ -707,6 +802,92 @@ function sfxParaGuardar() {
   })).sort((a, b) => a.t - b.t);
 }
 
+function renderAnimGrid() {
+  const cont = document.getElementById("animGrid");
+  cont.innerHTML = "";
+  if (edicionAnimaciones.length === 0) {
+    cont.innerHTML = '<p class="hint">Este video no tiene animaciones.</p>';
+  }
+  edicionAnimaciones.forEach((a, i) => {
+    const card = document.createElement("div");
+    card.className = "anim-card";
+    const img = document.createElement("img");
+    img.src = a.miniatura_archivo ? `/archivo?ruta=${encodeURIComponent(a.miniatura_archivo)}` : "";
+    card.appendChild(img);
+    const info = document.createElement("div");
+    info.className = "info";
+    info.innerHTML = `<b>${a.nombre}</b>${a.palabra ? ` · "${a.palabra}"` : ""}<br>` +
+      `ini: <input type="number" step="0.1" min="0" max="${DATA.duracion}" value="${a.ini.toFixed(1)}" data-idx="${i}" class="in-ini-anim" style="width:60px;">s`;
+    card.appendChild(info);
+    const botones = document.createElement("div");
+    botones.className = "fila-botones";
+    const btnQuitar = document.createElement("button");
+    btnQuitar.type = "button"; btnQuitar.textContent = "Quitar";
+    btnQuitar.addEventListener("click", () => {
+      edicionAnimaciones.splice(i, 1); animacionesModificado = true; renderAnimGrid();
+    });
+    botones.appendChild(btnQuitar);
+    card.appendChild(botones);
+    cont.appendChild(card);
+  });
+  cont.querySelectorAll(".in-ini-anim").forEach(inp => {
+    inp.addEventListener("change", () => {
+      const i = parseInt(inp.dataset.idx, 10);
+      edicionAnimaciones[i].ini = parseFloat(inp.value) || 0;
+      edicionAnimaciones[i].fin = edicionAnimaciones[i].ini + 2.4;
+      animacionesModificado = true;
+    });
+  });
+}
+
+async function abrirInventarioAnim(idx) {
+  editandoAnimIdx = idx;
+  document.getElementById("cajaInventario").classList.add("activa");
+  const r = await fetch("/animaciones-disponibles");
+  const datos = await r.json();
+  const grid = document.getElementById("gridInventario");
+  grid.innerHTML = "";
+  for (const a of datos.inventario) {
+    const item = document.createElement("div");
+    item.className = "inventario-item";
+    item.innerHTML = `<span class="nombre">${a.etiqueta || a.nombre}</span>` +
+      `<span class="detalle">${a.nombre} · ${a.duracion.toFixed(1)}s · ${a.motor}${a.reproducible_en_navegador ? "" : " (sin preview animado)"}</span>`;
+    item.addEventListener("click", () => elegirAnimacion(a));
+    grid.appendChild(item);
+  }
+}
+
+function elegirAnimacion(a) {
+  const nueva = {
+    nombre: a.nombre, ini: video.currentTime, fin: video.currentTime + a.duracion,
+    variante: null, palabra: "", miniatura_archivo: null,
+  };
+  if (editandoAnimIdx === -1) {
+    edicionAnimaciones.push(nueva);
+  } else {
+    edicionAnimaciones[editandoAnimIdx] = nueva;
+  }
+  animacionesModificado = true;
+  document.getElementById("cajaInventario").classList.remove("activa");
+  editandoAnimIdx = null;
+  renderAnimGrid();
+}
+
+document.getElementById("btnAñadirAnim").addEventListener("click", () => abrirInventarioAnim(-1));
+document.getElementById("btnCancelarAnim").addEventListener("click", () => {
+  editandoAnimIdx = null;
+  document.getElementById("cajaInventario").classList.remove("activa");
+});
+
+function animacionesParaGuardar() {
+  return edicionAnimaciones.map(a => {
+    const base = { nombre: a.nombre, ini: Math.round(a.ini * 100) / 100 };
+    if (a.variante !== null && a.variante !== undefined) base.variante = a.variante;
+    if (a.palabra) base.palabra = a.palabra;
+    return base;
+  });
+}
+
 async function abrirCatalogo(idx) {
   editandoIdx = idx;
   document.getElementById("cajaCatalogo").classList.add("activa");
@@ -777,11 +958,14 @@ function eventosParaGuardar() {
 }
 
 function cuerpoAjustes() {
-  // Si el panel de sonidos no se tocó, no se manda --sfx-manual: el SFX
-  // sigue derivándose automático de los eventos (así "acompaña" cualquier
-  // PiP que se mueva, sustituya o quite — Fase 4, punto 2 del plan).
-  const cuerpo = { eventos: eventosParaGuardar() };
+  // Si el panel de sonidos/animaciones no se tocó, no se manda --sfx-manual/
+  // --animaciones-manual: siguen derivándose automático (así "acompañan"
+  // cualquier PiP que se mueva, sustituya o quite — Fase 4, punto 2 del plan).
+  // El hook SÍ se manda siempre: si no, --reaplicar lo volvería a derivar de
+  // la transcripción y pisaría en silencio un texto que José ya haya elegido.
+  const cuerpo = { eventos: eventosParaGuardar(), hook: document.getElementById("hookTexto").value };
   if (sfxModificado) cuerpo.sfx = sfxParaGuardar();
+  if (animacionesModificado) cuerpo.animaciones = animacionesParaGuardar();
   return cuerpo;
 }
 

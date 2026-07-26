@@ -789,13 +789,18 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
         # Migrado a Hyperframes: la versión de PIL era una tarjeta navy opaca;
         # esta es texto blanco con sombra, que respeta mejor la proporción
         # 80% metraje / 20% marca de la sección 5.3 y se ve más limpio.
+        import f7_animaciones
         eventos.append({"tipo": "hook", "archivo": clip_hook, "medio": "video",
-                        "x": 0, "y": 0, "ini": 0.0, "fin": fin_hook})
+                        "x": 0, "y": 0, "ini": 0.0, "fin": fin_hook,
+                        # texto/miniatura: solo para que el editor visual (§3c)
+                        # pueda mostrar y editar el hook sin volver a derivarlo
+                        "texto": texto_hook,
+                        "miniatura": str(f7_animaciones.miniatura(clip_hook) or "")})
     else:
         ruta_hook = dir_tmp / "ov_hook.png"
         x, y, w, h = render_hook_banner(texto_hook, ruta_hook)
         eventos.append({"tipo": "hook", "archivo": ruta_hook, "x": x, "y": y,
-                        "ini": 0.0, "fin": fin_hook})
+                        "ini": 0.0, "fin": fin_hook, "texto": texto_hook})
 
     # ---- CTA DE CIERRE (con el eco que cierra el loop) ---------------------
     ini_cta = max(duracion_total - 6.5, 3.5)
@@ -807,15 +812,17 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
         "eco": eco,
     }) if hf else None
     if clip_cta:
+        import f7_animaciones
         eventos.append({"tipo": "cta", "archivo": clip_cta, "medio": "video",
-                        "x": 0, "y": 0, "ini": ini_cta, "fin": duracion_total})
+                        "x": 0, "y": 0, "ini": ini_cta, "fin": duracion_total,
+                        "eco": eco, "miniatura": str(f7_animaciones.miniatura(clip_cta) or "")})
         if eco:
             print(f"  loop: el CTA cierra con el eco del hook -> \"{eco}\"")
     else:
         ruta_cta = dir_tmp / "ov_cta.png"
         x, y, w, h = render_cta_cierre(ruta_cta, eco=eco)
         eventos.append({"tipo": "cta", "archivo": ruta_cta, "x": x, "y": y,
-                        "ini": ini_cta, "fin": duracion_total})
+                        "ini": ini_cta, "fin": duracion_total, "eco": eco})
 
     ventanas_ocupadas = [(0.0, fin_hook), (ini_cta, duracion_total)]
 
