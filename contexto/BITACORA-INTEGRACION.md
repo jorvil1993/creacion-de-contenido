@@ -917,3 +917,351 @@ más allá de leerlos para diagnosticar la colisión de arriba. Si alguien
 retoma esto: lo único que falta de mi parte es la apertura automática
 (arriba) y, si José lo pide, arrastrar la posición (x,y) del PiP en el
 lienzo (pendiente de la Fase 2).
+
+---
+
+# Sesión — Editor visual v2, Fases 3 y 4 (2026-07-26, ~15:20–16:30)
+
+Sesión paralela a la que hizo las Fases 0/1/2/5. Reparto acordado por José:
+esta sesión toma **animaciones (Fase 3) y sonidos (Fase 4)**; la otra, el
+servidor y la interfaz. No se tocó `f11_servidor.py` ni `f10_editor_visual.py`.
+Los tres archivos compartidos (`f6_overlays.py`, `config.py`, `editor.py`) se
+editaron en zonas distintas, siempre con `git diff` antes.
+
+**Colisión real, ya resuelta:** la otra sesión reportó un `AttributeError:
+f7_animaciones has no attribute 'miniatura'` al probar su botón de
+re-renderizar. Fue una ventana de pocos minutos en la que `f6_overlays.py` ya
+llamaba a una función que yo aún no había terminado de escribir en
+`f7_animaciones.py`. Reintentaron y pasó. Es la única fricción de las dos
+sesiones en paralelo.
+
+## Fase 3a — La animación de sol
+
+`plantillas/compositions/anim-sol.html` **reescrita entera**. Lo que había
+(de Antigravity) cumplía la mitad del encargo: era un e-reader **dibujado**
+con un sol de dibujo animado al lado, la variable `variante` estaba declarada
+pero no se usaba (las tres variantes salían idénticas), y el elemento
+`.luz-sol` era un degradado amarillo **encima de la pantalla** con la opacidad
+animada de 0 a 1 — exactamente el velado que el plan prohíbe en §3a. Se
+verificó extrayendo un mosaico de fotogramas antes de tocar nada.
+
+Lo nuevo:
+
+- **El dispositivo es la foto real recortada del producto del video.** Nueva
+  variable `imagen` en la composición, resuelta por
+  `f6_overlays._foto_dispositivo(producto, catalogo)` (elige el mejor recorte
+  del producto dominante: `tipo=producto` sobre funda, vertical sobre
+  horizontal, con respaldo a `_buscar_foto_producto_default()`). En el video de
+  prueba resuelve a `assets/productos/kindle-paperwhite-16-gb/frontal.png`, que
+  es un Paperwhite real con una página de texto legible en pantalla.
+- **`f8_hyperframes.preparar_imagen(ruta)`** (nueva): copia la foto a
+  `plantillas/assets/_pipeline/<nombre>_<hash8>.png` y devuelve la ruta
+  root-relativa. Hacía falta porque Hyperframes resuelve cada composición
+  contra `plantillas/` y los recortes viven fuera de ese árbol — un `src`
+  apuntando ahí carga en blanco al renderizar. El hash es **del contenido**:
+  si José vuelve a recortar la foto cambia el nombre, cambia la clave del
+  caché y el clip se re-renderiza. Con el nombre a secas habría vuelto a caer
+  la trampa del caché ya documentada en `_huella_plantilla`.
+- **Regla de composición:** halo, rayos y barrido de luz van **detrás** del
+  aparato (z-index). La luz inunda el fondo y se corta en el dispositivo: lo
+  único que no se vela en toda la escena es la pantalla, y ese contraste *es*
+  el argumento. Lo único que toca al aparato es el `aura`: una copia de la
+  misma foto, difuminada y teñida de cálido, **debajo** de la copia nítida.
+  Como sigue el alfa del recorte, el destello abraza el contorno real del
+  marco (el "destello en el marco" que pide el plan) sin poner un píxel encima
+  de la pantalla — y funciona con cualquier foto del catálogo, sin saber dónde
+  cae la pantalla en cada una.
+- 3 variantes deterministas de verdad (`VARIANTES[]` en el JS): cambian de
+  dónde viene la luz, cuántos rayos hay, cuánto barre el abanico y por dónde
+  cruza el destello.
+- `f7_animaciones.animar_sol()` reescrita con el mismo principio para el
+  respaldo PIL (también usa la foto real, con silueta dibujada solo si no hay
+  ninguna). Nuevos helpers `_dispositivo_pil()`, `_fuente()`, `_etiqueta()`.
+- `config.ANIMACION_ETIQUETAS["sol"]` pasa de *"sin reflejos al sol"* a
+  **"se lee bajo el sol"** (el texto que sugiere el plan: el mensaje es la
+  legibilidad, no el clima). Duración 2.4s → **2.6s**, sincronizada en los tres
+  sitios (`config.ANIMACION_DURACION`, `f8_hyperframes.DURACIONES`, el
+  `data-duration` del HTML).
+
+**`--sol-pip-video` se conservó**, como pidió José explícitamente ("que no se
+cierre a una sola opción"): si existe `assets/sol_video_pip.mov` y el flag está
+activo, ese video real gana; si no, Hyperframes. Se le añadió una condición:
+**solo vale para la primera aparición**, porque repetir el mismo video sería
+justo la toma repetida que él no quiere.
+
+**Criterio de aceptación del plan** (*"ver el fotograma del medio sin contexto
+y poder decir: esa pantalla se lee con sol encima"*): **cumplido**. Fotograma
+del video final en 29.2s mirado con el visor de imágenes — Kindle real, texto
+de la página perfectamente nítido, rayos de sol cruzando por detrás, etiqueta
+"se lee bajo el sol". Coincide además con el gesto de José, que en ese momento
+se tapa del sol con la mano.
+
+## Fase 3b — Que la animación gane sobre la foto
+
+Se implementó lo que proponía la bitácora, y se encontraron **dos bloqueos que
+el plan no había visto**. Ninguno se habría notado sin correr el pipeline.
+
+1. **`CONCEPTOS_PREFIEREN_ANIMACION = {"#agua", "#tina", "#sol", "#bateria"}`**
+   (`config.py`). `#tina` se añadió a los tres del plan: es el mismo concepto
+   que `#agua` y era literalmente la etiqueta que traía la foto de producto a
+   los 21.0s. Las etiquetas de los 30 assets **no se tocaron**.
+   `planificar_insertos_por_palabra()` recibe ahora `tags_reservados` y salta
+   esas etiquetas.
+   **Las reservas salen de la transcripción, no de la lista de animaciones.**
+   Se probó al revés primero y se vio el efecto malo: al quitar la batería
+   desde el editor, una foto de producto aparecía sola en su hueco. Quitar
+   algo tiene que dejar un hueco, no invocar otra cosa por detrás.
+2. **`ANIMACION_MAX_POR_TIPO = 2`** sustituye al `set` `anim_usadas` que vetaba
+   la segunda aparición. La variante sale de `_variante_aparicion(semilla,
+   nombre, indice, n, previas)`: incluye el índice de aparición y además fuerza
+   que no repita ninguna variante ya usada mientras queden libres.
+3. **BLOQUEO 1 — la separación.** Subir el máximo no bastaba: el bucle usaba
+   `INSERTO_SEPARACION_MIN_S` (4.0s) y entre "resistente al agua" (17.69s) y
+   "en la tina" (20.03s) hay **2.34s**. La segunda animación nunca podía
+   entrar. Nueva **`config.ANIMACION_SEPARACION_MIN_S = 2.0`**: dos insertos
+   son dos fotos y sí necesitan aire entre sí, pero dos animaciones de la misma
+   frase son un mismo gesto en dos tiempos. El solape sigue prohibido por
+   `_libre()`.
+4. **BLOQUEO 2 — el disparo era greedy.** Con la separación arreglada, la
+   *segunda* batería ("semanas," a 16.03s) se quedaba con la ventana que
+   necesitaba el *primer* splash ("resistente" a 17.69s) y el agua se quedaba
+   sin animación: peor que antes. Se resolvió con **dos pasadas** — en la
+   primera solo entra la primera aparición de cada concepto, las repeticiones
+   esperan a la segunda. Una segunda mención nunca le quita el sitio a la
+   primera de otro concepto. Además la separación se mide contra **todas** las
+   animaciones ya colocadas, no solo contra la última, porque con dos pasadas
+   el orden de colocación ya no es el orden del tiempo.
+5. **Ajuste al CTA.** "sol" se dice a 28.96s y el CTA entra a 30.67s: la
+   animación de 2.6s se quedaba en 1.7s, cortada a mitad de gesto. Ahora se
+   adelanta lo justo para que quepa entera sin invadir el overlay anterior
+   (0.89s en este video), y lo dice en el log.
+6. `config.ANIMACION_ETIQUETAS_REPETICION`: la segunda aparición lleva otro
+   texto ("sin miedo al agua" en vez de "resistente al agua"). Repetir la misma
+   frase literal tres segundos después se lee como que el editor se trabó.
+7. `ANIMACIONES_POR_PALABRA` ampliado: **tina, bañera, mojar, sumerge** (que
+   faltaban y eran justo las de la segunda mención) y **verano, afuera, playa,
+   directo** para el sol, como pide el plan.
+8. Bug de paso: el respaldo PIL escribía siempre `anim_splash.mov`, así que una
+   segunda aparición **pisaba el MOV de la primera** y las dos terminaban
+   apuntando al mismo archivo. Ahora el nombre lleva la variante. También
+   `f7_animaciones.TAMANOS`, porque `_construir_animacion` posicionaba todas
+   las animaciones PIL como si midieran 420×420 y el sol (520 de ancho) se
+   salía del margen derecho.
+
+**Criterio de aceptación del plan: cumplido y medido.**
+
+```
+animación 'bateria' (variante 2, aparición 1) por 'batería' en 13.6s
+animación 'splash'  (variante 2, aparición 1) por 'resistente' en 17.7s
+animación 'sol' adelantada 0.89s para que entre completa antes del CTA
+animación 'sol'     (variante 0, aparición 1) por 'sol' en 28.1s
+animación 'splash'  (variante 1, aparición 2) por 'tina,' en 20.0s
+conceptos con animación (no traen foto de catálogo): #agua, #bateria, #sol, #tina
+```
+
+- Los dos splash son **de variantes distintas** y se miraron lado a lado: la
+  primera tiene 11 gotas en abanico ancho y 3 ondas; la segunda, 7 gotas en
+  abanico estrecho y 4 ondas con más escala. Distintas y de la misma familia.
+- **Ninguna foto de producto** en el lugar de ninguna de las dos (antes había
+  un `pip-producto` a los 21.0s por "tina").
+- **Reproducibilidad:** dos corridas seguidas del mismo video producen
+  `05_overlays.eventos.json` **idéntico** (`diff` sin diferencias).
+- **1105 frames** en el `07_FINAL.mp4`, exactamente los mismos que la corrida
+  de referencia anterior a estos cambios. Contados con `ffprobe -count_frames`
+  antes de juzgar nada.
+- Fotogramas de 14.5s / 18.6s / 21.0s / 29.2s extraídos y **mirados**.
+
+## Fase 3c — Lo que se entrega y lo que falta
+
+La interfaz de las animaciones vive en `f10`/`f11`, que son de la otra sesión.
+Lo que se construyó aquí es **el contrato de pipeline completo**, listo para
+que se enchufe sin tocar nada de esta parte:
+
+- **`f6_overlays.py --animaciones-manual JSON`** (y propagado en `editor.py`):
+  reemplaza el disparo por palabra entero, igual que `--eventos-manual` hace
+  con los insertos. Sirve para **quitar** (no ponerla en la lista), **mover**
+  (otro `ini`) y **añadir**. Entrada:
+  `{"nombre": "sol", "ini": 28.9, "dur": ..., "variante": ..., "video_sol": ...}`;
+  `dur`, `variante` y `video_sol` son opcionales. Una lista vacía es una orden
+  válida ("este video no lleva animaciones"). `cargar_animaciones_manual()`
+  valida y avisa por cada entrada mala sin abortar.
+  **En modo manual los límites son avisos, no bloqueos** (§2 del plan): repetir
+  más de `ANIMACION_MAX_POR_TIPO`, romper la separación o pisar otro overlay se
+  imprimen como AVISO y se respetan.
+- **Cada evento de animación ahora lleva metadatos para la interfaz:** `anim`
+  (nombre), `variante`, `motor` (`Hyperframes` / `PIL` / `Video PiP`) y
+  `miniatura` (ruta a un PNG).
+- **`f7_animaciones.miniatura(ruta_clip)`**: extrae el fotograma y lo cachea en
+  `C:\ai-video\_editor_cache\anim_frames\`. **No es el primer fotograma aunque
+  el plan lo llame así** — todas estas animaciones entran con un fade, así que
+  el frame 0 sale transparente y como miniatura no dice nada. Se toma al **45%**
+  de la duración, donde el gesto ya está completo.
+- **`f8_hyperframes.inventario_animaciones()`**: la lista para el selector de
+  "añadir animación" (nombre, etiqueta, duración, nº de variantes, motor,
+  palabras que la disparan, si tiene respaldo PIL, y
+  `reproducible_en_navegador: False`).
+
+**Pendiente para quien conecte la interfaz:** dibujar los bloques en la
+timeline usando `miniatura`, y el aviso en pantalla de que ningún navegador
+reproduce ProRes 4444 (el plan lo pide explícitamente: *"decirlo en la
+interfaz, no dejar que José lo descubra solo"*). El dato ya está en
+`inventario_animaciones()`; falta pintarlo.
+
+## Fase 4 — Sonidos
+
+Los tres puntos del plan.
+
+1. **Portar la pista de SFX a la interfaz servida** — es de `f11`, la otra
+   sesión. Desde aquí no hacía falta cambiar nada: `f10.recolectar()` ya llama
+   a `f5_audio.construir_eventos_sfx()`.
+2. **El SFX enganchado a un evento visual, no a un tiempo suelto.** La regla
+   editorial "el sonido acompaña un evento visual" (config.py:285) solo valía
+   **al generar**: si José movía un PiP en el editor, su `pop` se quedaba en el
+   segundo viejo y la regla se rompía en silencio. Ahora:
+   - `f5_audio.clave_ancla(ev, vistas)` da una identidad **estable** al evento
+     visual, que a propósito **no usa el tiempo** (es justo lo que cambia al
+     mover): el asset del PiP, el nombre+variante de la animación, o el tipo
+     cuando es único. `vistas` distingue dos eventos por lo demás idénticos.
+   - Cada SFX derivado de un overlay guarda `ancla` y `desfase`.
+   - `f5_audio.reanclar_sfx(eventos_sfx, eventos_overlay)` recalcula el `t`
+     desde donde **hoy** está ese overlay. Se llama al cargar `--sfx-manual`.
+   - Si el overlay fue **borrado**, el sonido se queda donde estaba y se avisa.
+     Borrárselo por nuestra cuenta sería decidir por él.
+   - Un SFX sin `ancla` (los cortes, los punch-ins, o cualquiera escrito a
+     mano) se queda exactamente en su `t`. Compatible con los
+     `ajustes.sfx.json` que ya exportaba el editor v1.
+3. **Aviso cuando dos SFX quedan a menos de `SFX_SEPARACION_MIN_S`.**
+   `f5_audio.avisos_sfx(eventos)` devuelve una lista de `{tipo, t, texto}`.
+   Reporta dos cosas: separación por debajo de 1.2s y **el mismo archivo tres
+   veces seguidas**. Salen en consola y en una sección nueva de
+   `08_hoja-sonido.md` ("Avisos — no bloquean nada, decide José"). La hoja
+   además tiene ahora una columna **"sigue a"** con el ancla de cada sonido.
+
+**Los volúmenes de `SFX_POR_EVENTO` no se tocaron**, como manda el plan. Sí se
+cambió una cosa en esa constante, y conviene que quede explícita por si José
+la quiere revertir: **el cajón `"sticker"` tenía un solo archivo**. Ahí caen
+también las animaciones y la ficha técnica, así que la rotación que el propio
+comentario del archivo promete ("varios archivos por evento = se rotan, para
+que no suene dos veces seguidas el mismo") no podía hacer nada, y
+`notificacion_chime.mp3` sonaba **4 veces en 37 segundos** — el mismo problema
+de "uso sin discreción" que motivó rediseñar los SFX. Se añadió
+`notificacion_1.mp3` para que la rotación funcione. Revertirlo es borrar una
+línea de `config.py`.
+
+**Verificación — medida en el audio renderizado, no en el log.** Se movió el
+PiP de 24.17s a 27.0s y el splash repetido de 20.03s a 21.5s, y se re-mezcló
+con la lista de SFX exportada antes del cambio:
+
+```
+sonido reanclado: 20.03s -> 21.50s (sigue a 'anim-splash|v1#0')
+sonido reanclado: 24.17s -> 27.00s (sigue a 'pip|generado:libros_7df6c3bb3194.png#0')
+AVISO [separacion] 28.07s: notificacion_chime.mp3 cae a 1.07s del anterior (mínimo 1.2s)
+```
+
+El aviso saltó solo, y en el momento correcto: el movimiento creó un hueco de
+1.07s. No bloqueó nada.
+
+Y el pico de audio **se movió de verdad** (`volumedetect` sobre ventanas de
+0.3s de los dos MP4):
+
+| ventana | con el pop en 24.17s | con el pop reanclado a 27.0s |
+|---|---|---|
+| 24.15–24.45s | **−1.6 dB** | −3.0 dB |
+| 26.98–27.28s | −2.7 dB | **−1.7 dB** |
+
+Otras mediciones del final: **1105 frames**, 37.132s, AAC 48 kHz estéreo,
+**−14.1 LUFS** integrados (objetivo −14) y **−0.5 dBTP** de pico real.
+
+Caso del ancla borrada, probado aparte: se elimina el PiP de los overlays y el
+sonido se queda en 24.17s con el aviso `estaba anclado a '...', que ya no
+existe`.
+
+## Prueba de extremo a extremo
+
+`editor.py --reaplicar --sin-editor-visual --animaciones-manual` sobre la
+corrida completa: **18.7s** (más rápido que los 33.8s de la Fase 0 porque los
+clips de Hyperframes ya estaban en caché). Resultado con una lista manual que
+quitaba la batería y movía el sol: 6 overlays, las dos animaciones pedidas en
+los segundos pedidos, ningún `pip-producto` ocupando el hueco de la batería
+quitada, 1105 frames. El flag viaja bien de `editor.py` a `f6_overlays.py`.
+
+## Trampa de medición, otra vez la misma
+
+Al extraer el fotograma central de la animación de sol con `-ss` **antes** de
+`-i` sobre un MOV compuesto con `color=` + `overlay`, salió **un cuadro liso**.
+Por un momento pareció que la animación no dibujaba nada. Es exactamente el
+punto 5 de la sección 3 de esta bitácora y la trampa §5.9 del plan. Se
+comprobó la herramienta antes de diagnosticar: seleccionando por número de
+frame (`select='eq(n,35)'`) el mismo comando devuelve la imagen correcta.
+**No era un bug del render, era mi comando de verificación.** Tercera vez que
+esta trampa aparece en el proyecto.
+
+## Dudas resueltas sin parar a preguntar
+
+1. **`#tina` no estaba en la lista de tres conceptos del plan.** Se añadió: es
+   el mismo concepto que `#agua`, la regla de José es sobre el concepto, y sin
+   él el criterio de aceptación literal del plan ("agua" y luego "tina") no
+   podía cumplirse. Reversible borrando una entrada del `set`.
+2. **Separación de animaciones distinta a la de insertos** (2.0s vs 4.0s). Sin
+   esto la Fase 3b entera era imposible, no es una cuestión de gusto. Razonado
+   arriba y comentado en `config.py`.
+3. **Dos pasadas en vez de una.** El plan no lo pedía; sin ello, arreglar la
+   repetición *empeoraba* el resultado (la 2ª batería mataba el 1er splash).
+4. **La miniatura al 45% y no en el frame 0.** El plan dice "primer fotograma";
+   el frame 0 de estas animaciones es transparente. Se prioriza que la
+   miniatura sirva para lo que es.
+5. **Adelantar la animación que el CTA cortaría.** Máximo lo que quepa sin
+   invadir el overlay anterior, y siempre dicho en el log.
+6. **Etiqueta distinta en la repetición.** El plan pide variar el gesto y no
+   el concepto; repetir el texto literal se leía como error de edición.
+7. **El respaldo PIL de batería, splash y moto sigue sin texto**, igual que
+   antes. Solo el sol dibuja etiqueta, porque en esa animación el texto *es* el
+   argumento. No es una regresión, es el estado previo.
+
+## Archivos tocados esta sesión
+
+**Modificados:** `plantillas/compositions/anim-sol.html` (reescrita),
+`editor/f7_animaciones.py` (`animar_sol` reescrita, `miniatura()`,
+`_dispositivo_pil()`, `_fuente()`, `_etiqueta()`, `TAMANOS`, `variante` en las
+cuatro), `editor/f8_hyperframes.py` (`preparar_imagen()`,
+`inventario_animaciones()`, `imagen` en `anim-sol`, duración 2.6),
+`editor/f6_overlays.py` (`_variante_aparicion()`, `_foto_dispositivo()`,
+`_construir_animacion()`, `_etiqueta_animacion()`, bucle de animaciones en dos
+pasadas, `tags_reservados`, `cargar_animaciones_manual()`, flag
+`--animaciones-manual`), `editor/f5_audio.py` (`clave_ancla()`,
+`reanclar_sfx()`, `avisos_sfx()`, anclas en `construir_eventos_sfx`, hoja de
+sonido), `editor/config.py` (constantes de animación y rotación de "sticker"),
+`editor/editor.py` (flag `--animaciones-manual`), `plantillas/README.md`.
+
+**Nuevos:** `plantillas/assets/_pipeline/` (fotos preparadas para las
+composiciones, direccionadas por contenido).
+
+**Fuera del proyecto:** `C:\ai-video\salida\fase3_anim\` (copia de
+`test_reaplicar` usada como banco de pruebas para no pisar la corrida con la
+que trabajaba la otra sesión) y `C:\ai-video\_editor_cache\anim_frames\`.
+
+Commits: `8dde936` (Fase 3) y `46a0953` (Fase 4).
+
+## Punto de retome
+
+Las 6 fases del plan v2 están construidas. Lo que queda, por orden de valor:
+
+1. **Enchufar las animaciones a la interfaz (resto de la Fase 3c).** El
+   contrato ya está: `--animaciones-manual`, `inventario_animaciones()`, y
+   `miniatura` en cada evento. Falta que `f10.recolectar()` deje de descartar
+   los overlays con `medio == "video"` (`f10_editor_visual.py:88`) y que `f11`
+   los pinte y mande la lista a `POST /guardar` → `ajustes.animaciones.json` →
+   `editor.py --animaciones-manual`.
+2. **Que el editor conserve el campo `ancla` de cada SFX** al exportar
+   `ajustes.sfx.json`. Si el JS reconstruye los objetos con solo
+   `{t, archivo, volumen, razon}`, el anclaje de la Fase 4 se pierde en
+   silencio: el pipeline lo respeta, pero solo si el campo llega. Es una línea
+   en el JS de `f11`, y es lo único que falta para que "mover el PiP mueve su
+   sonido" funcione de punta a punta desde el navegador.
+3. **La apertura automática** que dejó pendiente la otra sesión (`editor.py`
+   sigue abriendo el HTML v1 al terminar). Ya no hay conflicto de archivos:
+   esta sesión terminó con `editor.py`.
+4. **Escuchar el resultado.** Todo el audio de esta fase se verificó midiendo
+   (LUFS, picos por ventana), que es lo que se puede hacer sin oídos. La
+   rotación nueva de `"sticker"` (`notificacion_1.mp3` alternando con el chime)
+   es la única decisión de esta sesión que **nadie ha oído todavía**.
