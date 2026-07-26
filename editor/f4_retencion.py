@@ -228,6 +228,28 @@ def calcular_zoom_en_t(t: float, planos: list, picos: list) -> float:
     return round(zoom, 4)
 
 
+def encuadre_en_t(t: float, tiempos_track: np.ndarray, cx_track: np.ndarray, cy_track: np.ndarray,
+                   planos: list, picos: list, hacer_loop: bool = False, t_loop: float = None,
+                   cx_ini: float = None, cy_ini: float = None, zoom_ini: float = None):
+    """(cx, cy, zoom) del encuadre en el segundo t: interpolación del track de
+    rostro + calcular_zoom_en_t(), con el blend de loop de los últimos
+    LOOP_DURACION_S si aplica. La usa tanto el render real
+    (renderizar_con_zoom) como el preview del editor visual (f11_servidor) —
+    una sola implementación para que no puedan divergir."""
+    cx = float(np.interp(t, tiempos_track, cx_track))
+    cy = float(np.interp(t, tiempos_track, cy_track))
+    zoom = calcular_zoom_en_t(t, planos, picos)
+
+    if hacer_loop and t_loop is not None and t >= t_loop:
+        u = min(1.0, (t - t_loop) / config.LOOP_DURACION_S)
+        s = u * u * (3 - 2 * u)
+        cx += (cx_ini - cx) * s
+        cy += (cy_ini - cy) * s
+        zoom += (zoom_ini - zoom) * s
+
+    return cx, cy, zoom
+
+
 def detectar_huecos_regla_5s(duracion_total: float, planos: list, picos: list) -> list:
     """Eventos de 'cambio visual' = límites de plano (jump cuts) + punch-ins.
     Cualquier tramo >= REGLA_5S_MAX_BLOQUE_S sin evento queda marcado como hueco."""
@@ -392,17 +414,12 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
                     break
                 t = idx / fps
 
-                cx = float(np.interp(t, tiempos_track, cx_track))
-                cy = float(np.interp(t, tiempos_track, cy_track))
-                zoom = calcular_zoom_en_t(t, planos, picos)
-
-                if hacer_loop and t >= t_loop:
-                    # smoothstep: entra y sale sin tirón, no se nota el regreso
-                    u = min(1.0, (t - t_loop) / config.LOOP_DURACION_S)
-                    s = u * u * (3 - 2 * u)
-                    cx += (cx_ini - cx) * s
-                    cy += (cy_ini - cy) * s
-                    zoom += (zoom_ini - zoom) * s
+                cx, cy, zoom = encuadre_en_t(
+                    t, tiempos_track, cx_track, cy_track, planos, picos,
+                    hacer_loop, t_loop if hacer_loop else None,
+                    cx_ini if hacer_loop else None, cy_ini if hacer_loop else None,
+                    zoom_ini if hacer_loop else None,
+                )
 
                 # recorte centrado en rostro, con relación de aspecto de salida (9:16)
                 h_crop = h_in / zoom

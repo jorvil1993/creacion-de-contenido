@@ -26,6 +26,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import numpy as np
+
 import config
 
 
@@ -38,6 +40,47 @@ def _duracion(ruta: Path) -> float:
                         "-of", "default=nw=1:nk=1", str(ruta)],
                        capture_output=True, text=True, check=True)
     return float(r.stdout.strip())
+
+
+def _resolucion(ruta: Path) -> tuple[int, int]:
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
+                        "-show_entries", "stream=width,height",
+                        "-of", "csv=s=x:p=0", str(ruta)],
+                       capture_output=True, text=True, check=True)
+    w, h = r.stdout.strip().split("x")
+    return int(w), int(h)
+
+
+def muestras_encuadre(dir_trabajo: Path, duracion: float) -> list:
+    """Un [t, cx, cy, zoom] por frame, con la MISMA función que usa el render
+    real (f4_retencion.encuadre_en_t) — el preview del editor no aproxima el
+    encuadre, lo replica exacto (sección 1.5 del plan v2)."""
+    plan = json.loads((dir_trabajo / "03_retencion.plan.json").read_text(encoding="utf-8"))
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import f4_retencion as f4
+
+    track_rostro = plan["track_rostro"]
+    planos = plan["planos"]
+    picos = plan["picos_energia"]
+    tiempos_track = np.array([p["t"] for p in track_rostro]) if track_rostro else np.array([0.0])
+    cx_track = np.array([p["cx"] for p in track_rostro]) if track_rostro else np.array([0.5])
+    cy_track = np.array([p["cy"] for p in track_rostro]) if track_rostro else np.array([0.4])
+
+    hacer_loop = config.LOOP_ACTIVO and duracion > config.LOOP_DURACION_S * 3
+    t_loop = cx_ini = cy_ini = zoom_ini = None
+    if hacer_loop:
+        cx_ini, cy_ini, zoom_ini = f4.encuadre_en_t(0.0, tiempos_track, cx_track, cy_track, planos, picos)
+        t_loop = duracion - config.LOOP_DURACION_S
+
+    fps = config.FPS
+    n = int(duracion * fps) + 2
+    muestras = []
+    for idx in range(n):
+        t = idx / fps
+        cx, cy, zoom = f4.encuadre_en_t(t, tiempos_track, cx_track, cy_track, planos, picos,
+                                         hacer_loop, t_loop, cx_ini, cy_ini, zoom_ini)
+        muestras.append([round(t, 3), round(cx, 4), round(cy, 4), round(zoom, 4)])
+    return muestras
 
 
 def _miniatura(video: Path, t: float, ancho: int = 270) -> str | None:
@@ -150,14 +193,25 @@ def recolectar(dir_trabajo: Path) -> dict:
             if Path(ev["archivo"]).suffix.lower() == ".png" and Path(ev["archivo"]).exists() else None,
         })
 
+    ruta_cortado = dir_trabajo / "02_cortado.mp4"
+    resolucion_origen = _resolucion(ruta_cortado) if ruta_cortado.exists() else (config.ANCHO, config.ALTO)
+
     return {
         "nombre": dir_trabajo.name,
         "duracion": round(duracion, 3),
-        "ancho": config.ANCHO, "alto": config.ALTO,
+        "ancho": config.ANCHO, "alto": config.ALTO, "fps": config.FPS,
+        "resolucion_origen": list(resolucion_origen),  # w_in/h_in reales del recorte de f4_retencion
+        "encuadre": muestras_encuadre(dir_trabajo, duracion),
         "palabras": [{"t": p["inicio"], "fin": p["fin"], "texto": p["texto"]}
                      for p in transcripcion["palabras"]],
         "sfx": sfx,
-        "overlays": [{"tipo": ev["tipo"], "ini": ev["ini"], "fin": ev["fin"]} for ev in eventos],
+        "overlays": [{
+            "idx": i, "tipo": ev["tipo"], "ini": ev["ini"], "fin": ev["fin"],
+            "x": ev.get("x", 0), "y": ev.get("y", 0),
+            "medio": ev.get("medio", "imagen"),
+            # ruta absoluta: f11_servidor la sirve por /archivo con lista blanca de raíces
+            "archivo": str(Path(ev["archivo"]).resolve()) if ev.get("archivo") else None,
+        } for i, ev in enumerate(eventos)],
         "movibles": movibles,
         "sonidos": sonidos,
         "volumenes": {k: v["volumen"] for k, v in config.SFX_POR_EVENTO.items()},
