@@ -528,14 +528,139 @@ motivo. Coherente con "Generar una sola vez" del plan.
 `assets/productos/`: 31 carpetas con recortes (16 nuevas: fundas y
 accesorios).
 
+## Punto de retome (actualizado tras cerrar la Fase 1)
+
+Fase 0 cerrada. **Fase 1 (servidor + preview) también cerrada y verificada**
+— ver detalle abajo. Sigue la Fase 2 (colección de PiP).
+
+---
+
+# Sesión — Editor visual v2, Fase 1 (2026-07-26, ~15:05–15:20)
+
+## Aviso: trabajo repartido con otra sesión en paralelo
+
+José va a abrir una segunda sesión de Claude (otra cuenta) mientras esta
+sigue corriendo. Para no chocar archivos, se repartió así:
+- **Esta sesión:** `editor/f11_servidor.py` (servidor, Fase 1/2/5) y
+  `editor/f10_editor_visual.py`.
+- **La otra sesión:** Fase 3 (animaciones, incluido el sol) y Fase 4
+  (sonidos) — sobre todo `f7_animaciones.py`, `f8_hyperframes.py`,
+  `plantillas/compositions/anim-sol.html`, `f5_audio.py`.
+- Punto de fricción conocido: ambas fases tocan `f6_overlays.py` y
+  `config.py`, en zonas distintas (esta sesión: flag `--eventos-manual` para
+  Fase 2; la otra: `CONCEPTOS_PREFIEREN_ANIMACION` y el veto de
+  `anim_usadas`). Si la próxima sesión ve algo raro en esos dos archivos que
+  no reconoce, es la otra sesión — revisar `git log`/`git diff` antes de
+  asumir que es un bug propio.
+
+## Qué se construyó
+
+1. **`f4_retencion.encuadre_en_t()`** (nueva función, línea ~211): se
+   **extrajo** el cálculo de (cx, cy, zoom) — interpolación del track de
+   rostro + `calcular_zoom_en_t()` + blend de loop — del loop de
+   `renderizar_con_zoom()`, que ahora la llama en vez de tener el cálculo
+   inline. Misma implementación para el render real y para el preview del
+   editor: no hay dos copias que puedan divergir con el tiempo.
+
+   **Verificado que el refactor no cambió el resultado:** se re-renderizó
+   `test_reaplicar` completo y se comparó contra una copia guardada antes del
+   refactor con `ffmpeg -lavfi ssim`: **SSIM = 1.000000 en los 1105 frames**
+   (coincidencia exacta, no aproximada).
+
+2. **`f10_editor_visual.muestras_encuadre()`** (nueva): genera un
+   `[t, cx, cy, zoom]` por frame (~1116 muestras para 37s) llamando a
+   `encuadre_en_t()`. `recolectar()` ahora incluye `"encuadre"`,
+   `"resolucion_origen"` (w/h reales de `02_cortado.mp4`, vía nuevo
+   `_resolucion()`), `"fps"`, y los `"overlays"` ahora traen `x`, `y`,
+   `medio`, `archivo` (antes solo tenían tipo/ini/fin).
+
+3. **`editor/f11_servidor.py`** (nuevo, ~300 líneas). `http.server` de
+   stdlib en `127.0.0.1` (nunca `0.0.0.0`), sube de puerto si 8765 está
+   ocupado y avisa cuál usó. Rutas: `GET /` (interfaz), `GET /datos`
+   (`recolectar()` en JSON), `GET /video` (proxy con **soporte de Range**
+   implementado a mano — necesario para que arrastrar la línea de tiempo del
+   `<video>` no tenga que descargar el archivo entero), `GET /archivo?ruta=`
+   (sirve PNGs/assets con lista blanca de raíces permitidas —
+   `RAIZ_AI_VIDEO` y `RAIZ_PROYECTO` — para no exponer el filesystem
+   completo aunque el servidor sea solo-localhost).
+
+   Interfaz (HTML+CSS+JS planos, sin dependencias): lienzo con proporción
+   1080×1920, el `<video>` (proxy) con `transform: scale(zoom)
+   translate(-x0*s, -y0*s)` recalculado en cada `requestAnimationFrame` a
+   partir de la muestra de encuadre más cercana al `currentTime`; overlays
+   PiP (los "movibles" de `recolectar()`, ya en base64 como en v1) dibujados
+   como `<img>` con `transform: translate(x*s, y*s) scale(s)`, mostrados
+   solo dentro de `[ini, fin)`; línea de tiempo con franjas de overlay +
+   transcripción palabra por palabra, clic para saltar el video a ese
+   segundo.
+
+   **Deliberadamente fuera de esta fase** (le toca a la Fase 3c): los
+   overlays con `medio == "video"` (animaciones Hyperframes/PIL — hook, cta,
+   specs, batería, splash, sol en este video de prueba) no se dibujan en el
+   lienzo todavía. Son 6 de los 9 eventos de este video; solo los 3
+   `pip-producto` (imagen estática) se ven hoy.
+
+## Cómo se verificó (sin poder tomar screenshot del navegador)
+
+El panel del navegador de esta sesión no compuso frames (`the Browser pane
+is not displayed, so the page is not compositing frames` — límite del
+entorno, no del código) y el `<video>` no llegó a disparar `seeked` con la
+pestaña sin composición. En vez de forzarlo o de asumir que "cargó y ya":
+
+1. Se leyó el DOM real vía `javascript_exec`: se llamó a las mismas
+   funciones JS (`muestraEn`, `aplicarEncuadre`, `actualizarOverlays`) para
+   t=0.4s (punch-in real, zoom 1.15 — el máximo de todo el video),
+   t=4.5s y t=20.5s (con overlay `pip-producto` visible), y se leyó
+   `video.style.transform` y `img.style.transform` resultantes.
+2. Se calculó el mismo `transform` **de forma independiente en Python**
+   (mismo x0/y0/zoom/clip que usa `f4_retencion`) para los mismos t y el
+   mismo ancho de lienzo (333px, el que reportó el DOM).
+3. **Los tres momentos coincidieron carácter por carácter**
+   (`scale(1.15) translate(-10.99px, -38.14px)` etc.) — la portada de la
+   fórmula de recorte a CSS/JS no tiene error de signo, eje ni escala.
+4. Se extrajeron los fotogramas reales de `06_video.mp4` en esos mismos 3
+   instantes con ffmpeg y se miraron (no solo se leyó el log): t=0.4s
+   muestra el punch-in centrado en el rostro con el hook; t=4.5s muestra el
+   PiP de "libros" arriba a la derecha (x=620 de 1080 ⇒ 57%, coincide);
+   t=20.5s muestra el PiP de "tina" arriba a la izquierda (x=40 ⇒ 4%,
+   coincide).
+
+Es una verificación más estricta que comparar dos capturas a ojo (la
+comparación de transform es exacta, no aproximada), pero **queda pendiente
+la comparación visual directa en un navegador real** cuando José lo abra a
+mano — si algo se ve raro ahí que esta verificación no habría detectado
+(ej. un bug de CSS que no toca `.transform` sino otra propiedad), anotarlo.
+
+## Duda resuelta sin parar a preguntar
+
+Los overlays `medio == "video"` (animaciones) no tienen un "primer
+fotograma" pre-extraído todavía — el plan (Fase 3c) lo pide como bloque en
+la timeline, no necesariamente en el lienzo. Se decidió **no** dibujarlos en
+el lienzo en esta fase (dejar el hueco visible es más honesto que fingir una
+posición) y documentarlo en la interfaz... **pendiente**: el aviso en pantalla
+sobre esta limitación (que el plan pide explícitamente: "decirlo en la
+interfaz, no dejar que José lo descubra solo") todavía no está en el HTML.
+Añadir un texto visible antes de que José lo use — quedó solo en el
+`<p class="hint">` genérico, falta ser específico con qué overlays faltan.
+
+## Archivos tocados esta fase
+
+**Nuevos:** `editor/f11_servidor.py`.
+
+**Modificados:** `editor/f4_retencion.py` (`encuadre_en_t()` extraída y
+reutilizada, sin cambio de comportamiento — SSIM 1.0 verificado),
+`editor/f10_editor_visual.py` (`_resolucion()`, `muestras_encuadre()`,
+`recolectar()` ampliado).
+
 ## Punto de retome
 
-Fase 0 cerrada y verificada con evidencia (frames idénticos, timings medidos,
-recortes revisados a ojo). **Sigue la Fase 1** del plan (§4): crear
-`editor/f11_servidor.py` con `http.server` en `127.0.0.1:8765`, sirviendo la
-interfaz y `/datos` (ampliar `recolectar()` de `f10_editor_visual.py`, no
-duplicarlo), con el preview de encuadre real sobre `_editor/proxy.mp4` (ya
-generado por esta sesión) replicando el crop de `f4_retencion.py:374-386` con
-`transform: scale()` en CSS. El criterio de aceptación de la Fase 1 exige
-comparar contra fotogramas reales extraídos con ffmpeg en 3 momentos, uno
-dentro de un punch-in — no basta con que cargue en el navegador.
+Sigue la **Fase 2** del plan (§4): endpoint `/catalogo` (198 aptos,
+filtrados por producto dominante — `f6_overlays._producto_dominante` ya
+existe), grid con tarjetas vía `/tarjeta` (usar `f6_overlays.render_pip_producto`,
+cachear igual que `miniatura_catalogo`), flag nuevo
+`f6_overlays.py --eventos-manual JSON` (reemplaza la lista completa de
+eventos, distinto de `--posiciones-manual` que solo mueve) propagado en
+`editor.py`, y los límites automáticos (`INSERTOS_MAX`,
+`INSERTO_SEPARACION_MIN_S`) como avisos en vez de bloqueos cuando vienen del
+editor. Antes de tocar `f6_overlays.py`, revisar si la otra sesión ya lo
+modificó (Fase 3b también lo toca) — `git diff` primero.
