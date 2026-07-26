@@ -151,6 +151,73 @@ def miniatura_catalogo(asset: dict, dir_cache: Path | None = None, ancho: int = 
     return destino
 
 
+def render_tarjeta_catalogo(asset: dict, dir_cache: Path | None = None) -> Path | None:
+    """Tarjeta PiP (400x520) de un asset del catálogo, para el grid de
+    selección de la Fase 2. Reusa `f6_overlays.render_pip_producto()` — la
+    MISMA función que usa el pipeline real, así la tarjeta que ve José en el
+    grid es la que va a salir en el video, no una aproximación (233 de los
+    262 assets son horizontales; la tarjeta es vertical). Cachea por mtime
+    del origen."""
+    dir_cache = dir_cache or (config.DIR_EDITOR_CACHE / "tarjetas")
+    dir_cache.mkdir(parents=True, exist_ok=True)
+    nombre = asset["id"].replace("\\", "__").replace("/", "__") + ".png"
+    destino = dir_cache / nombre
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import f6_overlays
+
+    origen = f6_overlays._version_sin_fondo(asset) or (config.RAIZ_PROYECTO / asset["ruta"])
+    if not origen.exists():
+        return None
+    if destino.exists() and destino.stat().st_mtime >= origen.stat().st_mtime:
+        return destino
+    f6_overlays.render_pip_producto(origen, destino, ancho=400, alto=520, centrar_en_lienzo=False)
+    return destino
+
+
+def fondo_pendiente(asset: dict) -> bool:
+    """True si a este asset todavía le falta el recorte de quitar_fondos.py
+    (Fase 2, punto 3: "marcar los que todavía tienen fondo")."""
+    if asset.get("fondo") == "transparente":
+        return False
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import f6_overlays
+    return f6_overlays._version_sin_fondo(asset) is None
+
+
+def catalogo_pip(dir_trabajo: Path | None = None, todos: bool = False) -> dict:
+    """Los assets aptos para PiP (`"pip" in usos`), filtrados por el producto
+    dominante del video salvo que `todos=True` (Fase 2, punto 1-2)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import f6_overlays
+
+    catalogo = json.loads((config.DIR_CONTEXTO / "catalogo-assets.json").read_text(encoding="utf-8"))["assets"]
+    aptos = [a for a in catalogo if "pip" in a.get("usos", [])]
+
+    dominante = None
+    if dir_trabajo is not None:
+        ruta_transcripcion = Path(dir_trabajo) / "02_cortado.json"
+        if ruta_transcripcion.exists():
+            palabras = json.loads(ruta_transcripcion.read_text(encoding="utf-8"))["palabras"]
+            dominante = f6_overlays._producto_dominante(palabras)
+
+    filtrados = aptos
+    if dominante and not todos:
+        filtrados = [a for a in aptos if dominante in a.get("tags", [])] or aptos
+
+    return {
+        "producto_dominante": dominante,
+        "total_catalogo": len(aptos),
+        "total_filtrado": len(filtrados),
+        "assets": [{
+            "id": a["id"], "producto": a["producto"], "tipo": a["tipo"],
+            "color": a.get("color"), "orientacion": a.get("orientacion"),
+            "fondo": a.get("fondo"), "tags": a.get("tags", []),
+            "fondo_pendiente": fondo_pendiente(a),
+        } for a in filtrados],
+    }
+
+
 def recolectar(dir_trabajo: Path) -> dict:
     """Junta todo lo que el editor necesita desde la carpeta de trabajo."""
     dir_trabajo = Path(dir_trabajo)
@@ -188,6 +255,8 @@ def recolectar(dir_trabajo: Path) -> dict:
             "ini": ev["ini"], "fin": ev["fin"],
             "x": ev.get("x", 0), "y": ev.get("y", 0),
             "palabra": ev.get("palabra", ""),
+            "asset": ev.get("asset", ""),
+            "archivo": str(Path(ev["archivo"]).resolve()) if ev.get("archivo") else None,
             "miniatura": _miniatura(video, ev["ini"] + 0.2),
             "overlay": _b64(Path(ev["archivo"]), "image/png")
             if Path(ev["archivo"]).suffix.lower() == ".png" and Path(ev["archivo"]).exists() else None,
@@ -204,6 +273,8 @@ def recolectar(dir_trabajo: Path) -> dict:
         "encuadre": muestras_encuadre(dir_trabajo, duracion),
         "palabras": [{"t": p["inicio"], "fin": p["fin"], "texto": p["texto"]}
                      for p in transcripcion["palabras"]],
+        "limites": {"insertos_max": config.INSERTOS_MAX,
+                    "separacion_min_s": config.INSERTO_SEPARACION_MIN_S},
         "sfx": sfx,
         "overlays": [{
             "idx": i, "tipo": ev["tipo"], "ini": ev["ini"], "fin": ev["fin"],

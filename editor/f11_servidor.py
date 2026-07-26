@@ -29,6 +29,19 @@ import f10_editor_visual as f10
 
 DIR_TRABAJO: Path = None
 RAICES_PERMITIDAS: list = None
+_CATALOGO_CACHE: list = None
+
+
+def _catalogo() -> list:
+    global _CATALOGO_CACHE
+    if _CATALOGO_CACHE is None:
+        ruta = config.DIR_CONTEXTO / "catalogo-assets.json"
+        _CATALOGO_CACHE = json.loads(ruta.read_text(encoding="utf-8"))["assets"]
+    return _CATALOGO_CACHE
+
+
+def _asset_por_id(asset_id: str) -> dict | None:
+    return next((a for a in _catalogo() if a["id"] == asset_id), None)
 
 
 def _archivo_permitido(ruta: Path) -> bool:
@@ -134,6 +147,29 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_error(403, "ruta fuera de las carpetas permitidas")
                     return
                 self._archivo(objetivo)
+            elif ruta == "/catalogo":
+                todos = qs.get("todos", ["0"])[0] in ("1", "true")
+                self._json(f10.catalogo_pip(DIR_TRABAJO, todos=todos))
+            elif ruta == "/miniatura":
+                asset = _asset_por_id((qs.get("asset_id") or [""])[0])
+                if asset is None:
+                    self.send_error(404, "asset_id desconocido")
+                    return
+                ruta_thumb = f10.miniatura_catalogo(asset)
+                if ruta_thumb is None:
+                    self.send_error(404, "no se pudo generar la miniatura")
+                    return
+                self._archivo(ruta_thumb, "image/jpeg")
+            elif ruta == "/tarjeta":
+                asset = _asset_por_id((qs.get("asset_id") or [""])[0])
+                if asset is None:
+                    self.send_error(404, "asset_id desconocido")
+                    return
+                ruta_tarjeta = f10.render_tarjeta_catalogo(asset)
+                if ruta_tarjeta is None:
+                    self.send_error(404, "no se pudo renderizar la tarjeta")
+                    return
+                self._archivo(ruta_tarjeta, "image/png")
             else:
                 self.send_error(404, "Ruta desconocida")
         except FileNotFoundError as e:
@@ -142,7 +178,26 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(500, str(e))
 
     def do_POST(self):
-        self.send_error(404, "Todavía no implementado (Fase 2/5)")
+        partes = urlparse(self.path)
+        if partes.path == "/guardar":
+            largo = int(self.headers.get("Content-Length", 0))
+            cuerpo = self.rfile.read(largo) if largo else b"{}"
+            try:
+                datos = json.loads(cuerpo.decode("utf-8"))
+            except Exception as e:
+                self.send_error(400, f"JSON inválido: {e}")
+                return
+            eventos = datos.get("eventos", [])
+            destino = DIR_TRABAJO / "ajustes.eventos.json"
+            tmp = destino.with_suffix(".tmp")
+            # escritura atómica (sección 3 del plan): si José tiene el JSON
+            # abierto en otra parte, nunca debe quedar a medio escribir.
+            tmp.write_text(json.dumps({"eventos": eventos}, ensure_ascii=False, indent=2),
+                            encoding="utf-8")
+            tmp.replace(destino)
+            self._json({"ok": True, "ruta": str(destino), "n": len(eventos)})
+        else:
+            self.send_error(404, "Ruta desconocida")
 
 
 PAGINA = r"""<!doctype html>
@@ -200,6 +255,38 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
 .hint { color: var(--fg-2); font-size: 12px; line-height: 1.5; }
 .badge { display: inline-block; background: var(--acento-suave); color: var(--acento);
          border-radius: 4px; padding: 1px 6px; font-size: 11px; margin-left: 6px; }
+.badge.aviso { background: rgba(230,180,40,.18); color: #e6b428; }
+
+.pips-lista { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.pip-card { display: flex; gap: 10px; align-items: center; border: 1px solid var(--linea);
+            border-radius: 8px; padding: 6px; }
+.pip-card img { width: 46px; height: 60px; object-fit: cover; border-radius: 4px; background: #000; }
+.pip-card .info { flex: 1; font-size: 12px; color: var(--fg-2); }
+.pip-card .info b { color: var(--fg); font-weight: 600; }
+.pip-card button { background: var(--panel); color: var(--fg); border: 1px solid var(--linea);
+                    border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
+.pip-card button.quitar:hover { border-color: #ff5566; color: #ff5566; }
+.pip-card button.sustituir:hover, .btn-primario:hover { border-color: var(--acento); color: var(--acento); }
+.pip-card.editando { border-color: var(--acento); }
+
+.btn-primario { background: var(--acento-suave); color: var(--acento); border: 1px solid var(--acento);
+                border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; margin-bottom: 10px; }
+
+.filtros { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; font-size: 12px;
+           color: var(--fg-2); flex-wrap: wrap; }
+.filtros label { display: flex; gap: 4px; align-items: center; cursor: pointer; }
+.grid-catalogo { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+                  gap: 6px; max-height: 340px; overflow-y: auto; }
+.grid-catalogo .item { position: relative; cursor: pointer; border: 2px solid transparent;
+                        border-radius: 6px; overflow: hidden; }
+.grid-catalogo .item:hover { border-color: var(--acento); }
+.grid-catalogo .item img { width: 100%; aspect-ratio: 400/520; object-fit: cover; display: block;
+                            background: #000; }
+.grid-catalogo .item .pend { position: absolute; top: 2px; right: 2px; background: rgba(230,180,40,.85);
+                              color: #201800; font-size: 9px; padding: 1px 4px; border-radius: 3px; }
+.editor-caja { border: 1px dashed var(--linea); border-radius: 8px; padding: 10px; margin-top: 10px;
+               display: none; }
+.editor-caja.activa { display: block; }
 </style>
 </head>
 <body>
@@ -230,12 +317,39 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
       <div class="palabras" id="palabras"></div>
     </div>
   </div>
+
+  <div class="panel" style="grid-column: 1 / -1;">
+    <h2>Colección de PiP <span class="hint" id="dominanteInfo"></span></h2>
+    <p class="hint">Sustituí, añadí o quitá los insertos de producto. Los overlays con animación
+      (hook, ficha, batería, splash, sol, cta) no se editan todavía acá — llega en la Fase 3.</p>
+    <div class="pips-lista" id="pipsLista"></div>
+    <button class="btn-primario" id="btnAñadirPip" type="button">+ Añadir PiP en el segundo actual</button>
+
+    <div class="editor-caja" id="cajaCatalogo">
+      <div class="filtros">
+        <strong id="editandoInfo">Elegí un asset:</strong>
+        <label><input type="checkbox" id="chkTodos"> ver todos (<span id="totalCatalogo">198</span>)</label>
+        <button type="button" id="btnCancelarEdicion">cancelar</button>
+      </div>
+      <div class="grid-catalogo" id="gridCatalogo"></div>
+    </div>
+
+    <p class="hint" style="margin-top:10px;">
+      <button class="btn-primario" id="btnGuardar" type="button">Guardar cambios</button>
+      Escribe <code id="rutaAjustes"></code>. Para aplicarlos (la Fase 5 lo hará con un botón):
+    </p>
+    <pre class="cmd" id="comandoReaplicar" style="background:var(--acento-suave); border:1px solid var(--linea);
+         border-radius:6px; padding:8px; font-size:11px; overflow-x:auto;"></pre>
+  </div>
 </main>
 
 <script>
 let DATA = null;
 const video = document.getElementById("video");
 const lienzo = document.getElementById("lienzo");
+
+let edicionPip = [];
+let editandoIdx = null; // índice en edicionPip, o -1 para "nuevo antes de agregar"
 
 async function cargar() {
   const r = await fetch("/datos");
@@ -244,12 +358,155 @@ async function cargar() {
   document.getElementById("resumen").textContent =
     `${DATA.duracion.toFixed(1)}s · ${DATA.overlays.length} overlays · ${DATA.palabras.length} palabras`;
   document.getElementById("tTotal").textContent = DATA.duracion.toFixed(2) + "s";
+  document.getElementById("rutaAjustes").textContent = "ajustes.eventos.json";
 
   video.src = "/video";
   construirOverlays();
   construirTimeline();
+
+  edicionPip = DATA.movibles.filter(m => m.tipo === "pip-producto").map(m => ({
+    ini: m.ini, fin: m.fin, x: m.x, y: m.y,
+    asset_id: (m.asset && !m.asset.startsWith("generado:") && !m.asset.startsWith("manual")) ? m.asset : null,
+    archivo: m.archivo, tarjeta: m.overlay,
+  }));
+  renderPipsLista();
+  actualizarComando();
+
   requestAnimationFrame(loop);
 }
+
+function avisosPip() {
+  // Límites automáticos como AVISO, no bloqueo (Fase 2, punto 7 del plan):
+  // en modo manual José puede romperlos a propósito.
+  const lim = DATA.limites;
+  const avisos = edicionPip.map(() => []);
+  if (edicionPip.length > lim.insertos_max) {
+    avisos.forEach(a => a.push(`más de ${lim.insertos_max} insertos`));
+  }
+  const orden = edicionPip.map((ev, i) => ({ i, ini: ev.ini })).sort((a, b) => a.ini - b.ini);
+  for (let k = 1; k < orden.length; k++) {
+    const sep = orden[k].ini - orden[k - 1].ini;
+    if (sep < lim.separacion_min_s) {
+      avisos[orden[k].i].push(`a ${sep.toFixed(1)}s del anterior (mínimo ${lim.separacion_min_s}s)`);
+      avisos[orden[k - 1].i].push(`muy cerca del siguiente`);
+    }
+  }
+  return avisos;
+}
+
+function renderPipsLista() {
+  const cont = document.getElementById("pipsLista");
+  cont.innerHTML = "";
+  if (edicionPip.length === 0) {
+    cont.innerHTML = '<p class="hint">No hay insertos de producto en este video.</p>';
+  }
+  const avisos = avisosPip();
+  edicionPip.forEach((ev, i) => {
+    const div = document.createElement("div");
+    div.className = "pip-card" + (editandoIdx === i ? " editando" : "");
+    const img = document.createElement("img");
+    img.src = ev.tarjeta || (ev.asset_id ? `/tarjeta?asset_id=${encodeURIComponent(ev.asset_id)}` : "");
+    div.appendChild(img);
+    const info = document.createElement("div");
+    info.className = "info";
+    const badges = avisos[i].map(a => `<span class="badge aviso">${a}</span>`).join("");
+    info.innerHTML = `<b>${ev.ini.toFixed(1)}s - ${ev.fin.toFixed(1)}s</b> ${badges}<br>${ev.asset_id || ev.archivo?.split(/[\\/]/).pop() || "sin asset"}`;
+    div.appendChild(info);
+    const btnSust = document.createElement("button");
+    btnSust.className = "sustituir"; btnSust.textContent = "Sustituir";
+    btnSust.addEventListener("click", () => abrirCatalogo(i));
+    div.appendChild(btnSust);
+    const btnQuitar = document.createElement("button");
+    btnQuitar.className = "quitar"; btnQuitar.textContent = "Quitar";
+    btnQuitar.addEventListener("click", () => { edicionPip.splice(i, 1); renderPipsLista(); actualizarComando(); });
+    div.appendChild(btnQuitar);
+    cont.appendChild(div);
+  });
+}
+
+async function abrirCatalogo(idx) {
+  editandoIdx = idx;
+  document.getElementById("cajaCatalogo").classList.add("activa");
+  document.getElementById("editandoInfo").textContent =
+    idx === -1 ? "Elegí el asset para el nuevo PiP:" : `Sustituyendo el inserto de ${edicionPip[idx].ini.toFixed(1)}s:`;
+  renderPipsLista();
+  await cargarGridCatalogo();
+}
+
+async function cargarGridCatalogo() {
+  const todos = document.getElementById("chkTodos").checked;
+  const r = await fetch(`/catalogo?todos=${todos ? 1 : 0}`);
+  const datos = await r.json();
+  document.getElementById("totalCatalogo").textContent = datos.total_catalogo;
+  document.getElementById("dominanteInfo").textContent =
+    datos.producto_dominante ? `— producto detectado: ${datos.producto_dominante}` : "";
+  const grid = document.getElementById("gridCatalogo");
+  grid.innerHTML = "";
+  for (const a of datos.assets) {
+    const item = document.createElement("div");
+    item.className = "item";
+    item.title = `${a.producto} · ${a.tipo} · ${a.color || ""}`;
+    const img = document.createElement("img");
+    img.loading = "lazy";
+    img.src = `/miniatura?asset_id=${encodeURIComponent(a.id)}`;
+    item.appendChild(img);
+    if (a.fondo_pendiente) {
+      const pend = document.createElement("span");
+      pend.className = "pend"; pend.textContent = "sin recorte";
+      item.appendChild(pend);
+    }
+    item.addEventListener("click", () => elegirAsset(a));
+    grid.appendChild(item);
+  }
+}
+
+function elegirAsset(asset) {
+  if (editandoIdx === -1) {
+    edicionPip.push({
+      ini: video.currentTime, fin: Math.min(DATA.duracion, video.currentTime + 2.8),
+      x: 620, y: 134, asset_id: asset.id, archivo: null, tarjeta: null,
+    });
+  } else {
+    edicionPip[editandoIdx].asset_id = asset.id;
+    edicionPip[editandoIdx].archivo = null;
+    edicionPip[editandoIdx].tarjeta = null;
+  }
+  document.getElementById("cajaCatalogo").classList.remove("activa");
+  editandoIdx = null;
+  renderPipsLista();
+  actualizarComando();
+}
+
+function actualizarComando() {
+  document.getElementById("comandoReaplicar").textContent =
+    `python editor.py "<video original>" --nombre ${DATA.nombre} --reaplicar --sin-editor-visual ` +
+    `--eventos-manual "ajustes.eventos.json"`;
+}
+
+document.getElementById("btnAñadirPip").addEventListener("click", () => abrirCatalogo(-1));
+document.getElementById("btnCancelarEdicion").addEventListener("click", () => {
+  editandoIdx = null;
+  document.getElementById("cajaCatalogo").classList.remove("activa");
+  renderPipsLista();
+});
+document.getElementById("chkTodos").addEventListener("change", cargarGridCatalogo);
+document.getElementById("btnGuardar").addEventListener("click", async () => {
+  const eventos = edicionPip.map(ev => {
+    const base = { ini: ev.ini, fin: ev.fin, x: ev.x, y: ev.y };
+    if (ev.asset_id) base.asset_id = ev.asset_id;
+    else if (ev.archivo) base.archivo = ev.archivo;
+    return base;
+  });
+  const r = await fetch("/guardar", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ eventos }),
+  });
+  const datos = await r.json();
+  const btn = document.getElementById("btnGuardar");
+  const original = btn.textContent;
+  btn.textContent = datos.ok ? `Guardado (${datos.n})` : "Error al guardar";
+  setTimeout(() => { btn.textContent = original; }, 2000);
+});
 
 function construirOverlays() {
   for (const mov of DATA.movibles) {

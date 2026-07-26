@@ -528,10 +528,11 @@ motivo. Coherente con "Generar una sola vez" del plan.
 `assets/productos/`: 31 carpetas con recortes (16 nuevas: fundas y
 accesorios).
 
-## Punto de retome (actualizado tras cerrar la Fase 1)
+## Punto de retome (actualizado tras cerrar la Fase 2)
 
-Fase 0 cerrada. **Fase 1 (servidor + preview) también cerrada y verificada**
-— ver detalle abajo. Sigue la Fase 2 (colección de PiP).
+Fases 0, 1 y 2 cerradas y verificadas. Sigue la Fase 5 (ciclo cerrado) de mi
+lado — la Fase 3 y 4 las está construyendo otra sesión en paralelo (ver aviso
+de reparto más abajo). Detalle de la Fase 2 al final de este archivo.
 
 ---
 
@@ -664,3 +665,125 @@ eventos, distinto de `--posiciones-manual` que solo mueve) propagado en
 `INSERTO_SEPARACION_MIN_S`) como avisos en vez de bloqueos cuando vienen del
 editor. Antes de tocar `f6_overlays.py`, revisar si la otra sesión ya lo
 modificó (Fase 3b también lo toca) — `git diff` primero.
+
+---
+
+# Sesión — Editor visual v2, Fase 2 (2026-07-26, ~15:20–15:55)
+
+## Qué se construyó
+
+1. **`f6_overlays.cargar_eventos_manual(ruta_json, dir_tmp, catalogo=None)`**
+   (nueva): lee la lista completa de insertos armada en el editor. Cada
+   entrada trae `{ini, fin, x, y, asset_id}` (busca el asset en el catálogo,
+   renderiza con `render_pip_producto()` y cachea el PNG por `asset_id` en
+   `_tmp_overlays/manual_<id>.png`) o `{..., archivo}` (reusa un PNG ya
+   renderizado, para los eventos que José no tocó). `None` si el JSON no
+   existe o es inválido → cae al disparo automático, igual que
+   `aplicar_posiciones_manual`.
+2. **`f6_overlays.planificar_overlays(..., eventos_manual=None)`**: si viene
+   una lista, la usa tal cual **en vez de** llamar a
+   `planificar_insertos_por_palabra()` — no se arranca ComfyUI/Flux si el
+   editor ya decidió qué mostrar. Hook/CTA/animaciones/specs/comparativa no
+   se tocan: `eventos_manual` solo reemplaza los `pip-producto`.
+3. **Flag `--eventos-manual JSON`** en `f6_overlays.py` y propagado en
+   `editor.py` (distinto de `--posiciones-manual`, que solo mueve).
+4. **`f10_editor_visual.render_tarjeta_catalogo()`** (reusa
+   `f6_overlays.render_pip_producto()`, cachea en
+   `C:\ai-video\_editor_cache\tarjetas\` por mtime — la tarjeta que ve José
+   en el grid es la MISMA función que compone el video real, no una
+   aproximación), **`fondo_pendiente()`** y **`catalogo_pip()`** (filtra por
+   `_producto_dominante()` salvo `todos=True`).
+5. **Endpoints nuevos en `f11_servidor.py`:** `GET /catalogo`,
+   `GET /miniatura?asset_id=`, `GET /tarjeta?asset_id=`,
+   `POST /guardar` (escribe `<dir_trabajo>/ajustes.eventos.json`, atómico
+   vía `.tmp` + `replace()`).
+6. **Panel "Colección de PiP" en la interfaz:** lista de los insertos
+   actuales con su tarjeta, botones Sustituir/Quitar, botón "+ Añadir PiP en
+   el segundo actual", grid del catálogo (miniaturas vía `/miniatura`,
+   badge "sin recorte" para `fondo_pendiente`, checkbox "ver todos"),
+   avisos amarillos (no bloqueos) cuando se supera `INSERTOS_MAX` o se
+   rompe `INSERTO_SEPARACION_MIN_S`, botón Guardar.
+
+## Cómo se verificó
+
+**Extremo a extremo, dos veces, con evidencia real — no solo "no tiró error":**
+
+1. **Por línea de comandos:** armé a mano un `eventos_manual_prueba.json` con
+   los tres casos del criterio de aceptación (sustituir el PiP de "libros" a
+   los 4.0s por otro asset, añadir uno nuevo a los 21.0s en el hueco que deja
+   "tina" al quitarse, sustituir el segundo "libros" a los 24.2s) y corrí
+   `editor.py --reaplicar --eventos-manual ...`. Extraje fotogramas de
+   `07_FINAL.mp4` en 4.5s/20.5s/22.0s/25.5s con ffmpeg y los miré: el
+   sustituido se ve, el quitado ya no está, el añadido aparece donde debía.
+   Log confirma además que el SFX `pip-producto` se reubicó solo a los
+   nuevos tiempos (21.00s, 24.20s) — la regla "el sonido acompaña al evento
+   visual" (Fase 4) ya funciona con eventos manuales sin tocar nada de audio.
+2. **En el navegador de verdad** (no pude tomar screenshot por la misma
+   limitación de la Fase 1, así que ejecuté la interacción real vía
+   `javascript_exec`, clic por clic, no simulando el resultado): abrir el
+   catálogo, elegir un asset (sustituye), añadir uno nuevo, quitar uno,
+   guardar. El grid mostró 65 assets al filtrar por `#paperwhite` (producto
+   dominante detectado) de 198 totales. El archivo guardado
+   (`ajustes.eventos.json`) coincidió exactamente con lo que se veía en
+   pantalla. Los avisos de separación mínima aparecieron correctamente al
+   forzar dos insertos a 0.5s de distancia.
+
+## Dudas resueltas sin parar a preguntar
+
+1. **¿`--eventos-manual` reemplaza TODOS los eventos o solo los
+   `pip-producto`?** El plan dice "la lista completa de eventos" pero el
+   contexto (Fase 2 = "la colección de PiP") y los ejemplos que da
+   (sustituir/añadir/quitar PiP) apuntan a que es solo los insertos de
+   producto, no hook/cta/animaciones — esos son dominio de la Fase 3. Así
+   se implementó. Si en la Fase 3 hace falta que las animaciones también
+   sean editables por esta vía, se anotará ahí.
+2. **`POST /tarjeta` del diagrama del plan (§3) se implementó como `GET
+   /tarjeta?asset_id=`.** Es más simple para el frontend (un `<img src=...>`
+   directo, sin fetch+blob) y el resultado es igual de cacheable — no
+   cambia el comportamiento que pedía el plan (renderiza y cachea la
+   tarjeta), solo el verbo HTTP.
+3. **`/catalogo` sin `todos=1` y sin producto dominante detectado:** devuelve
+   el catálogo completo (no hay nada por lo cual filtrar). No estaba
+   especificado, es el comportamiento obvio.
+
+## Qué quedó pendiente
+
+- **Arrastrar la posición (x, y) del PiP en el lienzo.** El editor deja
+  elegir *qué* asset y *cuándo*, pero la posición todavía se hereda del
+  valor por defecto (620,134 o 40,134, alternando) o de la automática si no
+  se tocó. Mover con el mouse quedó fuera de esta fase por tiempo — es una
+  extensión natural sobre lo que ya existe (`ev.x`/`ev.y` en `edicionPip`),
+  no un rediseño.
+- El botón "Guardar" no dispara el render — hay que copiar el comando que
+  muestra la interfaz y correrlo a mano. Eso es exactamente lo que arma la
+  Fase 5.
+- No se implementó el botón "quitar fondo" para assets con `fondo_pendiente`
+  (el plan lo menciona como opcional: "ofrecer un botón que dispare
+  `quitar_fondos.py`"). Queda para cuando se retome esta fase si José lo
+  pide.
+
+## Archivos tocados esta fase
+
+**Modificados:** `editor/f6_overlays.py` (`cargar_eventos_manual()`,
+`planificar_overlays(eventos_manual=...)`, flag `--eventos-manual`),
+`editor/editor.py` (propagación del flag), `editor/f10_editor_visual.py`
+(`render_tarjeta_catalogo()`, `fondo_pendiente()`, `catalogo_pip()`,
+`movibles` ahora trae `asset`/`archivo`, `recolectar()` trae `limites`),
+`editor/f11_servidor.py` (`/catalogo`, `/miniatura`, `/tarjeta`, `/guardar`,
+panel completo de colección de PiP en HTML/CSS/JS).
+
+## Punto de retome
+
+Sigue la **Fase 5** del plan (§4): botón "Re-renderizar" → `POST /render` →
+`editor.py --reaplicar --sin-editor-visual` (el `--sin-editor-visual` es
+obligatorio, ver la nota de timing de la Fase 0: sin él el ciclo tarda 77s
+en vez de 34s) con los JSON de ajustes ya escritos por `/guardar`. Progreso
+en vivo leyendo las líneas `render: N/M frames` que imprime
+`f4_retencion` (stdout ya va a un log de texto, no a un pipe — hay que
+leerlo con polling o Server-Sent Events, ambos triviales con stdlib). Guardar
+siempre antes de renderizar (ya existe `/guardar`). Recargar el preview al
+terminar. Apertura automática al terminar `editor.py` + apertura manual con
+`f11_servidor.py "<carpeta>"` (ya soportado, es como se probó todo esta
+sesión). La Fase 4 (sonidos) la está cerrando la otra sesión — cuando
+termine, revisar `git log` antes de tocar `f5_audio.py` o el panel de SFX de
+`f11_servidor.py` si se llega a construir ahí.

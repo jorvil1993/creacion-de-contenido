@@ -635,7 +635,8 @@ def _texto_eco_loop(texto_hook: str) -> str:
 def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir_tmp: Path,
                          intervalos_conservados: list = None, hook_manual: str = None,
                          track_rostro: list = None, generar: bool = True,
-                         nombre_video: str = "video", sol_pip_video: bool = False) -> list:
+                         nombre_video: str = "video", sol_pip_video: bool = False,
+                         eventos_manual: list = None) -> list:
     import f8_hyperframes
     eventos = []
     hf = config.USAR_HYPERFRAMES and f8_hyperframes.disponible()
@@ -786,32 +787,41 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
     # Respaldo de generación en GPU. El servidor de ComfyUI arranca de forma
     # perezosa: si todas las imágenes están en caché (o no hace falta ninguna),
     # no se levanta nunca y no cuesta un segundo.
-    import f9_generar
-    pendientes = []
-    servidor = f9_generar.ServidorCompartido() if (generar and config.GENERAR_HABILITADO) else None
-    try:
-        gen_fn = None
-        if servidor is not None and f9_generar.instalado():
-            gen_fn = lambda tag, frase: f9_generar.generar_para_tag(tag, frase, servidor=servidor)
-        insertos = planificar_insertos_por_palabra(
-            palabras, track_rostro or [], dir_tmp, _libre,
-            generador=gen_fn, pendientes=pendientes)
-    finally:
-        if servidor is not None:
-            servidor.cerrar()
+    if eventos_manual is not None:
+        # El editor visual v2 (Fase 2 del plan) ya decidió qué assets mostrar
+        # y dónde: se usa tal cual, sin correr el disparo automático ni tocar
+        # ComfyUI/Flux. "Reemplaza la lista completa de eventos [de inserto]",
+        # distinto de --posiciones-manual que solo mueve los que el
+        # automático ya eligió.
+        insertos = eventos_manual
+    else:
+        import f9_generar
+        pendientes = []
+        servidor = f9_generar.ServidorCompartido() if (generar and config.GENERAR_HABILITADO) else None
+        try:
+            gen_fn = None
+            if servidor is not None and f9_generar.instalado():
+                gen_fn = lambda tag, frase: f9_generar.generar_para_tag(tag, frase, servidor=servidor)
+            insertos = planificar_insertos_por_palabra(
+                palabras, track_rostro or [], dir_tmp, _libre,
+                generador=gen_fn, pendientes=pendientes)
+        finally:
+            if servidor is not None:
+                servidor.cerrar()
 
-    if pendientes:
-        # Conceptos que el guion nombró y nadie pudo ilustrar: quedan anotados
-        # con su prompt listo para generarlos fuera (Google Flow / Nano Banana).
-        f9_generar.escribir_prompts_externos(pendientes)
-        print(f"  {len(pendientes)} concepto(s) sin imagen -> contexto/prompts-externos.md")
+        if pendientes:
+            # Conceptos que el guion nombró y nadie pudo ilustrar: quedan anotados
+            # con su prompt listo para generarlos fuera (Google Flow / Nano Banana).
+            f9_generar.escribir_prompts_externos(pendientes)
+            print(f"  {len(pendientes)} concepto(s) sin imagen -> contexto/prompts-externos.md")
 
     for ev in insertos:
         eventos.append(ev)
         ventanas_ocupadas.append((ev["ini"], ev["fin"]))
-        print(f"  inserto por '{ev['palabra']}' ({ev['tag']}) en {ev['ini']:.1f}s -> {ev['asset']}")
+        origen = "manual" if eventos_manual is not None else f"por '{ev.get('palabra','')}' ({ev.get('tag','')})"
+        print(f"  inserto {origen} en {ev['ini']:.1f}s -> {ev.get('asset','?')}")
 
-    if not insertos:
+    if not insertos and eventos_manual is None:
         # Respaldo: si el catálogo no tiene nada aplicable, al menos mostrar
         # una foto de producto si existe en assets/productos/
         foto_producto = _buscar_foto_producto_default()
@@ -1021,6 +1031,70 @@ def aplicar_posiciones_manual(eventos: list, ruta_json: Path) -> int:
     return aplicados
 
 
+def cargar_eventos_manual(ruta_json: Path, dir_tmp: Path, catalogo: list = None) -> list | None:
+    """Lista completa de insertos `pip-producto` armada a mano en el editor
+    visual (Fase 2 del plan v2): sustituir, añadir y quitar sin correr el
+    disparo automático. Cada entrada trae {ini, fin, x, y, asset_id} (o
+    "archivo" si ya tiene un PNG renderizado — p.ej. uno que el editor no
+    tocó). Si trae asset_id, se busca en el catálogo y se renderiza con
+    render_pip_producto(); el resultado se cachea por asset_id para no
+    volver a renderizar en cada --reaplicar.
+
+    None si el archivo no existe o no es válido (respaldo: automático).
+    """
+    if not ruta_json.exists():
+        print(f"AVISO: no existe {ruta_json} — se usa el disparo automático de insertos.")
+        return None
+    try:
+        datos = json.loads(ruta_json.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"AVISO: {ruta_json} no es un JSON válido ({e}) — disparo automático.")
+        return None
+    if isinstance(datos, dict):
+        datos = datos.get("eventos", [])
+
+    catalogo = _cargar_catalogo() if catalogo is None else catalogo
+    por_id = {a["id"]: a for a in catalogo}
+
+    eventos = []
+    for i, ev in enumerate(datos):
+        asset_id = ev.get("asset_id")
+        archivo = ev.get("archivo")
+        if asset_id:
+            asset = por_id.get(asset_id)
+            if asset is None:
+                print(f"AVISO: asset_id '{asset_id}' no está en el catálogo — evento manual #{i} omitido.")
+                continue
+            ruta_img = _version_sin_fondo(asset) or (config.RAIZ_PROYECTO / asset["ruta"])
+            if not ruta_img.exists():
+                print(f"AVISO: no existe el archivo de '{asset_id}' — evento manual #{i} omitido.")
+                continue
+            nombre_cache = re.sub(r"[^\w-]", "_", asset_id)
+            ruta_png = dir_tmp / f"manual_{nombre_cache}.png"
+            if not ruta_png.exists():
+                render_pip_producto(ruta_img, ruta_png, ancho=400, alto=520, centrar_en_lienzo=False)
+        elif archivo and Path(archivo).exists():
+            ruta_png = Path(archivo)
+        else:
+            print(f"AVISO: evento manual #{i} sin 'asset_id' ni 'archivo' válido — omitido.")
+            continue
+
+        try:
+            ini, fin = float(ev["ini"]), float(ev["fin"])
+        except (KeyError, TypeError, ValueError):
+            print(f"AVISO: evento manual #{i} sin ini/fin válidos — omitido.")
+            continue
+
+        eventos.append({
+            "tipo": ev.get("tipo", "pip-producto"), "archivo": ruta_png,
+            "x": int(ev.get("x", 0)), "y": int(ev.get("y", 0)),
+            "ini": round(ini, 3), "fin": round(fin, 3),
+            "palabra": ev.get("palabra", ""), "tag": ev.get("tag", ""),
+            "asset": asset_id or ev.get("asset", "manual"),
+        })
+    return eventos
+
+
 def _duracion_video(ruta: Path) -> float:
     cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration",
            "-of", "default=noprint_wrappers=1:nokey=1", str(ruta)]
@@ -1046,6 +1120,10 @@ def main():
     parser.add_argument("--posiciones-manual", type=str, default=None, metavar="JSON",
                         help="Posiciones de insertos elegidas a mano (las exporta el editor "
                              "visual, f10_editor_visual.py). Reemplazan a las automáticas.")
+    parser.add_argument("--eventos-manual", type=str, default=None, metavar="JSON",
+                        help="Lista completa de insertos pip-producto armada en el editor visual "
+                             "(Fase 2): sustituye QUÉ asset se muestra, no solo dónde. Distinto de "
+                             "--posiciones-manual.")
     parser.add_argument("--nombre-video", type=str, default=None,
                         help="Nombre del video: de aquí sale la semilla determinista que elige la "
                              "variante de cada animación. Mismo nombre = mismo resultado siempre.")
@@ -1064,13 +1142,19 @@ def main():
 
     duracion = _duracion_video(ruta_video)
     intervalos_conservados = datos_transcripcion.get("intervalos_conservados_original", [])
+
+    eventos_manual = None
+    if args.eventos_manual:
+        eventos_manual = cargar_eventos_manual(Path(args.eventos_manual), dir_tmp)
+
     eventos = planificar_overlays(palabras, plan.get("huecos_regla_5s", []), duracion, dir_tmp,
                                    intervalos_conservados=intervalos_conservados,
                                    hook_manual=args.hook,
                                    track_rostro=plan.get("track_rostro", []),
                                    generar=not args.sin_generar,
                                    nombre_video=args.nombre_video or ruta_video.stem,
-                                   sol_pip_video=args.sol_pip_video)
+                                   sol_pip_video=args.sol_pip_video,
+                                   eventos_manual=eventos_manual)
 
     if args.posiciones_manual:
         aplicar_posiciones_manual(eventos, Path(args.posiciones_manual))
