@@ -301,7 +301,14 @@ SFX_POR_EVENTO = {
     "punch-in":     {"archivos": ["whoosh_simple.mp3", "whoosh_rapido.mp3",
                                   "whoosh_deep_1.mp3", "whoosh_deep_2.mp3"],   "volumen": 0.65},
     "pip-producto": {"archivos": ["pop.mp3"],                                  "volumen": 0.95},
-    "sticker":      {"archivos": ["notificacion_chime.mp3"],                   "volumen": 0.80},
+    # "sticker" es el cajón por defecto: aquí caen también las animaciones y la
+    # ficha técnica. Con un solo archivo la rotación de arriba no podía hacer
+    # nada y el mismo chime sonaba 4 veces en 37s (medido en el video de
+    # prueba) — se oye como un tic del editor, no como una intención. Segundo
+    # archivo añadido para que la rotación funcione; los volúmenes calibrados
+    # NO se tocan.
+    "sticker":      {"archivos": ["notificacion_chime.mp3",
+                                  "notificacion_1.mp3"],                       "volumen": 0.80},
     "cta":          {"archivos": ["notificacion_success.mp3"],                 "volumen": 0.90},
 }
 

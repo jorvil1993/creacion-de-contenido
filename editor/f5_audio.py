@@ -86,6 +86,98 @@ def _ruta_musica(nombre_archivo: str) -> Path | None:
     return ruta if ruta.exists() else None
 
 
+def clave_ancla(ev: dict, vistas: dict = None) -> str:
+    """Identidad estable de un evento visual, para que su sonido lo siga.
+
+    La regla editorial del pipeline es "el sonido acompaña un evento visual"
+    (config.py:285). Hasta v1 esa regla solo valía al GENERAR: si después José
+    arrastraba un PiP en el editor, su `pop` se quedaba en el segundo viejo y la
+    regla se rompía en silencio. El ancla la mantiene también al editar.
+
+    No se usa el tiempo como identidad — es justo lo que cambia al mover algo.
+    Se usa qué es: el asset del PiP, el nombre y la variante de la animación, o
+    el tipo cuando es único (hook, cta, specs). `vistas` lleva la cuenta de
+    repeticiones para distinguir dos eventos por lo demás idénticos.
+    """
+    tipo = ev.get("tipo", "")
+    if tipo.startswith("anim-"):
+        base = f"{tipo}|v{ev.get('variante', '')}"
+    elif tipo == "pip-producto":
+        base = f"pip|{ev.get('asset') or ev.get('asset_id') or ''}"
+    else:
+        base = tipo
+    if vistas is None:
+        return base
+    n = vistas.get(base, 0)
+    vistas[base] = n + 1
+    return f"{base}#{n}"
+
+
+def reanclar_sfx(eventos_sfx: list, eventos_overlay: list) -> int:
+    """Devuelve cada SFX anclado al segundo donde HOY está su evento visual.
+
+    Se llama al cargar una lista manual: si José movió un PiP en el editor, su
+    `pop` se mueve con él sin que tenga que arrastrar las dos cosas. Si borró el
+    evento visual, el sonido se queda donde estaba y se avisa — borrarle el
+    sonido por su cuenta sería decidir por él.
+    """
+    if not eventos_overlay:
+        return 0
+    vistas = {}
+    posiciones = {clave_ancla(ev, vistas): float(ev["ini"]) for ev in eventos_overlay}
+
+    movidos = 0
+    for ev in eventos_sfx:
+        ancla = ev.get("ancla")
+        if not ancla:
+            continue
+        if ancla not in posiciones:
+            _log(f"AVISO: el sonido de {ev['t']:.2f}s estaba anclado a '{ancla}', que ya no "
+                 f"existe — se queda donde está.")
+            continue
+        nuevo = round(posiciones[ancla] + float(ev.get("desfase", 0.0)), 3)
+        if abs(nuevo - float(ev["t"])) > 0.01:
+            _log(f"  sonido reanclado: {ev['t']:.2f}s -> {nuevo:.2f}s (sigue a '{ancla}')")
+            ev["t"] = nuevo
+            movidos += 1
+    if movidos:
+        eventos_sfx.sort(key=lambda e: e["t"])
+    return movidos
+
+
+def avisos_sfx(eventos: list) -> list:
+    """Problemas que el automático no resuelve solo y que José debe poder VER.
+
+    No bloquean nada: el criterio del plan v2 es que lo automático es un primer
+    borrador, no un veredicto. El editor los pinta en amarillo y él decide.
+    """
+    avisos = []
+    ordenados = sorted(eventos, key=lambda e: e["t"])
+
+    for a, b in zip(ordenados, ordenados[1:]):
+        hueco = b["t"] - a["t"]
+        if hueco < config.SFX_SEPARACION_MIN_S:
+            avisos.append({
+                "tipo": "separacion", "t": b["t"],
+                "texto": f"{b['archivo']} cae a {hueco:.2f}s del anterior "
+                         f"(mínimo recomendado {config.SFX_SEPARACION_MIN_S}s)",
+            })
+
+    # Tres veces el mismo sonido seguido se oye como un tic del editor, no como
+    # una intención. Es el mismo problema de "uso sin discreción" que motivó
+    # rediseñar los SFX por evento visual.
+    seguidos, anterior = 0, None
+    for e in ordenados:
+        seguidos = seguidos + 1 if e["archivo"] == anterior else 1
+        anterior = e["archivo"]
+        if seguidos >= 3:
+            avisos.append({
+                "tipo": "repeticion", "t": e["t"],
+                "texto": f"{e['archivo']} suena {seguidos} veces seguidas",
+            })
+    return avisos
+
+
 def construir_eventos_sfx(plan_retencion: dict, eventos_overlay: list = None) -> list:
     """SFX atados a EVENTOS VISUALES, no a picos de volumen de la voz.
 
@@ -99,15 +191,18 @@ def construir_eventos_sfx(plan_retencion: dict, eventos_overlay: list = None) ->
     por prioridad y se asigna un sonido distinto según el tipo, rotando entre
     variantes.
     """
-    candidatos = [{"t": 0.0, "tipo": "hook", "prioridad": 100}]
+    candidatos = [{"t": 0.0, "tipo": "hook", "prioridad": 100, "ancla": "hook#0"}]
 
-    # Overlays que aparecen en pantalla (PiP de producto, CTA, stickers)
+    # Overlays que aparecen en pantalla (PiP de producto, CTA, animaciones)
+    vistas = {}
     for ev in (eventos_overlay or []):
         tipo = ev.get("tipo", "")
+        ancla = clave_ancla(ev, vistas)                 # se cuenta también el hook
         if tipo == "hook":
             continue                                   # ya está arriba, en t=0
         clave = tipo if tipo in config.SFX_POR_EVENTO else "sticker"
-        candidatos.append({"t": float(ev["ini"]), "tipo": clave, "prioridad": 90})
+        candidatos.append({"t": float(ev["ini"]), "tipo": clave, "prioridad": 90,
+                           "ancla": ancla})
 
     # Cortes entre planos: cambio visual real (jump cut)
     for plano in plan_retencion.get("planos", [])[1:]:
@@ -135,12 +230,18 @@ def construir_eventos_sfx(plan_retencion: dict, eventos_overlay: list = None) ->
         cfg = config.SFX_POR_EVENTO[c["tipo"]]
         i = usados_por_tipo.get(c["tipo"], 0)
         usados_por_tipo[c["tipo"]] = i + 1
-        eventos.append({
+        evento = {
             "t": round(c["t"], 3),
             "archivo": cfg["archivos"][i % len(cfg["archivos"])],
             "volumen": cfg["volumen"],
             "razon": c["tipo"],
-        })
+        }
+        if c.get("ancla"):
+            # De qué evento visual cuelga este sonido, y con cuánto desfase.
+            # Es lo que permite que al mover el PiP en el editor su `pop` lo siga.
+            evento["ancla"] = c["ancla"]
+            evento["desfase"] = 0.0
+        eventos.append(evento)
     return eventos
 
 
@@ -169,15 +270,30 @@ def escribir_hoja_sonido(eventos: list, palabras: list, ruta: Path, duracion: fl
         "",
         "## Efectos colocados",
         "",
-        "| t | evento | sonido | vol | qué se dice ahí |",
-        "|---|---|---|---|---|",
+        "`sigue a` es el evento visual del que cuelga el sonido: si ese overlay se",
+        "mueve en el editor, el sonido se mueve con él.",
+        "",
+        "| t | evento | sonido | vol | sigue a | qué se dice ahí |",
+        "|---|---|---|---|---|---|",
     ]
 
     for ev in eventos:
         t = ev["t"]
         cerca = [p["texto"] for p in palabras if t - 0.9 <= p["inicio"] <= t + 1.4]
         frase = " ".join(cerca)[:52] or "—"
-        L.append(f"| {t:.2f}s | {ev['razon']} | `{ev['archivo']}` | {ev['volumen']} | {frase} |")
+        ancla = f"`{ev['ancla']}`" if ev.get("ancla") else "—"
+        L.append(f"| {t:.2f}s | {ev['razon']} | `{ev['archivo']}` | {ev['volumen']} | "
+                 f"{ancla} | {frase} |")
+
+    avisos = avisos_sfx(eventos)
+    if avisos:
+        L += [
+            "",
+            "## Avisos (no bloquean nada — decide José)",
+            "",
+        ]
+        for a in avisos:
+            L.append(f"- **{a['t']:.2f}s** · {a['texto']}")
 
     L += [
         "",
@@ -223,13 +339,18 @@ def escribir_hoja_sonido(eventos: list, palabras: list, ruta: Path, duracion: fl
         "",
         "```json",
         "[",
-        '  {"t": 14.87, "archivo": "pop.mp3", "volumen": 0.95, "razon": "producto"},',
+        '  {"t": 14.87, "archivo": "pop.mp3", "volumen": 0.95, "razon": "producto",',
+        '   "ancla": "pip|kindle-pw-jade#0", "desfase": 0.0},',
         '  {"t": 22.10, "archivo": "impacto_hit.mp3", "volumen": 0.9, "razon": "enfasis"}',
         "]",
         "```",
         "",
         "Guardarlo y correr `f5_audio.py ... --sfx-manual ese_archivo.json`.",
         "Reemplaza la lista automática por completo.",
+        "",
+        "`ancla` es opcional. Si está, el `t` se recalcula solo a partir de dónde esté",
+        "hoy ese evento visual (`desfase` es cuánto se adelanta o atrasa respecto a él).",
+        "Un sonido sin `ancla` se queda exactamente en su `t`.",
     ]
     ruta.write_text("\n".join(L), encoding="utf-8")
 
@@ -360,6 +481,9 @@ def main():
             e.setdefault("razon", "manual")
         eventos.sort(key=lambda e: e["t"])
         _log(f"SFX manuales cargados desde {args.sfx_manual} (se ignora la lista automática)")
+        # El sonido sigue a su evento visual: si el PiP se movió desde la Fase 2,
+        # su `pop` se mueve con él sin que José tenga que arrastrar las dos cosas.
+        reanclar_sfx(eventos, eventos_overlay)
     else:
         eventos = construir_eventos_sfx(plan, eventos_overlay)
 
@@ -373,7 +497,11 @@ def main():
     detalle = ", ".join(f"{v} {k}" for k, v in sorted(conteo.items()))
     _log(f"Eventos SFX planificados: {len(eventos)} ({detalle})")
     for e in eventos:
-        _log(f"  {e['t']:6.2f}s  {e['razon']:<13} {e['archivo']}")
+        ancla = f"  -> sigue a {e['ancla']}" if e.get("ancla") else ""
+        _log(f"  {e['t']:6.2f}s  {e['razon']:<13} {e['archivo']}{ancla}")
+
+    for aviso in avisos_sfx(eventos):
+        _log(f"  AVISO [{aviso['tipo']}] {aviso['t']:.2f}s: {aviso['texto']}")
 
     mezclar_audio(ruta_video, eventos, ruta_salida, usar_musica=not args.sin_musica, musica_archivo=args.musica)
     _log(f"\nAudio mezclado: {ruta_salida}")
