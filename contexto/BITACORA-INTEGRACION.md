@@ -377,3 +377,165 @@ stickers, eco, posiciones manuales), `editor/f7_animaciones.py` (semilla),
 `plantillas/README.md`, `.claude/skills/editor-deviceshop/SKILL.md`.
 
 **Fuera del proyecto:** `C:\ai-video\nltk_data\` (copia de los datos de nltk).
+
+---
+
+# Sesión — Editor visual v2, Fase 0 (2026-07-26, ~14:40–15:05)
+
+Ejecuta `contexto/PLAN-EDITOR-VISUAL-V2.md`. Cierra la Fase 0 (preparación, sin
+interfaz todavía). Las Fases 1-5 quedan para la próxima sesión — ver "Punto de
+retome" al final.
+
+## 0 · Concurrencia — cómo se resolvió
+
+Al arrancar, `editor/config.py`, `editor.py`, `f6_overlays.py`,
+`f7_animaciones.py`, `f8_hyperframes.py` y un archivo nuevo
+(`editor/preparar_pip_sol.py`) tenían escrituras de 14:29–14:38, posteriores a
+las que registra el plan (§0, cerradas a las 13:18). Se verificó que era
+**Antigravity IDE** (proceso activo confirmado con `tasklist`), no otra sesión
+de Claude Code. José confirmó que ya no está trabajando y dio luz verde.
+
+Antes de tocar nada se inicializó git en el proyecto (no existía) y se hizo un
+commit de snapshot (`8cc9e8c`, solo código/docs vía `.gitignore`, sin medios —
+el proyecto pesa 4.1 GB y `salida/`+`entrada/`+medios quedan fuera). Sirve como
+red de recuperación si una sesión futura pisa a otra; no cambia nada del
+comportamiento del pipeline.
+
+Lo que Antigravity dejó en `editor/` **no se descartó**: ya tenía construida
+buena parte de la Fase 3a (animación de sol) — `f7_animaciones.animar_sol()`
+(PIL, respaldo), `anim-sol` registrado en `f8_hyperframes.py` (duración 2.4s),
+las etiquetas en `config.py`, y un flag `--sol-pip-video` en `editor.py` y
+`f6_overlays.py` que elige entre `assets/sol_video_pip.mov` (de
+`editor/preparar_pip_sol.py`, video real recortado a tarjeta PiP) o la
+animación Hyperframes. José pidió explícitamente **no cerrarlo a una sola
+opción**: si hay video real, usarlo; si no, generar con Hyperframes. El
+mecanismo de Antigravity ya lo resuelve así (flag apagado = Hyperframes por
+defecto, verificado en el log de la Fase 0 más abajo: "animación 'sol'
+(variante 0) por 'sol' en 29.0s [Hyperframes]"). Falta exponer esa elección
+desde el editor (Fase 3c) — se retoma ahí, no hace falta revisitar el diseño.
+
+## 1 · Recorte de productos faltantes
+
+`quitar_fondos.py --por-modelo 2` (tal como lo pedía el plan) **no hacía nada
+nuevo**: 0 hechas, 28 ya existían. Causa real: `seleccionar()` solo agrupaba
+`tipo in ("producto", "caja")`, y de los 26 productos sin recorte, la mayoría
+son **fundas y accesorios** (`tipo="funda"/"accesorio"`) — nunca iban a entrar
+por ese filtro. `_puntaje()` en el mismo archivo ya tenía pesos para esos dos
+tipos (20 y 15), así que quedar fuera de `seleccionar()` era una
+inconsistencia dentro del propio archivo, no una decisión de diseño. Además
+"funda" y "accesorio" son 2 de los 4 tipos que la Fase 2 promete poder filtrar
+— no tenía sentido dejarlos sin recorte.
+
+**Corrección aplicada:** `quitar_fondos.py` línea ~58, se amplió el filtro a
+`("producto", "caja", "funda", "accesorio")`.
+
+Con el fix: 31/41 productos cubiertos (antes 15/41). Los 10 restantes
+(`kobo-clara`, `kobo-libra`, `paperwhite`, `basic`, `resenas`, `videos`,
+`videos-pagina-web`) solo tienen `captura-web` o `video` en el catálogo — sin
+foto no hay recorte posible, es un límite real de los datos, no del script.
+
+**Verificado a ojo (como pide el plan):** 12 recortes revisados. Dos salieron
+mal, exactamente la falla que el plan anticipaba (rembg come el borde de una
+prenda oscura sobre fondo oscuro cerca de una sombra/dedo):
+- `assets/productos/kobo-clara/frontal.png` — mordida grande en la esquina
+  inferior izquierda.
+- `assets/productos/funda-kobo-libra-colour/frontal.png` — mismo patrón.
+
+**No se forzaron** (instrucción explícita del plan). Quedan anotados aquí para
+que José decida: recortar a mano, usar `vista2.png` de cada uno en su lugar, o
+volver a fotografiar con más contraste de fondo.
+
+## 2 · `editor.py --reaplicar`
+
+Implementado (líneas ~87-121 de `editor.py`): si está activo, valida que
+`01_transcripcion.json`, `02_cortado.mp4`, `02_cortado.json` y
+`03_retencion.plan.json` existan en la carpeta de trabajo (si falta alguno,
+error claro y sale) y salta directo a subtítulos → overlays → render → audio,
+sin invocar `f1_transcribir.py`, `f2_cortar.py` ni el análisis de
+`f4_retencion.py --sin-render`.
+
+**Verificado, no solo "corrió sin error":** copia de prueba de
+`C:\ai-video\salida\FINAL_integracion\` a `...\test_reaplicar\` (para no tocar
+la corrida de referencia). `07_FINAL.mp4` antes: 1105 frames, 37.132s. Después
+de `--reaplicar`: **1105 frames, 37.132s** — idéntico. Confirmado con
+`ffprobe -count_frames`, no solo con el log.
+
+**El "~45s" del criterio de aceptación no cerraba tal cual estaba escrito** —
+el plan lo calculó sumando solo 3 de los 5 pasos que `--reaplicar` en realidad
+ejecuta (le faltaron sumar FASE 2 "subtítulos" y el paso EXTRA "editor visual
+v1"). Medido con `time`:
+- `--reaplicar` (default, regenera el HTML v1 autocontenido): **77.1s**.
+- `--reaplicar --sin-editor-visual`: **33.8s** — dentro del objetivo.
+
+La diferencia (~43s) es el costo de re-embeber en base64 el video completo +
+13 MP3 en `09_editor-visual.html` en cada corrida — exactamente lo que la
+Fase 1 (servidor) reemplaza. **Conclusión para la Fase 5:** el botón
+"Re-renderizar" del editor debe llamar `--reaplicar --sin-editor-visual`, no
+`--reaplicar` a secas. Con eso el criterio de aceptación de la Fase 0 se
+cumple. Anotado aquí para no repetir la sorpresa en la Fase 5.
+
+`test_reaplicar/` se dejó en `C:\ai-video\salida\` (fuera de OneDrive, no
+cuesta nada dejarlo) como evidencia y por si sirve para probar la Fase 1.
+
+## 3 · Proxy de video
+
+`f10_editor_visual.generar_proxy(video, dir_trabajo)` (nueva función). Escala
+a 540×960 con `libx264 -preset veryfast -crf 28` + `-movflags +faststart`.
+Cachea por mtime contra el video de origen — si el proxy es más nuevo, no
+regenera.
+
+Medido sobre `02_cortado.mp4` (75 MB): proxy de **2.04 MB** en **7.66s**
+(bajo el ~5MB estimado en el plan). Segunda llamada (cache hit): 0.000s.
+Vive en `<dir_trabajo>/_editor/proxy.mp4` — ya fuera de OneDrive porque
+`dir_trabajo` cuelga de `config.DIR_SALIDA` (`C:\ai-video\salida\`).
+
+## 4 · Caché de miniaturas del catálogo
+
+`f10_editor_visual.miniatura_catalogo(asset, dir_cache=None, ancho=200)`
+(nueva función). JPEG de ~200px de ancho; para `medio="video"` extrae un
+frame en t=0.5s con ffmpeg, para `medio="imagen"` usa PIL. Nombre de archivo:
+`id` del asset con `\` y `/` reemplazados por `__` (los id del catálogo traen
+rutas con backslash). Cachea por mtime del original, igual que el proxy.
+
+Nueva constante `config.DIR_EDITOR_CACHE = C:\ai-video\_editor_cache` (fuera
+de OneDrive; es un caché *compartido* entre corridas, a diferencia del proxy
+que es por-corrida).
+
+Generadas las 198 miniaturas aptas para PiP: **17.69s** la primera vez, **0**
+fallidas. Se disparó un `PIL.Image.DecompressionBombWarning` en una foto
+>100MP (propia, sin riesgo real) — se silenció con
+`Image.MAX_IMAGE_PIXELS = None` dentro de la función.
+
+Caché ya generado en `C:\ai-video\_editor_cache\thumbs\` — la Fase 1 solo
+necesita servirlo por HTTP, no generarlo de nuevo.
+
+## Duda resuelta sin parar a preguntar
+
+Dónde vive el caché de miniaturas (por-corrida vs compartido): el plan no lo
+especifica. Se decidió compartido (`C:\ai-video\_editor_cache\`, no dentro de
+`dir_trabajo`) porque el catálogo es el mismo para todos los videos — cachear
+por-corrida habría repetido las 198 miniaturas en cada carpeta de salida sin
+motivo. Coherente con "Generar una sola vez" del plan.
+
+## Archivos tocados esta sesión
+
+**Nuevos:** `.gitignore`, `test_reaplicar/` (fuera de OneDrive, evidencia).
+
+**Modificados:** `editor/editor.py` (flag y lógica `--reaplicar`),
+`editor/quitar_fondos.py` (filtro de tipos en `seleccionar()`),
+`editor/f10_editor_visual.py` (`generar_proxy()`, `miniatura_catalogo()`),
+`editor/config.py` (`DIR_EDITOR_CACHE`).
+`assets/productos/`: 31 carpetas con recortes (16 nuevas: fundas y
+accesorios).
+
+## Punto de retome
+
+Fase 0 cerrada y verificada con evidencia (frames idénticos, timings medidos,
+recortes revisados a ojo). **Sigue la Fase 1** del plan (§4): crear
+`editor/f11_servidor.py` con `http.server` en `127.0.0.1:8765`, sirviendo la
+interfaz y `/datos` (ampliar `recolectar()` de `f10_editor_visual.py`, no
+duplicarlo), con el preview de encuadre real sobre `_editor/proxy.mp4` (ya
+generado por esta sesión) replicando el crop de `f4_retencion.py:374-386` con
+`transform: scale()` en CSS. El criterio de aceptación de la Fase 1 exige
+comparar contra fotogramas reales extraídos con ffmpeg en 3 momentos, uno
+dentro de un punch-in — no basta con que cargue en el navegador.

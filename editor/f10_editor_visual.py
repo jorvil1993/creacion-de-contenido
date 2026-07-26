@@ -57,6 +57,57 @@ def _miniatura(video: Path, t: float, ancho: int = 270) -> str | None:
         return _b64(salida, "image/jpeg")
 
 
+def generar_proxy(video: Path, dir_trabajo: Path) -> Path:
+    """Copia liviana (540x960, faststart) de `video` para que arrastrar la
+    línea de tiempo del editor sea instantáneo — `02_cortado.mp4` pesa 75 MB.
+    El render final SIEMPRE usa el original; esto es solo para scrubbing en
+    el navegador (sección 3 del plan v2)."""
+    dir_proxy = dir_trabajo / "_editor"
+    dir_proxy.mkdir(parents=True, exist_ok=True)
+    proxy = dir_proxy / "proxy.mp4"
+    if proxy.exists() and proxy.stat().st_mtime >= video.stat().st_mtime:
+        return proxy
+    subprocess.run([
+        "ffmpeg", "-y", "-loglevel", "error", "-i", str(video),
+        "-vf", f"scale={config.ANCHO // 2}:{config.ALTO // 2}",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "28",
+        "-c:a", "aac", "-b:a", "96k",
+        "-movflags", "+faststart", str(proxy),
+    ], check=True, capture_output=True)
+    return proxy
+
+
+def miniatura_catalogo(asset: dict, dir_cache: Path | None = None, ancho: int = 200) -> Path | None:
+    """Miniatura cacheada de un asset del catálogo (grid de PiP, Fase 2).
+    Nunca sirve el original al navegador: hay fotos de 4000x3000. Se
+    invalida por mtime del archivo original, no por conteo ni por tiempo."""
+    dir_cache = dir_cache or (config.DIR_EDITOR_CACHE / "thumbs")
+    dir_cache.mkdir(parents=True, exist_ok=True)
+    nombre = asset["id"].replace("\\", "__").replace("/", "__") + ".jpg"
+    destino = dir_cache / nombre
+    origen = config.RAIZ_PROYECTO / asset["ruta"]
+    if not origen.exists():
+        return None
+    if destino.exists() and destino.stat().st_mtime >= origen.stat().st_mtime:
+        return destino
+
+    if asset["medio"] == "video":
+        r = subprocess.run([
+            "ffmpeg", "-y", "-loglevel", "error", "-ss", "0.5", "-i", str(origen),
+            "-frames:v", "1", "-vf", f"scale={ancho}:-1", "-q:v", "6", str(destino),
+        ], capture_output=True)
+        if r.returncode != 0 or not destino.exists():
+            return None
+    else:
+        from PIL import Image
+        Image.MAX_IMAGE_PIXELS = None  # fotos propias de 4000x3000+, no hay riesgo que mitigar
+        with Image.open(origen) as im:
+            im = im.convert("RGB")
+            im.thumbnail((ancho, ancho * 2))
+            im.save(destino, "JPEG", quality=85)
+    return destino
+
+
 def recolectar(dir_trabajo: Path) -> dict:
     """Junta todo lo que el editor necesita desde la carpeta de trabajo."""
     dir_trabajo = Path(dir_trabajo)

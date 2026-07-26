@@ -59,6 +59,11 @@ DIR_MODELOS = RAIZ_AI_VIDEO / "models"
 DIR_VENV = RAIZ_AI_VIDEO / "venv312"
 DIR_COMFYUI = RAIZ_AI_VIDEO / "comfyui"
 
+# Caché del editor visual v2: miniaturas del catálogo (compartidas entre
+# corridas) y proxy de video (uno por corrida, vive en DIR_SALIDA/<nombre>/_editor/).
+# Fuera de OneDrive como todo lo demás (sección 3 del plan).
+DIR_EDITOR_CACHE = RAIZ_AI_VIDEO / "_editor_cache"
+
 VIDEO_PRUEBA = DIR_CONTEXTO / "tiktok video deviceshop.mp4"
 
 # ---------------------------------------------------------------------------

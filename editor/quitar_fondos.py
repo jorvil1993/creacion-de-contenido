@@ -55,7 +55,11 @@ def seleccionar(catalogo: list, por_modelo: int) -> dict:
             continue
         if "#no-usar-en-video" in a.get("tags", []):
             continue
-        if a["tipo"] not in ("producto", "caja"):
+        # "funda" y "accesorio" entran también: son 2 de los 4 tipos que la
+        # Fase 2 del editor visual promete poder filtrar (funda/producto/
+        # accesorio/caja) y _puntaje() ya les tenía peso asignado — quedaban
+        # fuera solo por este filtro, no por diseño.
+        if a["tipo"] not in ("producto", "caja", "funda", "accesorio"):
             continue
         grupos.setdefault(a["producto"], []).append(a)
 

@@ -68,6 +68,11 @@ def main():
                         help="Usar el video de sol (sol_video_pip.mov) como PiP en vez de la animación HTML")
     parser.add_argument("--sin-editor-visual", action="store_true",
                         help="No generar el editor visual HTML al terminar")
+    parser.add_argument("--reaplicar", action="store_true",
+                        help="Reutiliza la transcripción, el corte y el plan de retención de una "
+                             "corrida existente (mismo --nombre): entra directo en overlays -> "
+                             "render -> audio sin volver a transcribir ni cortar. Para iterar rápido "
+                             "desde el editor visual sobre ajustes de SFX/posiciones/eventos.")
     args = parser.parse_args()
 
     ruta_entrada = Path(args.entrada).resolve()
@@ -87,27 +92,43 @@ def main():
     video_compuesto = dir_trabajo / "06_video.mp4"
     video_final = dir_trabajo / "07_FINAL.mp4"
 
-    paso("FASE 1a: Transcripción (WhisperX)", [
-        "f1_transcribir.py", str(ruta_entrada), "--salida", str(transcripcion)
-    ])
+    json_cortado = video_cortado.with_suffix(".json")
 
     # El presentador cambia las muletillas y los umbrales: José y su esposa no
     # hablan igual (sección 2 del plan).
     perfil = ["--presentador", args.presentador] if args.presentador else []
 
-    paso("FASE 1b: Corte inteligente", [
-        "f2_cortar.py", str(transcripcion), str(ruta_entrada), "--salida", str(video_cortado),
-        *perfil,
-    ])
-    json_cortado = video_cortado.with_suffix(".json")
+    if args.reaplicar:
+        # Reusa 01/02/03 de una corrida anterior con el mismo --nombre: evita
+        # los 41s de transcripción + corte + análisis de retención en cada
+        # iteración desde el editor visual (sección Fase 0 del plan v2).
+        faltantes = [p for p in (transcripcion, video_cortado, json_cortado, plan_retencion)
+                     if not p.exists()]
+        if faltantes:
+            print(f"ERROR: --reaplicar necesita una corrida previa completa en {dir_trabajo}.\n"
+                  "Faltan:", file=sys.stderr)
+            for p in faltantes:
+                print(f"  {p}", file=sys.stderr)
+            print("Corré primero sin --reaplicar para generarlos.", file=sys.stderr)
+            sys.exit(1)
+        print(f"\n--reaplicar: reutilizando transcripción, corte y plan de retención de {dir_trabajo}")
+    else:
+        paso("FASE 1a: Transcripción (WhisperX)", [
+            "f1_transcribir.py", str(ruta_entrada), "--salida", str(transcripcion)
+        ])
 
-    # El nombre 03_retencion.mp4 no se renderiza: --sin-render solo escribe el
-    # plan JSON (03_retencion.plan.json); el render real ocurre en la fase de
-    # composición de abajo, con overlays y subtítulos en la misma pasada.
-    paso("FASE 3a: Análisis de retención (face tracking, punch-ins, regla de 5s)", [
-        "f4_retencion.py", str(video_cortado), str(json_cortado),
-        "--salida", str(dir_trabajo / "03_retencion.mp4"), "--sin-render", *perfil,
-    ])
+        paso("FASE 1b: Corte inteligente", [
+            "f2_cortar.py", str(transcripcion), str(ruta_entrada), "--salida", str(video_cortado),
+            *perfil,
+        ])
+
+        # El nombre 03_retencion.mp4 no se renderiza: --sin-render solo escribe el
+        # plan JSON (03_retencion.plan.json); el render real ocurre en la fase de
+        # composición de abajo, con overlays y subtítulos en la misma pasada.
+        paso("FASE 3a: Análisis de retención (face tracking, punch-ins, regla de 5s)", [
+            "f4_retencion.py", str(video_cortado), str(json_cortado),
+            "--salida", str(dir_trabajo / "03_retencion.mp4"), "--sin-render", *perfil,
+        ])
 
     paso("FASE 2: Subtítulos ASS", [
         "f3_subtitulos.py", str(json_cortado), "--salida", str(subtitulos_ass)
