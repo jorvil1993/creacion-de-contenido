@@ -455,7 +455,8 @@ def _frase_alrededor(palabras: list, t: float, ventana: float = 3.0) -> str:
 
 def planificar_insertos_por_palabra(palabras: list, track_rostro: list, dir_tmp: Path,
                                      libre_fn, catalogo: list = None,
-                                     generador=None, pendientes: list = None) -> list:
+                                     generador=None, pendientes: list = None,
+                                     tags_reservados: set = None) -> list:
     """Insertos visuales disparados por el guion, no por un tiempo arbitrario.
 
     Recorre la transcripción buscando palabras del vocabulario
@@ -470,7 +471,15 @@ def planificar_insertos_por_palabra(palabras: list, track_rostro: list, dir_tmp:
       3. **Generada con Flux** en el momento (f9_generar) — solo para conceptos
          de ambiente que ninguna foto del catálogo cubre: sol, cama, café,
          noche, viaje...
+
+    `tags_reservados` son las etiquetas que ya se llevó una animación
+    (config.CONCEPTOS_PREFIEREN_ANIMACION). Para esas NO se busca foto: el
+    catálogo tiene 30 assets etiquetados `#agua` porque son Kindle resistentes
+    al agua, y por eso decir "agua" devolvía una foto de producto en vez del
+    splash. Las etiquetas de esos 30 assets no se tocan — siguen valiendo para
+    sus otros usos; lo único que cambia es que estas ya no disparan un inserto.
     """
+    tags_reservados = tags_reservados or set()
     catalogo = _cargar_catalogo() if catalogo is None else catalogo
 
     producto = _producto_dominante(palabras)
@@ -486,6 +495,8 @@ def planificar_insertos_por_palabra(palabras: list, track_rostro: list, dir_tmp:
         tag = config.PALABRAS_A_TAGS.get(_normalizar(p["texto"]))
         if not tag:
             continue
+        if tag in tags_reservados:
+            continue                       # ese concepto ya lo cuenta una animación
         t0 = p["inicio"]
         if t0 - ultimo_t < config.INSERTO_SEPARACION_MIN_S:
             continue
@@ -602,6 +613,125 @@ def _variante(semilla: int, nombre: str, n: int = 3) -> int:
     return int(mezcla, 16) % n
 
 
+def _variante_aparicion(semilla: int, nombre: str, indice: int, n: int,
+                        previas: list) -> int:
+    """Variante para la aparición número `indice` de la misma animación.
+
+    José pidió que decir "agua" y luego "tina" dé DOS splash, pero distintos:
+    repetir la misma toma se lee como error de edición, y caer a una foto de
+    producto es justo lo que no quiere. Así que la semilla incluye el índice de
+    aparición, y además se fuerza que no repita ninguna variante ya usada en
+    este video mientras queden libres.
+
+    Sigue siendo determinista: todo sale de la semilla del nombre del video y
+    de datos que ya son deterministas. Renderizar el mismo video dos veces da
+    exactamente el mismo resultado — es lo que permite comparar renders.
+    """
+    base = _variante(semilla, f"{nombre}|{indice}", n)
+    if base not in previas or len(previas) >= n:
+        return base
+    for k in range(1, n):
+        candidata = (base + k) % n
+        if candidata not in previas:
+            return candidata
+    return base
+
+
+def _foto_dispositivo(producto: str | None, catalogo: list = None) -> Path | None:
+    """Foto real recortada del aparato protagonista del video.
+
+    La usa la animación de sol: enseña el Kindle de verdad, no un e-reader
+    dibujado. Está documentado que Flux no sabe cómo es un Kindle real, así que
+    para el producto siempre gana la foto — y desde la Fase 0 casi todos los
+    productos tienen recorte con alfa en assets/productos/<producto>/.
+
+    Orden: recorte del producto dominante > recorte de cualquier producto >
+    None (la composición dibuja su silueta de respaldo).
+    """
+    catalogo = _cargar_catalogo() if catalogo is None else catalogo
+
+    def puntaje(a):
+        p = 0
+        p += 60 if a.get("tipo") == "producto" else 0      # el aparato, no su funda
+        p += {"vertical": 25, "cuadrada": 12, "horizontal": 5}.get(a.get("orientacion"), 0)
+        p += {"blanco": 18, "transparente": 20, "ambiente": 4}.get(a.get("fondo"), 0)
+        return p
+
+    candidatos = [a for a in catalogo
+                  if a.get("medio") == "imagen"
+                  and "#no-usar-en-video" not in a.get("tags", [])
+                  and (not producto or producto in a.get("tags", []))]
+    for a in sorted(candidatos, key=puntaje, reverse=True):
+        recorte = _version_sin_fondo(a)
+        if recorte is not None and recorte.exists():
+            return recorte
+    return _buscar_foto_producto_default()
+
+
+def _etiqueta_animacion(nombre: str, indice: int) -> str:
+    """Texto de la animación. La repetición lleva el suyo: decir dos veces
+    "resistente al agua" con tres segundos de diferencia se lee como un error
+    de edición, no como énfasis."""
+    if indice > 0:
+        alterna = config.ANIMACION_ETIQUETAS_REPETICION.get(nombre)
+        if alterna:
+            return alterna
+    return config.ANIMACION_ETIQUETAS.get(nombre, "")
+
+
+def _construir_animacion(nombre: str, t0: float, var: int, dir_tmp: Path,
+                          track_rostro: list, hf: bool, semilla: int,
+                          foto_dispositivo: Path = None,
+                          usar_video_sol: bool = False,
+                          indice: int = 0) -> tuple:
+    """Renderiza UNA animación y devuelve (ruta, x, y, motor).
+
+    Compartido por el disparo automático y por la lista que arma el editor
+    (--animaciones-manual), para que las dos vías produzcan exactamente el
+    mismo clip y no puedan divergir.
+    """
+    import f7_animaciones
+    import f8_hyperframes
+
+    # Video real de sol: si José lo grabó, gana sobre cualquier animación
+    # dibujada. No se cierra a una sola opción — si el archivo no existe se cae
+    # a Hyperframes sin decir nada raro.
+    if usar_video_sol and nombre == "sol":
+        ruta_pip = config.DIR_ASSETS / "sol_video_pip.mov"
+        if ruta_pip.exists():
+            x, y = _posicion_inserto(420, 540, track_rostro or [], t0)
+            return ruta_pip, x, y, "Video PiP"
+
+    etiqueta = _etiqueta_animacion(nombre, indice)
+    if hf:
+        variables = {"variante": str(var), "etiqueta": etiqueta}
+        if nombre != "moto":                          # la moto cruza a lo ancho
+            variables["lado"] = _lado_libre(track_rostro or [], t0)
+        if nombre == "sol" and foto_dispositivo is not None:
+            ruta_rel = f8_hyperframes.preparar_imagen(foto_dispositivo)
+            if ruta_rel:
+                variables["imagen"] = ruta_rel
+        ruta = f8_hyperframes.render(f"anim-{nombre}", variables)
+        if ruta is not None:
+            return ruta, 0, 0, "Hyperframes"
+
+    # Respaldo PIL — también variado, y con nombre de archivo propio por
+    # variante: con un nombre fijo la segunda aparición pisaba el MOV de la
+    # primera y las dos terminaban apuntando al mismo clip.
+    dur = config.ANIMACION_DURACION.get(nombre, 2.4)
+    ruta = f7_animaciones.generar(nombre, dir_tmp, duracion=dur, semilla=semilla,
+                                  variante=var, foto_dispositivo=foto_dispositivo,
+                                  etiqueta=etiqueta)
+    if ruta is None:
+        return None, 0, 0, "PIL"
+    # El tamaño real del lienzo, no 420x420 fijo: el sol es más ancho y con el
+    # valor viejo se salía por el margen derecho.
+    w_pil, h_pil = f7_animaciones.TAMANOS.get(nombre, (420, 420))
+    x, y = ((0, int(ALTO * 0.10)) if nombre == "moto"
+            else _posicion_inserto(w_pil, h_pil, track_rostro or [], t0))
+    return ruta, x, y, "PIL"
+
+
 def _lado_libre(track_rostro: list, t: float) -> str:
     """Dónde poner un overlay para no taparle la cara: al lado contrario."""
     if not track_rostro:
@@ -636,7 +766,8 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
                          intervalos_conservados: list = None, hook_manual: str = None,
                          track_rostro: list = None, generar: bool = True,
                          nombre_video: str = "video", sol_pip_video: bool = False,
-                         eventos_manual: list = None) -> list:
+                         eventos_manual: list = None,
+                         animaciones_manual: list = None) -> list:
     import f8_hyperframes
     eventos = []
     hf = config.USAR_HYPERFRAMES and f8_hyperframes.disponible()
@@ -696,54 +827,143 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
     # un cargador; ahora es una batería que se llena contando semanas.
     # Motor primario Hyperframes (GSAP); PIL queda de respaldo.
     import f7_animaciones
-    anim_usadas, ultimo_anim = set(), -999.0
-    for p in palabras:
-        nombre = config.ANIMACIONES_POR_PALABRA.get(_normalizar(p["texto"]))
-        if not nombre or nombre in anim_usadas:
-            continue
-        t0 = p["inicio"]
-        if t0 - ultimo_anim < config.INSERTO_SEPARACION_MIN_S:
-            continue
-        dur = config.ANIMACION_DURACION.get(nombre, 2.4)
-        t1 = t0 + dur
-        if t0 < ini_cta and t1 > ini_cta:
-            t1 = ini_cta
-        if not _libre(t0, t1):
-            continue
 
-        var = _variante(semilla, nombre)
-        ruta_anim, x, y, motor = None, 0, 0, "PIL"
-        if sol_pip_video and nombre == "sol":
-            ruta_pip = config.DIR_ASSETS / "sol_video_pip.mov"
-            if ruta_pip.exists():
-                ruta_anim = ruta_pip
-                w_tarjeta, h_tarjeta = 420, 540
-                x, y = _posicion_inserto(w_tarjeta, h_tarjeta, track_rostro or [], t0)
-                motor = "Video PiP"
-        if ruta_anim is None and hf:
-            variables = {"variante": str(var),
-                         "etiqueta": config.ANIMACION_ETIQUETAS.get(nombre, "")}
-            if nombre != "moto":                      # la moto cruza a lo ancho
-                variables["lado"] = _lado_libre(track_rostro or [], t0)
-            ruta_anim = f8_hyperframes.render(f"anim-{nombre}", variables)
-            motor = "Hyperframes"
-        if ruta_anim is None:
-            # Respaldo PIL — también con variación determinista, para que no
-            # salga idéntico en todos los videos.
-            ruta_anim = f7_animaciones.generar(nombre, dir_tmp, duracion=dur, semilla=semilla)
-            motor = "PIL"
-            if ruta_anim is None:
+    # La animación de sol enseña el aparato REAL del video (§3a del plan v2)
+    producto_anim = _producto_dominante(palabras)
+    foto_dispositivo = _foto_dispositivo(producto_anim)
+
+    # nombre -> variantes ya usadas en este video. Antes era un `set` de
+    # nombres que vetaba la segunda aparición de cualquier animación: por eso
+    # decir "agua" traía splash y decir "tina" tres segundos después caía a una
+    # foto de producto. Ahora el límite es ANIMACION_MAX_POR_TIPO y la segunda
+    # sale con otra variante.
+    anim_hechas, t_animaciones = {}, []
+    # Etiquetas que a partir de ahora NO deben traer una foto del catálogo:
+    # para estos conceptos la animación gana (config.CONCEPTOS_PREFIEREN_ANIMACION).
+    tags_reservados = set()
+
+    plan_animaciones = animaciones_manual
+    if plan_animaciones is None:
+        plan_animaciones = []
+        for p in palabras:
+            nombre = config.ANIMACIONES_POR_PALABRA.get(_normalizar(p["texto"]))
+            if not nombre:
                 continue
-            x, y = ((0, int(ALTO * 0.10)) if nombre == "moto"
-                    else _posicion_inserto(420, 420, track_rostro or [], t0))
+            plan_animaciones.append({"nombre": nombre, "ini": p["inicio"],
+                                     "palabra": p["texto"]})
 
-        eventos.append({"tipo": f"anim-{nombre}", "archivo": ruta_anim, "medio": "video",
-                        "x": x, "y": y, "ini": round(t0, 3), "fin": round(t1, 3),
-                        "palabra": p["texto"]})
-        ventanas_ocupadas.append((t0, t1))
-        anim_usadas.add(nombre)
-        ultimo_anim = t0
-        print(f"  animación '{nombre}' (variante {var}) por '{p['texto']}' en {t0:.1f}s [{motor}]")
+    # Las etiquetas reservadas salen de la TRANSCRIPCIÓN, no de la lista de
+    # animaciones que se van a colocar. Dos razones:
+    #  - una animación que no cabe no debe dejar entrar la foto en su lugar;
+    #  - si José quita una animación desde el editor, en su hueco no debe
+    #    aparecer sola una foto de producto. Quitar algo tiene que dejar un
+    #    hueco, no invocar otra cosa por detrás.
+    for p in palabras:
+        n = _normalizar(p["texto"])
+        if n not in config.ANIMACIONES_POR_PALABRA:
+            continue
+        tag_palabra = config.PALABRAS_A_TAGS.get(n)
+        if tag_palabra in config.CONCEPTOS_PREFIEREN_ANIMACION:
+            tags_reservados.add(tag_palabra)
+
+    # Dos pasadas. En la primera solo entra la PRIMERA aparición de cada
+    # concepto; las repeticiones esperan a la segunda.
+    # Sin esto el orden del guion decidía por nosotros: "La batería dura semanas,
+    # literalmente semanas, y además es resistente al agua" colocaba la segunda
+    # batería a los 16.0s, esa ventana tapaba "resistente" a los 17.7s y el agua
+    # se quedaba sin animación. Medido, no supuesto. Una segunda mención nunca
+    # debe quitarle el sitio a la primera de otro concepto.
+    # En manual no hay reordenamiento: la lista de José se respeta como está.
+    pasadas = (0, 1) if animaciones_manual is None else (1,)
+    colocadas = set()
+
+    for pasada in pasadas:
+        for i, entrada in enumerate(plan_animaciones):
+            if i in colocadas:
+                continue
+            nombre = entrada.get("nombre")
+            if nombre not in config.ANIMACION_DURACION:
+                print(f"AVISO: animación desconocida '{nombre}' — se omite.")
+                colocadas.add(i)
+                continue
+            t0 = float(entrada["ini"])
+            palabra = entrada.get("palabra", "")
+
+            previas = anim_hechas.setdefault(nombre, [])
+            if pasada == 0 and previas:
+                continue                     # su turno es la segunda pasada
+            # En modo manual los límites son AVISO, no bloqueo: José ya decidió.
+            if len(previas) >= config.ANIMACION_MAX_POR_TIPO:
+                if animaciones_manual is not None:
+                    print(f"  AVISO: '{nombre}' repetida {len(previas) + 1} veces "
+                          f"(el automático corta en {config.ANIMACION_MAX_POR_TIPO}) — se respeta.")
+                else:
+                    continue
+            # Separación contra TODAS las ya colocadas, no solo contra la última:
+            # con dos pasadas el orden de colocación ya no es el orden del tiempo.
+            if any(abs(t0 - tp) < config.ANIMACION_SEPARACION_MIN_S for tp in t_animaciones):
+                if animaciones_manual is None:
+                    continue
+                print(f"  AVISO: animación en {t0:.1f}s a menos de "
+                      f"{config.ANIMACION_SEPARACION_MIN_S}s de otra — se respeta.")
+
+            dur = float(entrada.get("dur") or config.ANIMACION_DURACION.get(nombre, 2.4))
+            t1 = t0 + dur
+            if t1 > ini_cta > t0:
+                # El CTA le comería el gesto por la mitad. Se adelanta lo justo para
+                # que quepa entero, sin invadir el overlay anterior: enseñar media
+                # animación y cortarla se lee peor que empezarla medio segundo antes.
+                # (Caso real: "sol" se dice a 29.0s y el CTA entra a 30.7s — la
+                # animación de 2.6s se quedaba en 1.7s.)
+                fin_previo = max([b for a, b in ventanas_ocupadas if b <= t0] or [0.0])
+                adelanto = min(t1 - ini_cta, max(0.0, t0 - fin_previo))
+                if adelanto > 0.05:
+                    t0 -= adelanto
+                    t1 = t0 + dur
+                    print(f"  animación '{nombre}' adelantada {adelanto:.2f}s para que "
+                          f"entre completa antes del CTA")
+                t1 = min(t1, ini_cta)
+            if not _libre(t0, t1):
+                if animaciones_manual is None:
+                    continue
+                print(f"  AVISO: animación '{nombre}' en {t0:.1f}s se pisa con otro overlay — se respeta.")
+
+            n_var = config.ANIMACION_VARIANTES.get(nombre, 3)
+            var = entrada.get("variante")
+            var = int(var) % n_var if var is not None else _variante_aparicion(
+                semilla, nombre, len(previas), n_var, previas)
+
+            # El video real de sol solo sirve para la PRIMERA aparición: repetirlo
+            # daría dos veces la misma toma, que es lo que José no quiere.
+            usar_video_sol = bool(entrada.get("video_sol", sol_pip_video)) and not previas
+
+            ruta_anim, x, y, motor = _construir_animacion(
+                nombre, t0, var, dir_tmp, track_rostro, hf, semilla,
+                foto_dispositivo=foto_dispositivo, usar_video_sol=usar_video_sol,
+                indice=len(previas))
+            if ruta_anim is None:
+                print(f"AVISO: no se pudo construir la animación '{nombre}' para {t0:.1f}s.")
+                colocadas.add(i)
+                continue
+
+            eventos.append({"tipo": f"anim-{nombre}", "archivo": ruta_anim, "medio": "video",
+                            "x": x, "y": y, "ini": round(t0, 3), "fin": round(t1, 3),
+                            "palabra": palabra,
+                            # metadatos para el editor visual (§3c): qué animación
+                            # es, con qué variante salió y con qué motor
+                            "anim": nombre, "variante": var, "motor": motor,
+                            "miniatura": str(f7_animaciones.miniatura(ruta_anim) or "")})
+            ventanas_ocupadas.append((t0, t1))
+            previas.append(var)
+            t_animaciones.append(t0)
+            colocadas.add(i)
+            origen = f"por '{palabra}'" if palabra else "manual"
+            print(f"  animación '{nombre}' (variante {var}, aparición {len(previas)}) "
+                  f"{origen} en {t0:.1f}s [{motor}]")
+
+    if tags_reservados:
+        print(f"  conceptos con animación (no traen foto de catálogo): "
+              f"{', '.join(sorted(tags_reservados))}")
 
     # ---- FICHA TÉCNICA ----------------------------------------------------
     # Se arma con el producto que detecta el guion, así que dos videos de
@@ -804,7 +1024,8 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
                 gen_fn = lambda tag, frase: f9_generar.generar_para_tag(tag, frase, servidor=servidor)
             insertos = planificar_insertos_por_palabra(
                 palabras, track_rostro or [], dir_tmp, _libre,
-                generador=gen_fn, pendientes=pendientes)
+                generador=gen_fn, pendientes=pendientes,
+                tags_reservados=tags_reservados)
         finally:
             if servidor is not None:
                 servidor.cerrar()
@@ -1095,6 +1316,54 @@ def cargar_eventos_manual(ruta_json: Path, dir_tmp: Path, catalogo: list = None)
     return eventos
 
 
+def cargar_animaciones_manual(ruta_json: Path) -> list | None:
+    """Lista completa de animaciones armada en el editor visual (§3c del plan).
+
+    Es a las animaciones lo que `--eventos-manual` es a los insertos: reemplaza
+    el disparo por palabra entero, así que sirve para **quitar** una animación
+    (no ponerla en la lista), **moverla** (otro `ini`) y **añadirla** en un
+    segundo cualquiera eligiendo del inventario (`f8_hyperframes.inventario_animaciones()`).
+
+    Cada entrada: {"nombre": "sol", "ini": 28.9} y, opcionales, "dur",
+    "variante" (para fijar una toma concreta en vez de la determinista) y
+    "video_sol" (usar assets/sol_video_pip.mov en vez de la animación HTML).
+    Una lista vacía es una orden válida: "este video no lleva animaciones".
+
+    None si el archivo no existe o no es válido — entonces manda el automático.
+    """
+    if not ruta_json.exists():
+        print(f"AVISO: no existe {ruta_json} — se usa el disparo automático de animaciones.")
+        return None
+    try:
+        datos = json.loads(ruta_json.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"AVISO: {ruta_json} no es un JSON válido ({e}) — disparo automático.")
+        return None
+    if isinstance(datos, dict):
+        datos = datos.get("animaciones", [])
+    if not isinstance(datos, list):
+        print(f"AVISO: {ruta_json} no contiene una lista — disparo automático.")
+        return None
+
+    limpias = []
+    for i, a in enumerate(datos):
+        nombre = a.get("nombre") or str(a.get("tipo", "")).replace("anim-", "")
+        try:
+            ini = float(a["ini"])
+        except (KeyError, TypeError, ValueError):
+            print(f"AVISO: animación manual #{i} sin 'ini' válido — omitida.")
+            continue
+        limpias.append({k: v for k, v in {
+            "nombre": nombre, "ini": ini, "dur": a.get("dur"),
+            "variante": a.get("variante"), "video_sol": a.get("video_sol"),
+            "palabra": a.get("palabra", ""),
+        }.items() if v is not None})
+    limpias.sort(key=lambda a: a["ini"])
+    print(f"Animaciones manuales cargadas desde {ruta_json}: {len(limpias)} "
+          f"(se ignora el disparo por palabra)")
+    return limpias
+
+
 def _duracion_video(ruta: Path) -> float:
     cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration",
            "-of", "default=noprint_wrappers=1:nokey=1", str(ruta)]
@@ -1127,6 +1396,10 @@ def main():
     parser.add_argument("--nombre-video", type=str, default=None,
                         help="Nombre del video: de aquí sale la semilla determinista que elige la "
                              "variante de cada animación. Mismo nombre = mismo resultado siempre.")
+    parser.add_argument("--animaciones-manual", type=str, default=None, metavar="JSON",
+                        help="Lista completa de animaciones armada en el editor visual "
+                             "(Fase 3c): quita, mueve y añade animaciones. Reemplaza el "
+                             "disparo por palabra.")
     parser.add_argument("--sol-pip-video", action="store_true",
                         help="Usar el video de sol en vez de la animación HTML")
     args = parser.parse_args()
@@ -1147,6 +1420,10 @@ def main():
     if args.eventos_manual:
         eventos_manual = cargar_eventos_manual(Path(args.eventos_manual), dir_tmp)
 
+    animaciones_manual = None
+    if args.animaciones_manual:
+        animaciones_manual = cargar_animaciones_manual(Path(args.animaciones_manual))
+
     eventos = planificar_overlays(palabras, plan.get("huecos_regla_5s", []), duracion, dir_tmp,
                                    intervalos_conservados=intervalos_conservados,
                                    hook_manual=args.hook,
@@ -1154,7 +1431,8 @@ def main():
                                    generar=not args.sin_generar,
                                    nombre_video=args.nombre_video or ruta_video.stem,
                                    sol_pip_video=args.sol_pip_video,
-                                   eventos_manual=eventos_manual)
+                                   eventos_manual=eventos_manual,
+                                   animaciones_manual=animaciones_manual)
 
     if args.posiciones_manual:
         aplicar_posiciones_manual(eventos, Path(args.posiciones_manual))

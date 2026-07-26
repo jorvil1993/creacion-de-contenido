@@ -398,10 +398,55 @@ ANIMACION_ETIQUETAS = {
     "bateria": "semanas de batería",
     "splash": "resistente al agua",
     "moto": "Envíos a todo Bolivia",
-    "sol": "sin reflejos al sol",
+    # No es "hace sol": el argumento es que la pantalla SIGUE legible con el sol
+    # encima, que es la ventaja real del e-ink frente a una tablet.
+    "sol": "se lee bajo el sol",
+}
+
+# Texto de la SEGUNDA aparición. Repetir literal la misma frase tres segundos
+# después se lee como que el editor se trabó — se vio en el video de prueba, con
+# "resistente al agua" dos veces entre 18.6s y 21.0s. El concepto no cambia,
+# cambia cómo se dice.
+ANIMACION_ETIQUETAS_REPETICION = {
+    "bateria": "y sigue cargada",
+    "splash": "sin miedo al agua",
+    "moto": "Llega a tu puerta",
+    "sol": "ni un reflejo",
 }
 # Duración en pantalla de cada animación (coincide con el data-duration del HTML)
-ANIMACION_DURACION = {"bateria": 2.4, "splash": 2.2, "moto": 2.6, "sol": 2.4}
+ANIMACION_DURACION = {"bateria": 2.4, "splash": 2.2, "moto": 2.6, "sol": 2.6}
+
+# Cuántas variantes distintas tiene cada animación. La variante la elige una
+# semilla determinista (nombre del video + índice de aparición), nunca `random`:
+# el mismo video renderizado dos veces tiene que dar exactamente lo mismo.
+ANIMACION_VARIANTES = {"bateria": 3, "splash": 3, "moto": 3, "sol": 3}
+
+# Cuántas veces puede salir la MISMA animación en un video.
+# Antes era 1 (un `set` de animaciones ya usadas vetaba la segunda aparición) y
+# el resultado era el que José rechazó: decir "agua" disparaba el splash, pero
+# decir "tina" tres segundos después caía a una foto de producto. Ahora la
+# segunda mención sí lleva animación, pero con OTRA variante — repetir la misma
+# toma se lee como error de edición.
+ANIMACION_MAX_POR_TIPO = 2
+
+# Separación mínima entre dos animaciones. Es SUYA, ya no la de los insertos.
+# Medido en el video de prueba: entre "resistente al agua" (17.7s) y "en la
+# tina" (20.0s) hay 2.34s, así que con los 4.0s de INSERTO_SEPARACION_MIN_S la
+# segunda animación nunca podía salir — no importaba cuánto se subiera
+# ANIMACION_MAX_POR_TIPO. Los insertos son fotos y sí necesitan aire entre sí;
+# dos animaciones de la misma frase son un mismo gesto en dos tiempos.
+# El solape sigue prohibido: de eso se encarga `_libre()`.
+ANIMACION_SEPARACION_MIN_S = 2.0
+
+# Conceptos donde la ANIMACIÓN gana sobre la foto del catálogo.
+# El problema medido: 30 assets llevan la etiqueta `#agua` (son los Kindle
+# resistentes al agua), así que la regla general "catálogo primero, generación
+# como respaldo" hacía que decir "agua"/"tina" trajera una foto de producto en
+# vez del splash. Para estas etiquetas se invierte la preferencia.
+# Importante: NO se tocan las etiquetas de esos 30 assets — siguen sirviendo
+# para el resto de sus usos; lo único que cambia es que estas etiquetas ya no
+# disparan un inserto de foto por sí solas.
+CONCEPTOS_PREFIEREN_ANIMACION = {"#agua", "#tina", "#sol", "#bateria"}
 
 # ---------------------------------------------------------------------------
 # Diseño de loop (sección 4.5 del plan) — el rewatch es la señal más fuerte
@@ -462,9 +507,15 @@ PALABRAS_SPECS = {"especificaciones", "características", "caracteristicas", "fi
 ANIMACIONES_POR_PALABRA = {
     "bateria": "bateria", "batería": "bateria", "carga": "bateria",
     "semanas": "bateria", "dura": "bateria",
+    # "tina", "bañera" y "mojar" faltaban: eran justo las palabras de la SEGUNDA
+    # mención del agua en el video de prueba, y sin ellas la única salida
+    # posible era la foto de producto que José no quiere.
     "agua": "splash", "resistente": "splash", "sumergir": "splash",
-    "piscina": "splash", "lluvia": "splash",
-    "sol": "sol", "solazo": "sol",
+    "sumerge": "splash", "piscina": "splash", "lluvia": "splash",
+    "tina": "splash", "bañera": "splash", "banera": "splash",
+    "mojar": "splash", "moja": "splash",
+    "sol": "sol", "solazo": "sol", "verano": "sol", "afuera": "sol",
+    "playa": "sol", "directo": "sol",
     "envio": "moto", "envío": "moto", "enviamos": "moto",
     "entrega": "moto", "delivery": "moto", "bolivia": "moto",
 }

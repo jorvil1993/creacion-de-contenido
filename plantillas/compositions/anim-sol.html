@@ -2,7 +2,8 @@
 <html lang="es" data-resolution="portrait" data-composition-variables='[
   {"id":"variante","type":"string","label":"Variante determinista 0|1|2","default":"0"},
   {"id":"lado","type":"string","label":"izquierda | derecha | centro","default":"derecha"},
-  {"id":"etiqueta","type":"string","label":"Texto bajo la animación","default":"sin reflejos al sol"}
+  {"id":"imagen","type":"string","label":"Foto recortada del producto (ruta root-relativa)","default":""},
+  {"id":"etiqueta","type":"string","label":"Texto bajo la animación","default":"se lee bajo el sol"}
 ]'>
   <head>
     <meta charset="UTF-8" />
@@ -10,136 +11,191 @@
     <link rel="stylesheet" href="compositions/_shared.css" />
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
+      /*
+        "Rayos de sol SOBRE una Kindle", no un sol saliendo (decisión de José,
+        §2.6 del plan v2). El mensaje no es "hace sol": es que la pantalla SIGUE
+        legible con el sol directo encima — la ventaja real del e-ink frente a
+        una tablet.
+
+        Regla de composición que hace que eso se lea, y que es la razón de todo
+        el z-index de abajo: TODO lo luminoso (halo, rayos, destello que barre)
+        vive DETRÁS del dispositivo. La luz inunda el fondo y se corta justo en
+        el aparato: lo único que no se vela en la escena es la pantalla. Si el
+        destello pasara por encima, la animación estaría diciendo exactamente lo
+        contrario de lo que vende.
+
+        Lo único que toca el dispositivo es el `aura`: una copia de la MISMA
+        foto, difuminada y teñida de cálido, debajo de la copia nítida. Como
+        sigue el alfa del recorte, el brillo abraza el contorno real del aparato
+        (el destello en el marco que pide el plan) sin poner un solo píxel
+        encima de la pantalla. Funciona con cualquier foto del catálogo, no hay
+        que saber dónde cae la pantalla en cada una.
+
+        El dispositivo es la foto REAL recortada del producto del video
+        (`assets/productos/<producto>/frontal.png`, con alfa desde la Fase 0).
+        Está documentado que Flux no sabe cómo es un Kindle: para el producto
+        siempre gana la foto real. Sin `imagen` se dibuja una silueta de
+        respaldo, para que la plantilla nunca quede vacía.
+      */
       html, body {
         margin: 0; width: 1080px; height: 1920px;
         overflow: hidden; background: transparent;
       }
       body { font-family: "Poppins", sans-serif; }
 
-      .wrap { position: absolute; top: 190px; width: 500px; height: 540px; }
+      .wrap { position: absolute; top: 186px; width: 560px; height: 580px; }
 
-      .escena { position: relative; width: 500px; height: 440px; }
-
-      /* Dispositivo Kindle */
-      .kindle-device {
-        position: absolute;
-        left: 50%; bottom: 30px;
-        width: 240px; height: 330px;
-        margin-left: -120px;
-        background: #111a24;
-        border: 4px solid #2e3e50;
-        border-radius: 20px;
-        box-shadow: 0 16px 45px rgba(0, 0, 0, 0.6);
-        box-sizing: border-box;
-        padding: 24px 18px;
-        overflow: hidden;
-      }
-
-      .kindle-screen {
-        width: 100%; height: 100%;
-        background: #e8e6df;
-        border-radius: 8px;
-        box-sizing: border-box;
-        padding: 20px 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
+      .escena {
         position: relative;
-        overflow: hidden;
+        width: 560px; height: 500px;
       }
 
-      .linea-texto {
-        height: 8px;
-        background: #333333;
-        border-radius: 4px;
-        opacity: 0.8;
-      }
+      /* ---- CAPA 1 (fondo): la luz ---------------------------------------- */
+      .luz { position: absolute; inset: 0; overflow: visible; }
 
-      .linea-texto.corta { width: 65%; }
-
-      /* Destello de luz sobre la pantalla sin reflejo */
-      .luz-sol {
+      .halo {
         position: absolute;
-        top: -50%; left: -50%;
-        width: 200%; height: 200%;
-        background: linear-gradient(135deg, rgba(255,230,120,0.35) 0%, rgba(255,255,255,0) 60%);
-        pointer-events: none;
+        width: 620px; height: 620px;
+        margin-left: -310px; margin-top: -310px;
+        border-radius: 50%;
+        background: radial-gradient(circle,
+          rgba(255, 233, 160, 0.92) 0%,
+          rgba(255, 205, 90, 0.55) 26%,
+          rgba(255, 176, 46, 0.16) 52%,
+          rgba(255, 176, 46, 0) 72%);
         opacity: 0;
       }
 
-      /* Sol radiante */
-      .sol-contenedor {
+      .disco {
         position: absolute;
-        top: 10px; right: 40px;
-        width: 140px; height: 140px;
-      }
-
-      .sol-disco {
-        position: absolute;
-        left: 50%; top: 50%;
-        width: 70px; height: 70px;
-        margin-left: -35px; margin-top: -35px;
+        width: 120px; height: 120px;
+        margin-left: -60px; margin-top: -60px;
         border-radius: 50%;
-        background: radial-gradient(circle, #fff7aa 0%, #ffd034 60%, #ff9800 100%);
-        box-shadow: 0 0 40px #ffc107, 0 0 80px #ff9800;
+        background: radial-gradient(circle, #ffffff 0%, #fff2b0 38%, #ffc93c 78%, #ffa61f 100%);
+        box-shadow: 0 0 60px rgba(255, 200, 70, 0.95);
+        opacity: 0;
       }
 
-      .sol-rayos {
-        position: absolute;
-        left: 0; top: 0;
-        width: 140px; height: 140px;
-        transform-origin: center center;
-      }
+      /* Abanico de rayos. Barre girando: es "el sol dándole", no un adorno fijo.
+         Cada rayo nace en el disco y se estira hacia la escena. */
+      .abanico { position: absolute; width: 0; height: 0; }
 
       .rayo {
         position: absolute;
-        left: 65px; top: 10px;
-        width: 10px; height: 25px;
-        background: linear-gradient(to top, #ffca28, transparent);
-        border-radius: 5px;
-        transform-origin: 5px 60px;
+        left: 0; top: 0;
+        border-radius: 0 0 50% 50%;
+        background: linear-gradient(to bottom,
+          rgba(255, 226, 138, 0.75) 0%,
+          rgba(255, 205, 90, 0.34) 45%,
+          rgba(255, 190, 60, 0) 100%);
+        transform-origin: 50% 0;
+        opacity: 0;
       }
 
+      /* Barrido de luz directa: cruza el fondo en diagonal y se corta en el
+         aparato, porque va en esta capa (detrás) y no en la de arriba. */
+      .barrido {
+        position: absolute;
+        top: -180px; left: -260px;
+        width: 190px; height: 900px;
+        background: linear-gradient(to right,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 246, 214, 0.62) 45%,
+          rgba(255, 255, 255, 0.85) 55%,
+          rgba(255, 246, 214, 0.5) 65%,
+          rgba(255, 255, 255, 0) 100%);
+        filter: blur(6px);
+        opacity: 0;
+      }
+
+      /* ---- CAPA 2: el dispositivo ---------------------------------------- */
+      .aparato {
+        position: absolute;
+        left: 50%; top: 22px;
+        width: 340px; height: 440px;
+        margin-left: -170px;
+      }
+
+      .aura, .nitido {
+        position: absolute;
+        left: 0; top: 0;
+        width: 100%; height: 100%;
+        object-fit: contain;
+      }
+
+      /* La copia difuminada y cálida: el destello que abraza el marco real */
+      .aura {
+        filter: brightness(1.9) sepia(0.75) saturate(3) hue-rotate(-14deg) blur(9px);
+        opacity: 0;
+      }
+
+      /* Sombra propia para que no parezca una calcomanía pegada */
+      .nitido { filter: drop-shadow(0 20px 34px rgba(60, 32, 0, 0.5)); }
+
+      /* Respaldo dibujado, solo si no llega `imagen` */
+      .silueta {
+        position: absolute;
+        left: 50%; top: 0;
+        width: 300px; height: 400px;
+        margin-left: -150px;
+        background: #10161e;
+        border: 5px solid #2c3b4c;
+        border-radius: 22px;
+        box-sizing: border-box;
+        padding: 26px 20px 44px;
+        box-shadow: 0 20px 40px rgba(60, 32, 0, 0.5);
+      }
+      .pantalla {
+        width: 100%; height: 100%;
+        background: #f4f2ea;
+        border-radius: 6px;
+        padding: 22px 16px;
+        box-sizing: border-box;
+        display: flex; flex-direction: column; gap: 13px;
+      }
+      .renglon { height: 9px; background: #2c2c2c; border-radius: 5px; opacity: 0.82; }
+      .renglon.corto { width: 62%; }
+
+      /* ---- CAPA 3: texto -------------------------------------------------- */
       .etiqueta {
         position: absolute;
-        top: 450px; left: 0; width: 500px;
+        top: 492px; left: 0; width: 560px;
         text-align: center;
         color: var(--blanco);
         font-weight: 800;
-        font-size: 40px;
+        font-size: 42px;
         -webkit-text-stroke: 8px rgba(0, 0, 0, 0.85);
         paint-order: stroke fill;
+        opacity: 0;
       }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="anim-sol" data-start="0" data-duration="2.4"
+    <div id="root" data-composition-id="anim-sol" data-start="0" data-duration="2.6"
          data-width="1080" data-height="1920">
-      <div id="anim" class="clip wrap" data-start="0" data-duration="2.4" data-track-index="1">
-        <div class="escena">
-          <div class="sol-contenedor" id="sol">
-            <div class="sol-rayos" id="rayos">
-              <div class="rayo" style="transform: rotate(0deg);"></div>
-              <div class="rayo" style="transform: rotate(45deg);"></div>
-              <div class="rayo" style="transform: rotate(90deg);"></div>
-              <div class="rayo" style="transform: rotate(135deg);"></div>
-              <div class="rayo" style="transform: rotate(180deg);"></div>
-              <div class="rayo" style="transform: rotate(225deg);"></div>
-              <div class="rayo" style="transform: rotate(270deg);"></div>
-              <div class="rayo" style="transform: rotate(315deg);"></div>
-            </div>
-            <div class="sol-disco" id="disco"></div>
+      <div id="anim" class="clip wrap" data-start="0" data-duration="2.6" data-track-index="1">
+        <div class="escena" id="escena">
+          <div class="luz" id="luz">
+            <div class="halo" id="halo"></div>
+            <div class="abanico" id="abanico"></div>
+            <div class="barrido" id="barrido"></div>
+            <div class="disco" id="disco"></div>
           </div>
 
-          <div class="kindle-device" id="kindle">
-            <div class="kindle-screen">
-              <div class="luz-sol" id="luz"></div>
-              <div class="linea-texto"></div>
-              <div class="linea-texto"></div>
-              <div class="linea-texto corta"></div>
-              <div class="linea-texto" style="margin-top:10px;"></div>
-              <div class="linea-texto"></div>
-              <div class="linea-texto corta"></div>
+          <div class="aparato" id="aparato">
+            <img class="aura" id="aura" alt="" />
+            <img class="nitido" id="nitido" alt="" />
+          </div>
+
+          <div class="silueta" id="silueta" style="display:none">
+            <div class="pantalla">
+              <div class="renglon"></div>
+              <div class="renglon"></div>
+              <div class="renglon corto"></div>
+              <div class="renglon" style="margin-top:8px"></div>
+              <div class="renglon"></div>
+              <div class="renglon"></div>
+              <div class="renglon corto"></div>
             </div>
           </div>
 
@@ -148,29 +204,109 @@
       </div>
 
       <script>
-        const v = window.__hyperframes ? window.__hyperframes.getVariables() : {};
-        const X = { izquierda: 70, derecha: 1080 - 500 - 70, centro: (1080 - 500) / 2 };
-        const lado = v.lado || "derecha";
-        document.getElementById("anim").style.left = (X[lado] !== undefined ? X[lado] : X.derecha) + "px";
-        document.getElementById("etiqueta").textContent = v.etiqueta || "sin reflejos al sol";
+        const v = window.__hyperframes.getVariables();
+
+        /* Las tres variantes cambian de dónde viene la luz, cuántos rayos hay,
+           cuánto barre el abanico y por dónde cruza el destello. Misma familia
+           visual y mismo color de marca: lo que cambia es el gesto, que es lo
+           que pide el plan para que la 2ª aparición no se lea como un error de
+           edición. Nada de esto es azar — sale de `variante`, que el pipeline
+           deriva del nombre del video + el índice de aparición. */
+        const VARIANTES = [
+          { solX: 470, solY: 34,  rayos: 9,  largo: 620, ancho: 34, abre: 152,
+            giro: 17,  barreDe: -300, barreA: 700,  barreGiro: 18,  entra: { x: 26, y: -14, rot: 3 } },
+          { solX: 92,  solY: 26,  rayos: 7,  largo: 660, ancho: 46, abre: 128,
+            giro: -14, barreDe: 720,  barreA: -280, barreGiro: -20, entra: { x: -26, y: 10, rot: -3 } },
+          { solX: 300, solY: -18, rayos: 12, largo: 580, ancho: 26, abre: 178,
+            giro: 11,  barreDe: -320, barreA: 660,  barreGiro: 9,   entra: { x: 0, y: 22, rot: 0 } },
+        ];
+        const cfg = VARIANTES[(parseInt(v.variante, 10) || 0) % VARIANTES.length];
+
+        const X = { izquierda: 60, derecha: 1080 - 560 - 60, centro: (1080 - 560) / 2 };
+        document.getElementById("anim").style.left =
+          (X[v.lado] !== undefined ? X[v.lado] : X.derecha) + "px";
+        document.getElementById("etiqueta").textContent = v.etiqueta || "se lee bajo el sol";
+
+        // Foto real del producto; si no llega, la silueta de respaldo.
+        const aparato = document.getElementById("aparato");
+        const silueta = document.getElementById("silueta");
+        if (v.imagen) {
+          document.getElementById("aura").src = v.imagen;
+          document.getElementById("nitido").src = v.imagen;
+        } else {
+          aparato.style.display = "none";
+          silueta.style.display = "block";
+        }
+        const dispositivo = v.imagen ? aparato : silueta;
+
+        // El sol y el abanico se colocan según la variante
+        const halo = document.getElementById("halo");
+        const disco = document.getElementById("disco");
+        const abanico = document.getElementById("abanico");
+        [halo, disco, abanico].forEach((el) => {
+          el.style.left = cfg.solX + "px";
+          el.style.top = cfg.solY + "px";
+        });
+
+        const rayos = [];
+        for (let i = 0; i < cfg.rayos; i++) {
+          const el = document.createElement("div");
+          el.className = "rayo";
+          el.style.width = cfg.ancho + "px";
+          el.style.height = cfg.largo + "px";
+          el.style.marginLeft = -cfg.ancho / 2 + "px";
+          // repartidos dentro de la apertura, apuntando hacia la escena
+          const t = cfg.rayos === 1 ? 0.5 : i / (cfg.rayos - 1);
+          el.style.transform = "rotate(" + (180 - cfg.abre / 2 + cfg.abre * t) + "deg)";
+          abanico.appendChild(el);
+          rayos.push(el);
+        }
+
+        const barrido = document.getElementById("barrido");
+        barrido.style.transform = "rotate(" + cfg.barreGiro + "deg)";
 
         window.__timelines = window.__timelines || {};
         const tl = gsap.timeline({ paused: true });
 
-        tl.fromTo("#anim", { opacity: 0, scale: 0.8 },
-          { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(1.7)" }, 0);
+        tl.fromTo("#anim", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 0);
 
-        tl.fromTo("#sol", { scale: 0.2, opacity: 0 },
-          { scale: 1.15, opacity: 1, duration: 0.45, ease: "back.out(2)" }, 0.15);
+        // 1. entra el aparato (es el protagonista, entra primero)
+        tl.fromTo(dispositivo,
+          { opacity: 0, scale: 0.82, x: cfg.entra.x, y: cfg.entra.y, rotation: cfg.entra.rot },
+          { opacity: 1, scale: 1, x: 0, y: 0, rotation: 0, duration: 0.46, ease: "back.out(1.8)" }, 0);
 
-        tl.to("#sol", { scale: 1, duration: 0.3, ease: "power1.out" }, 0.6);
+        // 2. se enciende el sol detrás
+        tl.fromTo("#halo", { opacity: 0, scale: 0.5 },
+          { opacity: 1, scale: 1, duration: 0.55, ease: "power2.out" }, 0.16);
+        tl.fromTo("#disco", { opacity: 0, scale: 0.3 },
+          { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2.4)" }, 0.2);
 
-        tl.to("#rayos", { rotation: 90, duration: 2.0, ease: "none" }, 0.2);
+        // 3. los rayos crecen y el abanico BARRE (el gesto que da la variante)
+        rayos.forEach((el, i) => {
+          tl.fromTo(el, { opacity: 0, scaleY: 0.25 },
+            { opacity: 1, scaleY: 1, duration: 0.5, ease: "power2.out" }, 0.24 + i * 0.028);
+        });
+        tl.fromTo("#abanico", { rotation: -cfg.giro / 2 },
+          { rotation: cfg.giro / 2, duration: 1.9, ease: "sine.inOut" }, 0.24);
 
-        tl.fromTo("#luz", { opacity: 0, x: -30 },
-          { opacity: 1, x: 20, duration: 0.7, ease: "power2.inOut" }, 0.4);
+        // 4. el destello de luz directa cruza el FONDO y se corta en el aparato
+        tl.fromTo("#barrido",
+          { opacity: 0, x: cfg.barreDe },
+          { opacity: 1, x: (cfg.barreDe + cfg.barreA) / 2, duration: 0.5, ease: "power1.out" }, 0.5);
+        tl.to("#barrido", { x: cfg.barreA, opacity: 0, duration: 0.85, ease: "power1.in" }, 1.0);
 
-        tl.to("#anim", { opacity: 0, scale: 0.9, duration: 0.3, ease: "power1.in" }, 2.1);
+        // 5. el marco del aparato destella al pasar la luz (sigue su contorno
+        //    real; la pantalla no recibe un solo píxel encima)
+        if (v.imagen) {
+          tl.fromTo("#aura", { opacity: 0, scale: 1 },
+            { opacity: 0.95, scale: 1.035, duration: 0.42, ease: "power2.out" }, 0.72);
+          tl.to("#aura", { opacity: 0.3, scale: 1, duration: 0.7, ease: "power2.inOut" }, 1.2);
+        }
+
+        tl.fromTo("#etiqueta", { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.32, ease: "power2.out" }, 0.5);
+
+        tl.to("#anim", { opacity: 0, duration: 0.3, ease: "power1.in" }, 2.3);
 
         window.__timelines["anim-sol"] = tl;
       </script>

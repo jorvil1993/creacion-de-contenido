@@ -42,7 +42,7 @@ exacto donde se necesite (así lo resuelve `f5_overlays.py` de la sesión A).
 Cada composición ocupa el **lienzo completo 1080×1920** y ya posiciona su elemento dentro de las
 zonas seguras — no hace falta calcular offsets x/y al componer, solo superponer el clip completo.
 
-## Las 9 plantillas
+## Las 10 plantillas
 
 | Archivo | Variables | Duración |
 |---|---|---|
@@ -55,12 +55,35 @@ zonas seguras — no hace falta calcular offsets x/y al componer, solo superpone
 | `compositions/anim-bateria.html` | `variante` (0\|1\|2), `lado`, `etiqueta` | 2.4s |
 | `compositions/anim-splash.html` | `variante` (0\|1\|2), `lado`, `etiqueta` | 2.2s |
 | `compositions/anim-moto.html` | `variante` (0\|1\|2), `etiqueta` | 2.6s |
+| `compositions/anim-sol.html` | `variante` (0\|1\|2), `lado`, `etiqueta`, `imagen` | 2.6s |
 
 Si se cambia un `data-duration`, hay que actualizar también
 `editor/f8_hyperframes.py → DURACIONES`, que es de donde el pipeline lo lee sin
 abrir el archivo.
 
-Las tres `anim-*` sustituyen a las animaciones dibujadas con PIL en
+### `anim-sol.html` — la única que recibe una foto
+
+`imagen` es la **foto real recortada del producto del video**
+(`assets/productos/<producto>/frontal.png`). No es decorativa: el mensaje de esa
+animación es *"esta pantalla sigue legible con el sol directo encima"*, y eso
+solo se demuestra con el aparato de verdad y su texto nítido. Está documentado
+que Flux no sabe cómo es un Kindle — para el producto siempre gana la foto real.
+
+La ruta tiene que ser **root-relativa al proyecto de plantillas**, y los
+recortes viven fuera de él. De eso se encarga `f8_hyperframes.preparar_imagen()`,
+que copia la foto a `assets/_pipeline/<nombre>_<hash-del-contenido>.png` y
+devuelve la ruta que la composición sí resuelve. El hash es del contenido, no de
+la ruta: si se vuelve a recortar la foto, cambia el nombre y el caché se
+invalida solo.
+
+**Regla de composición que no se puede romper:** toda la luz (halo, rayos,
+barrido) va **detrás** del dispositivo. Si el destello pasa por encima de la
+pantalla, la animación comunica lo contrario de lo que vende. Lo único que toca
+al aparato es una copia difuminada y cálida de su propia silueta, debajo de la
+copia nítida — el destello sigue el contorno real de cualquier foto sin poner un
+píxel sobre la pantalla.
+
+Las cuatro `anim-*` sustituyen a las animaciones dibujadas con PIL en
 `editor/f7_animaciones.py` (que quedan como respaldo por si Node/npx no
 estuvieran disponibles). `variante` da la **variación determinista por video**:
 el pipeline la deriva del nombre del archivo de video, nunca al azar, porque el

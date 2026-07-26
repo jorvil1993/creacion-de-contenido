@@ -67,6 +67,10 @@ def main():
     parser.add_argument("--eventos-manual", type=str, default=None, metavar="JSON",
                         help="Lista completa de insertos pip-producto armada en el editor visual "
                              "(Fase 2): sustituye/añade/quita qué asset se muestra, no solo dónde")
+    parser.add_argument("--animaciones-manual", type=str, default=None, metavar="JSON",
+                        help="Lista completa de animaciones armada en el editor visual "
+                             "(Fase 3c): quita, mueve y añade animaciones. Reemplaza el "
+                             "disparo por palabra de config.ANIMACIONES_POR_PALABRA")
     parser.add_argument("--sol-pip-video", action="store_true",
                         help="Usar el video de sol (sol_video_pip.mov) como PiP en vez de la animación HTML")
     parser.add_argument("--sin-editor-visual", action="store_true",
@@ -152,6 +156,8 @@ def main():
         cmd_overlays += ["--posiciones-manual", args.posiciones_manual]
     if args.eventos_manual:
         cmd_overlays += ["--eventos-manual", args.eventos_manual]
+    if args.animaciones_manual:
+        cmd_overlays += ["--animaciones-manual", args.animaciones_manual]
     if args.sol_pip_video:
         cmd_overlays.append("--sol-pip-video")
     paso("FASE 5a+6: Overlays y generación (hook, ficha, animaciones, insertos, CTA)", cmd_overlays)

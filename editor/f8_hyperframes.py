@@ -49,7 +49,10 @@ PLANTILLAS = {
     "anim-bateria":   ["variante", "lado", "etiqueta"],
     "anim-splash":    ["variante", "lado", "etiqueta"],
     "anim-moto":      ["variante", "etiqueta"],
-    "anim-sol":       ["variante", "lado", "etiqueta"],
+    # `imagen` es la foto REAL recortada del producto del video: la animación de
+    # sol enseña el aparato de verdad con la pantalla legible, no un e-reader
+    # dibujado (§3a del plan v2).
+    "anim-sol":       ["variante", "lado", "etiqueta", "imagen"],
 }
 
 # Duración de cada composición, tomada del `data-duration` de su HTML. El
@@ -64,7 +67,7 @@ DURACIONES = {
     "anim-bateria": 2.4,
     "anim-splash": 2.2,
     "anim-moto": 2.6,
-    "anim-sol": 2.4,
+    "anim-sol": 2.6,
 }
 
 
@@ -94,6 +97,68 @@ def _clave(plantilla: str, variables: dict) -> str:
     crudo = (plantilla + "|" + json.dumps(variables, sort_keys=True, ensure_ascii=False)
              + "|" + _huella_plantilla(plantilla))
     return hashlib.sha1(crudo.encode("utf-8")).hexdigest()[:16]
+
+
+def preparar_imagen(ruta: Path) -> str | None:
+    """Deja una imagen del proyecto al alcance de las composiciones y devuelve
+    su ruta **root-relativa**, que es la única que Hyperframes resuelve bien.
+
+    Por qué hace falta: el renderer resuelve cada composición contra la raíz del
+    proyecto de plantillas (`plantillas/`), no contra el proyecto del editor.
+    Los recortes viven en `<proyecto>/assets/productos/...`, fuera de ese árbol,
+    así que un `<img src>` apuntando ahí carga en blanco al renderizar (la misma
+    trampa que ya está documentada en plantillas/README.md para `../`).
+
+    El nombre lleva un hash del CONTENIDO, no de la ruta: si José vuelve a
+    recortar la foto, cambia el nombre, cambia la clave del caché y el clip se
+    vuelve a renderizar. Con el nombre a secas el pipeline habría seguido
+    reutilizando el MOV viejo — es exactamente la trampa del caché que ya se
+    pagó una vez con `_huella_plantilla`.
+    """
+    if ruta is None:
+        return None
+    ruta = Path(ruta)
+    if not ruta.exists():
+        print(f"AVISO: no existe la imagen {ruta} — la composición usará su respaldo dibujado.",
+              file=sys.stderr)
+        return None
+
+    huella = hashlib.sha1(ruta.read_bytes()).hexdigest()[:8]
+    nombre = f"{ruta.stem}_{huella}{ruta.suffix.lower()}"
+    destino = DIR_PLANTILLAS / "assets" / "_pipeline" / nombre
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    if not destino.exists():
+        shutil.copyfile(ruta, destino)
+    return f"assets/_pipeline/{nombre}"
+
+
+def inventario_animaciones() -> list:
+    """Animaciones que el editor visual puede ofrecer para añadir a mano.
+
+    El editor no crea animaciones nuevas (§6 del plan): elige entre las que
+    existen. Esta es la lista, con lo que la interfaz necesita para pintarla.
+    """
+    import f7_animaciones
+
+    hf = disponible()
+    inv = []
+    for nombre in sorted(config.ANIMACION_DURACION):
+        plantilla = f"anim-{nombre}"
+        tiene_html = (DIR_PLANTILLAS / "compositions" / f"{plantilla}.html").exists()
+        inv.append({
+            "nombre": nombre,
+            "tipo": plantilla,
+            "etiqueta": config.ANIMACION_ETIQUETAS.get(nombre, nombre),
+            "duracion": config.ANIMACION_DURACION.get(nombre, DURACIONES.get(plantilla, 2.4)),
+            "variantes": config.ANIMACION_VARIANTES.get(nombre, 3),
+            "motor": "Hyperframes" if (hf and tiene_html) else "PIL",
+            # Ningún navegador reproduce ProRes 4444: en el editor esto se ve
+            # como bloque con su primer fotograma, no en movimiento (§3c).
+            "reproducible_en_navegador": False,
+            "palabras": sorted({p for p, n in config.ANIMACIONES_POR_PALABRA.items() if n == nombre}),
+            "respaldo_pil": nombre in f7_animaciones.GENERADORES,
+        })
+    return inv
 
 
 def render(plantilla: str, variables: dict = None, timeout: int = 300) -> Path | None:
