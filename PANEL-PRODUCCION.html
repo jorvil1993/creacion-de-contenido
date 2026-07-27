@@ -1259,8 +1259,10 @@ function cp(btn,txt){
   setTimeout(()=>t.classList.remove('on'),1400);
  }).catch(()=>alert('No se pudo copiar. Selecciona el texto a mano.'));
 }
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
- irA(b.dataset.s); window.scrollTo(0,0);
+document.querySelectorAll('nav button').forEach(b=>{
+ if(b.dataset.s){
+   b.onclick=()=>{ irA(b.dataset.s); window.scrollTo(0,0); };
+ }
 });
 renderGuiones();renderPrompts();renderLotes();
 </script>
