@@ -910,12 +910,34 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
     # su lista.
     anims_ceden = (config.LTX_ANIMACIONES_CEDEN_AL_VIDEO
                    if (video_ambiente and animaciones_manual is None) else set())
+
+    def _cede(nombre_anim: str, t0: float) -> bool:
+        """¿Esta animación le deja el lugar a un clip, en ESTE momento del video?
+
+        Ceder a ciegas deja agujeros. Caso real medido en VIDEOV2: "sol" se dice
+        a 28.96s y el CTA entra a 30.67s. La animación de sol dura 2.6s y entra
+        (además el colocador la adelanta un poco si hace falta); el inserto de
+        video dura INSERTO_DURACION_S = 2.8s y NO entra. Al ceder igual, ese
+        momento se quedaba sin animación Y sin clip: peor que antes de tocar
+        nada.
+
+        Así que solo se cede si el clip cabe donde iría. Se mira contra el hook,
+        la ficha y el CTA, que son los que ya están puestos a esta altura. Un
+        choque posterior con otra animación deja el mismo resultado que hoy (sin
+        inserto), pero al menos no se pierde también la animación por el camino.
+        """
+        if nombre_anim not in anims_ceden:
+            return False
+        return _libre(t0, t0 + config.INSERTO_DURACION_S)
     # Las etiquetas que quedan libres son las de las palabras cuya animación
     # cede. Se derivan, no se escriben a mano, para que agregar una palabra a
     # ANIMACIONES_POR_PALABRA no exija acordarse de tocar esto también.
     ganan_video = {
-        tag for pal, anim in config.ANIMACIONES_POR_PALABRA.items()
-        if anim in anims_ceden and (tag := config.PALABRAS_A_TAGS.get(pal))
+        tag for pal in {_normalizar(p["texto"]) for p in palabras}
+        if (tag := config.PALABRAS_A_TAGS.get(pal))
+        and any(_cede(config.ANIMACIONES_POR_PALABRA.get(_normalizar(q["texto"])),
+                      q["inicio"])
+                for q in palabras if _normalizar(q["texto"]) == pal)
     }
 
     plan_animaciones = animaciones_manual
@@ -925,7 +947,7 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
             nombre = config.ANIMACIONES_POR_PALABRA.get(_normalizar(p["texto"]))
             if not nombre:
                 continue
-            if nombre in anims_ceden:
+            if _cede(nombre, p["inicio"]):
                 continue          # esta la cuenta un clip de video, no la animación
             plan_animaciones.append({"nombre": nombre, "ini": p["inicio"],
                                      "palabra": p["texto"]})
@@ -940,7 +962,7 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
         n = _normalizar(p["texto"])
         if n not in config.ANIMACIONES_POR_PALABRA:
             continue
-        if config.ANIMACIONES_POR_PALABRA.get(n) in anims_ceden:
+        if _cede(config.ANIMACIONES_POR_PALABRA.get(n), p["inicio"]):
             continue              # liberado a propósito para que entre el clip
         tag_palabra = config.PALABRAS_A_TAGS.get(n)
         if tag_palabra in config.CONCEPTOS_PREFIEREN_ANIMACION:
