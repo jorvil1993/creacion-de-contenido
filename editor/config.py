@@ -441,7 +441,11 @@ ANIMACION_ETIQUETAS_REPETICION = {
     "sol": "ni un reflejo",
 }
 # Duración en pantalla de cada animación (coincide con el data-duration del HTML)
-ANIMACION_DURACION = {"bateria": 2.4, "splash": 2.2, "moto": 2.6, "sol": 2.6}
+ANIMACION_DURACION = {
+    "bateria": 2.4, "splash": 2.2, "moto": 2.6, "sol": 2.6,
+    "tarjeta-cta": 6.5, "comparativa": 5.0, "tarjeta-specs": 4.5,
+    "stickers": 2.5, "banner-hook": 3.2, "pip-producto": 4.0, "anim-apps": 3.0
+}
 
 # Cuántas variantes distintas tiene cada animación. La variante la elige una
 # semilla determinista (nombre del video + índice de aparición), nunca `random`:
@@ -772,6 +776,13 @@ DIR_VIDEO_MANUAL = DIR_VIDEO_GENERADO / "manual"         # clips de Google Flow 
 # que BROLL_DURACION_MIN_S, no se muestra — sería un flashazo, no un B-roll.
 BROLL_DURACION_MIN_S = 1.0     # debajo de esto no vale la pena mostrar el clip
 BROLL_FADE_S = 0.20            # un pelo más largo que el 0.15 de PiP, más cinematográfico
+
+# En el modo dirigido por guion (f13_guion.py), el B-roll y el PIP duran
+# exactamente lo que dura la frase que los dispara — a veces ~1s, un flashazo.
+# Se extiende el `fin` hasta este factor de la duración original (tope: el
+# inicio del próximo beat alineado, para no comerse el siguiente evento).
+BROLL_PIP_DURACION_FACTOR = 2.0
+BROLL_PIP_GAP_MIN_S = 0.10     # aire mínimo antes de que arranque el próximo evento
 
 # Animaciones que, CON LA GENERACIÓN DE VIDEO ENCENDIDA, le ceden su lugar a un
 # clip real. Se declara por NOMBRE DE ANIMACIÓN, no por etiqueta, y la diferencia

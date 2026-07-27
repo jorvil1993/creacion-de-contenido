@@ -184,6 +184,26 @@ def alinear_guion_con_transcripcion(script_tl: list, palabras: list,
     return aligned_beats
 
 
+def extender_fin_evento(t_ini: float, t_fin: float, idx: int, beats_alineados: list, min_dur: float = 3.0) -> float:
+    """Garantiza que B-Rolls y PIPs duren al menos `min_dur` segundos (ej. 3.0s).
+
+    Si la frase del audio es muy corta, extiende el fin sobre el silencio o pausa
+    hasta alcanzar `min_dur` segundos (o hasta el inicio del siguiente beat),
+    evitando que los B-Rolls se corten de forma brusca o demasiado rápida.
+    """
+    dur_actual = t_fin - t_ini
+    if dur_actual < min_dur:
+        t_limite = t_ini + min_dur
+        for sig in beats_alineados[idx + 1:]:
+            if sig.get("matched"):
+                sig_ini = sig["ini"]
+                t_limite = min(t_limite, max(t_fin, sig_ini))
+                break
+        t_fin = max(t_fin, t_limite)
+    return round(t_fin, 3)
+
+
+
 # Cuánto se puede correr un SFX para despegarlo del anterior antes de que deje
 # de leerse como "el sonido de ESE momento". Más que esto, mejor omitirlo.
 SFX_CORRIMIENTO_MAX_S = 0.35
@@ -215,6 +235,28 @@ def espaciar_sfx(ordenes: list) -> list:
             print(f"  AVISO: SFX {Path(e['archivo']).name} en {e['t']:.2f}s omitido — "
                   f"cae a {e['t'] - ultimo:.2f}s del anterior y correrlo lo desincronizaría")
     return salida
+
+
+def extender_fin_evento(t_ini: float, t_fin: float, idx: int, beats_alineados: list) -> float:
+    """PIP y B-roll duran solo lo que dura la frase que los dispara — a veces
+    ~1s, un flashazo. Se extiende el `fin` a config.BROLL_PIP_DURACION_FACTOR
+    veces esa duración, topado por el `ini` del próximo beat que TAMBIÉN
+    ponga algo en pantalla (PIP/B-ROLL/ANIM) — no por un `YO` intermedio: el
+    B-roll puede seguir tapando la pantalla mientras la persona sigue hablando
+    la frase siguiente sin overlay propio, que es justo la técnica de B-roll
+    (beats_alineados[i]["index"] == i siempre, así que basta indexar hacia
+    adelante).
+    """
+    duracion = t_fin - t_ini
+    fin_deseado = t_ini + duracion * config.BROLL_PIP_DURACION_FACTOR
+    for r_sig in beats_alineados[idx + 1:]:
+        if not r_sig["matched"]:
+            continue
+        if r_sig["beat"][2] == "YO":
+            continue
+        fin_deseado = min(fin_deseado, r_sig["ini"] - config.BROLL_PIP_GAP_MIN_S)
+        break
+    return round(max(fin_deseado, t_fin), 3)
 
 
 def resolver_codigo_asset(texto_ve: str, clips_map: dict) -> tuple[str | None, Path | None, str]:
@@ -277,21 +319,25 @@ def extraer_sfx_de_texto(texto_sonido: str) -> list[Path]:
     return encontrados
 
 
-def extraer_plantilla_animacion(texto_ve: str) -> str | None:
-    """Extrae el nombre de la plantilla de animación del texto del guion."""
+def extraer_plantilla_animacion(texto_ve: str, clips_map: dict = None) -> str:
+    """Extrae la plantilla de animación de 'qué se ve', soportando códigos H01-H08 y nombres directos."""
     if not texto_ve:
-        return None
+        return "tarjeta-cta"
 
-    # Nombres conocidos de composiciones en plantillas/compositions/
+    match_h = re.search(r"\b(H\d{2})\b", texto_ve)
+    if match_h and clips_map:
+        entry = clips_map.get(match_h.group(1))
+        if entry:
+            return entry[0]
+
     plantillas_validas = [
-        "tarjeta-cta", "comparativa", "anim-sol", "anim-bateria", "anim-moto",
-        "anim-splash", "tarjeta-specs", "stickers", "banner-hook", "pip-producto"
+        "anim-apps", "tarjeta-cta", "comparativa", "anim-sol", "anim-bateria",
+        "anim-moto", "anim-splash", "tarjeta-specs", "stickers", "banner-hook", "pip-producto"
     ]
     for p in plantillas_validas:
         if p in texto_ve:
             return p
 
-    # Si el texto dice "tarjeta-cta", devolverlo
     match = re.search(r"\b(tarjeta-[a-z]+|anim-[a-z]+)\b", texto_ve)
     if match:
         return match.group(1)
@@ -383,7 +429,7 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
 
         # 2. ANIMACIONES
         if tipo == "ANIM":
-            nombre_anim = extraer_plantilla_animacion(ve)
+            nombre_anim = extraer_plantilla_animacion(ve, clips_map)
             ordenes_animaciones.append({
                 "nombre": nombre_anim,
                 "ini": t_ini,
@@ -400,6 +446,7 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
                 # Posición por defecto: si el texto menciona izquierda, a la izquierda
                 pos_x = 60 if "izquierda" in ve.lower() else (config.ANCHO - 480)
                 pos_y = int(config.ALTO * config.INSERTO_Y_PCT)
+                t_fin = extender_fin_evento(t_ini, t_fin, idx, beats_alineados)
 
                 if ext in (".mp4", ".mov", ".webm"):
                     destino_mov = dir_tmp / f"pip_guion_{idx}_{slug}.mov"
@@ -451,7 +498,7 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
                     "x": 0,
                     "y": 0,
                     "ini": t_ini,
-                    "fin": t_fin,
+                    "fin": extender_fin_evento(t_ini, t_fin, idx, beats_alineados),
                     "palabra": dice[:30],
                     "tag": slug,
                     "asset": f"broll-manual:{slug}",
