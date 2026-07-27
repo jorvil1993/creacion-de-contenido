@@ -1509,3 +1509,40 @@ ciclo cerrado con botón de re-render y progreso en vivo. Todo verificado con
 renders reales, no solo con el JSON de `/datos`. LTX-Video queda investigado
 y documentado pero sin instalar — decisión pendiente de José con la
 información de arriba.
+
+## Addendum — LTX-Video, segunda vuelta (José trajo una fuente más específica)
+
+José señaló `huggingface.co/GitMylo/LTX-2-comfy_gemma_fp8_e4m3fn`, diciendo
+que corría en 16GB/5070 Ti. Se verificó con la API de Hugging Face (listado
+de archivos real, no resumen de blog) en los tres repos relevantes:
+
+- `GitMylo/LTX-2-comfy_gemma_fp8_e4m3fn`: NO trae el transformer de 22B, solo
+  text encoder (fp8/nvfp4) y VAE/vocoder. README no menciona VRAM ni 5070 Ti.
+- `Comfy-Org/ltx-2` (oficial): tampoco trae el transformer — solo text
+  encoders (hasta un `gemma_3_12B_it_fp4_mixed.safetensors`, 9.45GB, ese sí
+  genuino FP4) y un par de LoRAs.
+- `Lightricks/LTX-2.3` (oficial, el autor del modelo): el transformer de 22B
+  solo existe en BF16 (43GB, `ltx-2.3-22b-dev/distilled.safetensors`). El
+  FP8 (29.1-29.5GB) vive en un repo aparte (`Lightricks/LTX-2.3-fp8`).
+  **Ningún FP4/NVFP4 del transformer en ninguno de los tres.** Hay un pedido
+  abierto sin responder en `Kijai/LTX2.3_comfy` (discusión #4) pidiendo
+  justamente esa versión.
+
+El blog oficial de ComfyUI (`blog.comfy.org/.../new-comfyui-optimizations...`)
+sí confirma NVFP4 probado en una RTX 5070 Ti — pero verificando el texto, el
+mecanismo que describe ahí ("async offload", "weight streaming", "pinned
+memory") es **distinto** de la cuantización NVFP4: reduce el costo de
+intercambiar pesos entre VRAM y RAM cuando el modelo no entra completo, no
+reduce cuánta VRAM hace falta. Funciona en cualquier GPU NVIDIA, no es
+específico de Blackwell. La cita textual: "if you do not need to offload any
+weights to run a model, these optimizations will not improve your
+performance in a meaningful way."
+
+**Conclusión:** la premisa de José tenía base real (NVFP4 sí está pensado
+para su tarjeta, y ComfyUI lo probó ahí), pero la pieza que faltaría para que
+sea rápido y liviano — el transformer de 22B en FP4 — no está publicada
+todavía en ningún lado que se pudo verificar. Con lo que existe hoy (FP8, 
+~22GB solo el transformer) correría en la 5070 Ti únicamente vía offload a
+RAM — funciona, pero lento (probablemente varios minutos por clip). Se le
+devolvió esto a José con la fuente exacta y sin bajar nada — la decisión
+(aceptar lento, esperar el FP4, o pivotar a Wan 2.2 5B) es suya.
