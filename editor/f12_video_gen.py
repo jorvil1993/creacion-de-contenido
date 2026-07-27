@@ -69,6 +69,11 @@ import f9_generar
 BASE = f9_generar.BASE
 INDICE = None  # se resuelve en _indice_ruta(); config puede no tener la carpeta aún
 
+# Techo de duración de una tarjeta de PiP en segundos. Un clip de ambiente dura
+# ~3 s; esto es solo un freno de emergencia para que ningún fallo de filtros
+# pueda escribir un archivo sin fin. Ver el comentario en render_pip_video.
+_TOPE_SEGUNDOS_TARJETA = 15.0
+
 
 def _log(msg):
     print(msg, flush=True)
@@ -562,19 +567,30 @@ def render_pip_video(ruta_clip: Path, ruta_salida: Path, ancho=400, alto=520):
         f"[0:v]scale={ancho}:{alto}:force_original_aspect_ratio=increase,"
         f"crop={ancho}:{alto},format=rgba,"
         f"pad={w_tarjeta}:{h_tarjeta}:{borde}:{borde}:color=#00000000[vid];"
-        f"[vid][1:v]overlay=0:0:format=auto[out]"
+        # El marco entra como UN SOLO fotograma (sin `-loop 1`) y overlay lo
+        # sostiene con su `eof_action=repeat`, que es el comportamiento por
+        # defecto. Así manda el video, que es finito.
+        #
+        # ⚠️ NO volver a poner `-loop 1` en el marco. Se probó y el PNG en
+        # bucle es un stream INFINITO que pasa a mandar sobre el video:
+        # `-shortest` no lo frena, y la primera prueba escribió 39 GB con
+        # 1h24m de video a partir de un clip de 3 segundos antes de cortarla.
+        f"[vid][1:v]overlay=0:0:format=auto:eof_action=repeat[out]"
     )
     cmd = [
         "ffmpeg", "-y",
         "-i", str(ruta_clip),
-        "-loop", "1", "-i", str(ruta_marco),
+        "-i", str(ruta_marco),
         "-filter_complex", filtro, "-map", "[out]",
         # ProRes 4444 (profile 4) con yuva444p10le: es el formato con alfa que
         # el compositor ya consume para las animaciones. No cambiar por webm:
         # f4_retencion espera este.
         "-c:v", "prores_ks", "-profile:v", "4444", "-pix_fmt", "yuva444p10le",
         "-an",                       # el audio de LTX se descarta acá también
-        "-shortest",
+        # Tope duro, cinturón además de tirantes: un clip de ambiente nunca
+        # pasa de unos segundos, así que si algo vuelve a hacer que el stream
+        # no termine, ffmpeg corta acá en vez de llenar el disco de noche.
+        "-t", f"{_TOPE_SEGUNDOS_TARJETA:.2f}",
         str(ruta_salida),
     ]
     # stderr a un archivo, nunca a un pipe sin lector (trampa #5).
