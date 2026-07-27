@@ -53,6 +53,7 @@ PLANTILLAS = {
     # sol enseña el aparato de verdad con la pantalla legible, no un e-reader
     # dibujado (§3a del plan v2).
     "anim-sol":       ["variante", "lado", "etiqueta", "imagen"],
+    "anim-apps":      ["variante"],
 }
 
 # Duración de cada composición, tomada del `data-duration` de su HTML. El
@@ -68,6 +69,7 @@ DURACIONES = {
     "anim-splash": 2.2,
     "anim-moto": 2.6,
     "anim-sol": 2.6,
+    "anim-apps": 3.0,
 }
 
 

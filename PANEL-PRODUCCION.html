@@ -516,7 +516,8 @@ const CLIPS={
  H04:['anim-bateria','Hyperframe: Animación de batería de larga duración (semanas)','1 guion'],
  H05:['anim-splash','Hyperframe: Animación de salpicadura de agua al mojar el equipo','1 guion'],
  H06:['anim-moto','Hyperframe: Animación de envío rápido a domicilio en Bolivia','1 guion'],
- H07:['stickers','Hyperframe: Stickers gráficos (Destello cian / Bandera Bolivia)','1 guion']
+ H07:['stickers','Hyperframe: Stickers gráficos (Destello cian / Bandera Bolivia)','1 guion'],
+ H08:['anim-apps','Hyperframe: Animación de marcas/apps que distraen (TikTok, WhatsApp, Facebook)','1 guion']
 };
 function c(id){return CLIPS[id]?`<span class="clip" data-clip="${id}" onclick="event.stopPropagation();irAPrompt('${id}')">${id}</span>`:id;}
 // mapa inverso: nombre de archivo -> código que se usa en los guiones (scroll -> F14)
@@ -627,7 +628,7 @@ const G=[
   ['34–40s','Plano medio · CIERRE','Bajas el aparato y vuelves exactamente a la postura del segundo 3. Eso cierra el loop.','Si te pasa, mándale esto a alguien que también dejó un libro a medias.']],
  tl:[
   ['0–3s','¿Por qué dejaste de leer?','YO','Entras al plano y te sientas. Banner de hook arriba','whoosh_rapido al entrar + impacto_grave al sentarte','—'],
-  ['3–5s','Es que compites contra una app…','PIP','F16 arriba a la derecha','pop','entra 02-lofi a −20 dB'],
+  ['3–5s','Es que compites contra una app…','ANIM','H08 arriba a la derecha: TikTok, WhatsApp, Facebook','pop + ui_blip_1 + ui_blip_2','entra 02-lofi a −20 dB'],
   ['5–7s','…diseñada por mil ingenieros…','YO','Punch-in sobre tu cara','transicion_corte','—'],
   ['7–9s','…para que no puedas soltarla.','B-ROLL','F14 a pantalla completa','whoosh_swoosh_2','—'],
   ['9–12s','No es falta de disciplina.','YO','Vuelves al plano medio','reverso_1','baja a −24 dB'],
