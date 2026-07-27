@@ -33,6 +33,7 @@ CUDA y la transcripción se caería a CPU.
 | `--hook "TEXTO"` | Hook curado en vez del automático. 40 opciones en `contexto/banco-hooks.md`. **Recomendado**: el automático usa la primera frase completa del video, que suele pasar de 7 palabras |
 | `--presentador jose\|esposa` | Perfil de quien habla. Cambia muletillas, umbral de silencio y calibración de punch-ins |
 | `--sin-generar` | No levantar ComfyUI cuando falte una imagen. La 1ª generación cuesta ~40s de arranque; después va por caché |
+| `--video-ambiente` | Los insertos de ambiente salen como **clip de video** (LTX 2.3) en vez de foto fija. **Apagado por defecto**: cada clip son minutos de GPU y conviene tener >18 GB de RAM libres. Ver `contexto/GUIA-VIDEO-LOCAL.md` |
 | `--sfx-manual JSON` | Efectos de sonido elegidos a mano (los exporta el editor visual) |
 | `--posiciones-manual JSON` | Posiciones de los insertos elegidas a mano (idem) |
 | `--sin-musica` | Sin cama musical |
@@ -94,7 +95,8 @@ viendo el resultado real, nunca en teoría.
 4. **Retención** — face tracking (MediaPipe), punch-ins por energía, zoom
    progresivo, motor de la regla de 5s y **diseño de loop**.
 5. **Overlays** — hook, ficha técnica, comparativa, animaciones, insertos, CTA.
-6. **Generación en GPU** — Flux.1-schnell cuando el catálogo no tiene imagen.
+6. **Generación en GPU** — Flux.1-schnell cuando el catálogo no tiene imagen;
+   LTX 2.3 para clips de ambiente si se pide `--video-ambiente`.
 7. **Audio** — música con ducking sidechain + SFX atados a eventos visuales +
    `loudnorm` a −14 LUFS.
 
@@ -114,7 +116,10 @@ Cuando el guion nombra un concepto (`config.PALABRAS_A_TAGS`):
    no le gustó lo que generó Flux, aquí deja la suya. Ver
    `contexto/prompts-externos.md`, que se escribe solo con el prompt exacto y la
    ruta donde dejar el archivo.
-3. **Generada con Flux** — solo conceptos de ambiente que ninguna foto cubre:
+3. **Clip generado con LTX 2.3** — solo con `--video-ambiente`, y solo para
+   conceptos de ambiente. Sale como tarjeta ProRes 4444 con alfa, con el mismo
+   marco que un PiP de foto. Si falla, cae solo al paso 4.
+4. **Generada con Flux** — solo conceptos de ambiente que ninguna foto cubre:
    sol, cama, café, noche, viaje, libros, biblioteca, estudio.
 
 La semilla del generador sale del hash del prompt, así que **el mismo prompt da
@@ -209,6 +214,9 @@ ahí. Este skill solo los referencia.
 | Renderizar Hyperframes con `--format webm` | El alfa de VP9 no sobrevive con este ffmpeg (verificado a nivel de píxel). Usar **`--format mov`** (ProRes 4444) |
 | Rutas `../` en el HTML de las plantillas | Hyperframes resuelve cada composición contra la raíz del proyecto: hay que usar `assets/...` y `compositions/_shared.css`. **Excepción:** dentro de un `.css`, `url()` sí se resuelve relativo al propio CSS, y ahí `../assets/fuentes/...` es lo correcto |
 | Lanzar ComfyUI con `stdout=subprocess.PIPE` | Imprime mucho al arrancar; si nadie lee el pipe se llena el buffer y el proceso se **cuelga**. Redirigir a un archivo |
+| `pip install` en `venv-comfy` sin `-c C:\ai-video\constraints-comfy.txt` | `diffusers`/`accelerate` pueden pisar `torch 2.11.0+cu128` con un build sin CUDA y dejar **sin GPU a Flux y a LTX a la vez**. Comprobar después: `'sm_120' in torch.cuda.get_arch_list()` |
+| Pedirle a Flux o a LTX que dibujen el **producto** | Ningún modelo generativo sabe cómo es un Kindle real. Para el producto, foto real. LTX sí sirve partiendo de una foto real (imagen-a-video): ahí el aparato sigue siendo el tuyo |
+| Dar por colgada una descarga porque `Get-ChildItem` no ve crecer el archivo | En Windows el listado del shell devuelve el tamaño cacheado de un archivo abierto. Medir con `os.stat` de Python. Costó matar una descarga sana |
 | Hardcodear constantes fuera de `config.py` | Todo parámetro nuevo va ahí |
 | Dar por bueno un cambio porque "corrió sin error" | Extraer frames y mirarlos. En este proyecto varias veces el código corrió perfecto y el video estaba mal |
 
@@ -225,6 +233,7 @@ ahí. Este skill solo los referencia.
 | 4 — Audio | ✅ SFX por evento visual, ducking, −14 LUFS |
 | 5 — Overlays | ✅ 9 composiciones de Hyperframes conectadas + insertos por palabra clave |
 | 6 — Generación GPU | ✅ ComfyUI bajo demanda con caché y respaldo manual |
+| 6b — Video generado | ✅ LTX 2.3 22B Q4 instalado e integrado, apagado por defecto (`--video-ambiente`). Ver `contexto/GUIA-VIDEO-LOCAL.md` |
 | 7 — Este skill | ✅ |
 
 **Pendiente real:** calibrar el perfil de la esposa con su primera grabación.

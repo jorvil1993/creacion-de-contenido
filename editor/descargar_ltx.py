@@ -106,18 +106,35 @@ def _carpeta_de(repo: str) -> Path:
     return DESCARGAS / repo.replace("/", "__")
 
 
-def _bytes_en(carpeta: Path) -> int:
-    """Todo lo escrito hasta ahora, incluidos los `.incomplete` del `.cache`."""
+def _bytes_en(carpeta: Path) -> tuple[int, int]:
+    """(suma de todo, tamano del archivo mas grande) bajo `carpeta`.
+
+    Se devuelven los dos porque sirven para cosas distintas:
+
+    - La SUMA es para detectar avance: crece con cualquier byte escrito, sin
+      importar en que archivo.
+    - El MAXIMO es para informar progreso: un intento anterior interrumpido deja
+      un `.incomplete` huerfano, y sumarlo hace que el log diga "17 / 13 GB",
+      que es peor que no decir nada.
+
+    Ojo con la medicion: `p.stat().st_size` desde Python lee el tamano VIVO. Un
+    listado del shell en Windows (`Get-ChildItem`, `dir`) devuelve el tamano
+    cacheado en la entrada de directorio, que para un archivo abierto y
+    creciendo se queda congelado y hace creer que la descarga murio. Ya paso
+    una vez en este proyecto y costo matar una descarga sana.
+    """
     if not carpeta.exists():
-        return 0
-    total = 0
+        return 0, 0
+    total = maximo = 0
     for p in carpeta.rglob("*"):
         try:
             if p.is_file():
-                total += p.stat().st_size
+                n = p.stat().st_size
+                total += n
+                maximo = max(maximo, n)
         except OSError:
             pass
-    return total
+    return total, maximo
 
 
 def _lanzar_hijo(repo: str, archivo: str, carpeta: Path) -> subprocess.Popen:
@@ -164,7 +181,7 @@ def _intentar_descarga(repo: str, archivo: str, gb: float) -> bool:
     carpeta.mkdir(parents=True, exist_ok=True)
 
     proc = _lanzar_hijo(repo, archivo, carpeta)
-    ultimo_tamano = _bytes_en(carpeta)
+    ultimo_tamano, _ = _bytes_en(carpeta)
     ultimo_avance = time.time()
     ultimo_aviso = 0.0
 
@@ -177,13 +194,13 @@ def _intentar_descarga(repo: str, archivo: str, gb: float) -> bool:
                 pass
 
             ahora = time.time()
-            tamano = _bytes_en(carpeta)
+            tamano, mayor = _bytes_en(carpeta)
             if tamano > ultimo_tamano:
                 ultimo_tamano = tamano
                 ultimo_avance = ahora
                 if ahora - ultimo_aviso >= 60:
                     ultimo_aviso = ahora
-                    _log(f"         {tamano / 1e9:5.2f} / {gb:.2f} GB")
+                    _log(f"         {mayor / 1e9:5.2f} / {gb:.2f} GB")
             elif ahora - ultimo_avance > ESTANCADO_S:
                 _log(
                     f"         COLGADO: {ESTANCADO_S}s sin escribir un byte. "
