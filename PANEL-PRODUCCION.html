@@ -509,7 +509,14 @@ const CLIPS={
  P08:['P08','Kindle Colorsoft · pantalla A COLOR','1 guion'],
  P09:['P09','Kobo Libra Colour con botones · A COLOR','2 guiones'],
  P10:['P10','Kobo Clara Colour compacta · A COLOR','1 guion'],
- P11:['P11','Tus cajas selladas reales (stock)','4 guiones']
+ P11:['P11','Tus cajas selladas reales (stock)','4 guiones'],
+ H01:['tarjeta-specs','Hyperframe: Ficha técnica animada con 3 características clave del producto','1 guion'],
+ H02:['comparativa','Hyperframe: Comparativa animada lado a lado entre 2 modelos','1 guion'],
+ H03:['anim-sol','Hyperframe: Animación de legibilidad a pleno sol sin reflejos','1 guion'],
+ H04:['anim-bateria','Hyperframe: Animación de batería de larga duración (semanas)','1 guion'],
+ H05:['anim-splash','Hyperframe: Animación de salpicadura de agua al mojar el equipo','1 guion'],
+ H06:['anim-moto','Hyperframe: Animación de envío rápido a domicilio en Bolivia','1 guion'],
+ H07:['stickers','Hyperframe: Stickers gráficos (Destello cian / Bandera Bolivia)','1 guion']
 };
 function c(id){return CLIPS[id]?`<span class="clip" data-clip="${id}" onclick="event.stopPropagation();irAPrompt('${id}')">${id}</span>`:id;}
 // mapa inverso: nombre de archivo -> código que se usa en los guiones (scroll -> F14)
@@ -563,7 +570,7 @@ const RESUMEN={
 function usosDe(archivo){
  const cod=COD[archivo]||archivo, out=[];
  G.forEach(g=>g.tl.forEach((r,ri)=>{
-  if((r[3].match(/\b[FP]\d\d\b/g)||[]).includes(cod))
+  if((r[3].match(/\b[FPH]\d\d\b/g)||[]).includes(cod))
    out.push({n:g.n,ri,t:g.t,mom:r[0],tipo:r[2],dice:r[1],ve:r[3]});
  }));
  return out;
@@ -925,7 +932,7 @@ function renderGuiones(){
      ${g.tl.map((r,ri)=>`<tr id="tl-${g.n}-${ri}"><td>${r[0]}</td>
         <td class="digo">"${r[1]}"</td>
         <td><span class="${PILL[r[2]]}">${r[2]}</span></td>
-        <td>${r[3].replace(/\b(F\d\d|P\d\d)\b/g,m=>c(m))}</td>
+        <td>${r[3].replace(/\b(F\d\d|P\d\d|H\d\d)\b/g,m=>c(m))}</td>
         <td class="sfx">${r[4]}</td><td class="sfx">${r[5]}</td></tr>`).join('')}
      </table></div>
    </div></div>`}).join('');
