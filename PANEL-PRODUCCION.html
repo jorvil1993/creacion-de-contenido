@@ -115,6 +115,10 @@ th{text-align:left;padding:7px 9px;background:#0d2330;color:var(--cian);
   font-size:11px;text-transform:uppercase;letter-spacing:.7px}
 td{padding:8px 9px;border-bottom:1px solid #17323f;vertical-align:top}
 td:first-child{color:var(--cian);font-weight:700;white-space:nowrap;font-family:ui-monospace,monospace}
+/* fila a la que se saltó desde "dónde se usa" en la pestaña de prompts */
+@keyframes destello{0%,100%{background-color:#10333f}50%{background-color:#1b4f64}}
+tr.tlmarca>td{background:#10333f;animation:destello 1.1s ease-in-out 2}
+tr.tlmarca>td:first-child{box-shadow:inset 3px 0 0 var(--cian)}
 .pillPIP{background:#12303b;color:var(--cian);padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700}
 .pillBR{background:#3b2a12;color:var(--warn);padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700}
 .pillYO{background:#1d3a2a;color:var(--ok);padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700}
@@ -124,7 +128,7 @@ td:first-child{color:var(--cian);font-weight:700;white-space:nowrap;font-family:
 /* ---- tooltip de clip (flotante: no lo recorta ningún overflow) ---- */
 .clip{background:#0d2330;border:1px solid var(--cian);color:var(--cian);
   padding:1px 6px;border-radius:4px;font-family:ui-monospace,monospace;
-  font-size:12px;cursor:help;font-weight:700;white-space:nowrap}
+  font-size:12px;cursor:pointer;font-weight:700;white-space:nowrap}
 .clip:hover{background:var(--cian);color:var(--navy)}
 #tipflot{position:fixed;display:none;background:#04101a;border:1px solid var(--cian);
   color:var(--txt);padding:10px 13px;border-radius:8px;max-width:270px;font-size:12.5px;
@@ -216,6 +220,23 @@ pre.p{background:#07141c;border:1px solid var(--linea);border-radius:8px;
   font-weight:700;z-index:200;transition:transform .28s;box-shadow:0 6px 24px #0009}
 .toast.on{transform:translateX(-50%) translateY(0)}
 a{color:var(--cian)}
+
+/* ---- Teleprompter Tablet Modal ---- */
+.telemodal { display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:99999; background:#040c12; color:#fff; flex-direction:column; }
+.telemodal.on { display:flex; }
+.tele-bar { background:#0a1d29; border-bottom:2px solid var(--cian); padding:10px 14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; z-index:10; }
+.tele-bar select, .tele-bar button { background:#122b3a; color:var(--txt); border:1px solid var(--linea); padding:8px 14px; border-radius:7px; font-size:14px; font-weight:700; cursor:pointer; }
+.tele-bar button:hover { border-color:var(--cian); color:var(--blanco); }
+#tele-play { background:var(--cian); color:var(--navy); border-color:var(--cian); font-size:15px; min-width:110px; }
+.tele-ctrl { display:flex; align-items:center; gap:6px; background:#0b1c26; padding:4px 10px; border-radius:7px; font-size:13px; color:var(--txt2); }
+.tele-ctrl button { padding:4px 9px !important; }
+.tele-cerrar { margin-left:auto; background:#3b1414 !important; color:var(--mal) !important; border-color:var(--mal) !important; }
+.tele-body { flex:1; overflow-y:auto; padding:55vh 5vw; cursor:pointer; -webkit-overflow-scrolling:touch; }
+.tele-content { max-width:960px; margin:0 auto; font-size:38px; line-height:1.75; font-weight:600; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; text-align:center; transition:transform .2s; }
+.tele-content.espejo { transform:scaleX(-1); }
+.tele-frase { margin-bottom:45px; padding:22px 28px; background:rgba(16,39,52,0.85); border-radius:14px; border-left:5px solid var(--cian); text-align:left; color:#fff; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
+.tele-pausa { display:block; color:var(--cian); font-weight:800; font-size:0.65em; margin:16px 0 0; text-transform:uppercase; letter-spacing:1.5px; }
+.tele-cue { font-size:0.48em; color:var(--cian); display:block; font-weight:700; margin-bottom:8px; opacity:0.9; text-transform:uppercase; letter-spacing:1px; }
 </style>
 
 <header>
@@ -225,6 +246,7 @@ a{color:var(--cian)}
     <button data-s="prompts">🎨 Prompts (40)</button>
     <button data-s="lote">⚡ Lote de 4</button>
     <button data-s="ayuda">📖 Cómo funciona</button>
+    <button style="background:var(--navy2);border-color:var(--cian);color:var(--cian);font-weight:700" onclick="abrirTeleprompter(1)">📺 Teleprompter</button>
   </nav>
 </header>
 
@@ -236,18 +258,17 @@ a{color:var(--cian)}
     <span class="sub">Los 10 de RUM más alto, listos para grabar. Cada uno indica qué grabar, qué decir y qué se ve en pantalla segundo a segundo.</span>
   </h2>
   <div class="aviso">
-    <b>Cómo usar esto:</b> abre el guion, lee <b>Antes de grabar</b>, pon el
-    <b>teleprompter</b> en el celular y graba las tomas en orden. La línea de
-    tiempo es para el pipeline: ahí está ya decidido qué material va en cada
-    segundo, con qué sonido y con qué música. No improvises esa parte.
+    <b>Cómo usar esto:</b> abre el guion, lee <b>Antes de grabar</b>, usa el botón
+    <b>📺 Teleprompter</b> en tu tablet para leer las frases fluidas sin pestañear.
+    La línea de tiempo es para el pipeline: ahí está ya decidido qué material va en cada
+    segundo.
   </div>
   <div class="aviso bien">
     <b>Si vas guion por guion:</b> empieza por el <b>27</b> — solo necesita 2 clips
     (40 créditos), así pruebas el circuito completo barato. Después el <b>7</b> y el
     <b>8</b>, que comparten 2 clips entre sí. Los 10 guiones usan <b>26 clips
     distintos, no 45</b>: mientras más avances, menos material nuevo necesita cada
-    guion. El botón de cada guion te dice cuántos faltan de verdad según lo que ya
-    marcaste.
+    guion.
   </div>
   <div id="guiones"></div>
 </section>
@@ -255,14 +276,8 @@ a{color:var(--cian)}
 <!-- ══════════ PROMPTS ══════════ -->
 <section id="s-prompts">
   <h2>Prompts de Google Flow
-    <span class="sub">En el orden en que conviene generarlos. Marca el check cuando ya lo tengas descargado y guardado.</span>
+    <span class="sub">En el orden en que conviene generarlos.</span>
   </h2>
-  <div class="prog">
-    <span>Progreso</span>
-    <div class="barra"><i id="barra"></i></div>
-    <b id="progtxt">0 / 38</b>
-    <button onclick="reset()">Reiniciar marcas</button>
-  </div>
   <div class="filtros" id="filtros"></div>
   <div id="avisog"></div>
   <div id="prompts"></div>
@@ -315,8 +330,11 @@ a{color:var(--cian)}
   5 producto × 100 = <b>920 créditos</b>. Entra entero en <b>una sola cuenta</b>, y te
   quedan las otras dos completas (2.000 créditos) para reintentos y variantes.</div>
   <div class="aviso"><b>Antes de gastar en serio:</b> generá <code>scroll</code> en Fast y
-  <code>P02</code> en Quality (120 créditos). Miralos en el celular en vertical. Si la
+  <code>P01</code> en Quality (120 créditos). Miralos en el celular en vertical. Si la
   diferencia no se nota en el PiP, bajá todo a Fast y te sobran 400 créditos más.</div>
+  <div class="aviso bien"><b>P02 ya no se genera:</b> lo reemplaza <code>pagina-real.mp4</code>,
+  metraje real de un unboxing (con permiso de MySmartPrice) que muestra exactamente ese plano
+  — el aparato en la mano con una página legible. Cero créditos, cero riesgo de logo falso.</div>
 
   <h4>⚠️ Con qué nombre guardo cada clip</h4>
   <div class="aviso"><b>NO se guardan como F01, F14 ni F31.</b> Esos son códigos
@@ -327,9 +345,10 @@ a{color:var(--cian)}
     <tr><td><span class="codref">F14</span></td><td><b>scroll.mp4</b></td><td>Pulgar deslizando</td></tr>
     <tr><td><span class="codref">F16</span></td><td><b>abandonado.mp4</b></td><td>Libro olvidado</td></tr>
     <tr><td><span class="codref">F31</span></td><td><b>silencio.mp4</b></td><td>Notificaciones que se apagan</td></tr>
-    <tr><td><span class="codref">P02</span></td><td><b>P02.mp4</b></td><td>Los de producto sí usan su código</td></tr>
+    <tr><td><span class="codref">P01</span></td><td><b>P01.mp4</b></td><td>Los de producto sí usan su código — salvo excepciones (ver abajo)</td></tr>
+    <tr><td><span class="codref">P02</span></td><td><b>pagina-real.mp4</b></td><td>Excepción: es metraje real, no generado, así que conserva su nombre original</td></tr>
   </table>
-  <p>En el modo dirigido por guion (<code>--guion N</code>), el pipeline consulta directamente el objeto <code>CLIPS</code> de este HTML: mapea cada código <code>F01–F32</code> a su nombre de concepto (ej. <code>F16 → abandonado.mp4</code>) y los <code>P01–P11</code> a su código de producto (ej. <code>P02 → P02.mp4</code>). En el modo automático sin guion, se consultan las 12 etiquetas coincidentes con <code>config.PALABRAS_A_TAGS</code>.</p>
+  <p>En el modo dirigido por guion (<code>--guion N</code>), el pipeline consulta directamente el objeto <code>CLIPS</code> de este HTML: mapea cada código <code>F01–F32</code> a su nombre de concepto (ej. <code>F16 → abandonado.mp4</code>) y los <code>P01–P11</code> a su código de producto (ej. <code>P01 → P01.mp4</code>), salvo cuando el código apunta a metraje real (ej. <code>P02 → pagina-real.mp4</code>). En el modo automático sin guion, se consultan las 12 etiquetas coincidentes con <code>config.PALABRAS_A_TAGS</code>.</p>
   <p>Todos van a <code>assets\generado\video\manual\</code>. Esa carpeta no existe
   todavía: créala al bajar el primero.</p>
   <div class="aviso"><b>✅ Integrado en el pipeline (Modo `--guion N`):</b>
@@ -420,6 +439,32 @@ a{color:var(--cian)}
 <div class="toast" id="toast">Copiado</div>
 <div id="tipflot"></div>
 
+<!-- ══════════ TELEPROMPTER TABLET MODAL ══════════ -->
+<div id="telemodal" class="telemodal">
+  <div class="tele-bar">
+    <select id="tele-sel" onchange="teleCargarGuion(+this.value)"></select>
+    <button id="tele-play" onclick="teleTogglePlay()">▶ Iniciar</button>
+    <div class="tele-ctrl">
+      <span>Velocidad:</span>
+      <button onclick="teleSpeed(-1)">-</button>
+      <span id="tele-speed-lbl">3x</span>
+      <button onclick="teleSpeed(1)">+</button>
+    </div>
+    <div class="tele-ctrl">
+      <span>Letra:</span>
+      <button onclick="teleFont(-4)">-</button>
+      <span id="tele-font-lbl">38px</span>
+      <button onclick="teleFont(4)">+</button>
+    </div>
+    <button onclick="teleToggleEspejo()">🪞 Espejo</button>
+    <button onclick="teleReset()">↺ Top</button>
+    <button class="tele-cerrar" onclick="teleCerrar()">✖ Cerrar</button>
+  </div>
+  <div id="tele-body" class="tele-body" onclick="teleTogglePlay()">
+    <div id="tele-content" class="tele-content"></div>
+  </div>
+</div>
+
 <script>
 /* ═══════════ CATÁLOGO DE CLIPS ═══════════ */
 const CLIPS={
@@ -438,7 +483,7 @@ const CLIPS={
  F14:['scroll','Pulgar deslizando sin fin en la oscuridad','10 guiones'],
  F15:['tiempo','Arena cayendo en un reloj de arena','3 guiones'],
  F16:['abandonado','Libro olvidado con separador y polvo','5 guiones'],
- F17:['notificaciones','Enjambre de burbujas de notificación','4 guiones'],
+ F17:['notificaciones','Enjambre de burbujas de notificación','3 guiones'],
  F18:['ninos-pantalla','Niño a oscuras frente a una tablet','3 guiones'],
  F19:['ninos-leyendo','Niño leyendo feliz junto a la ventana','3 guiones'],
  F20:['mama','Mujer de 50s leyendo en un sillón','1 guion'],
@@ -452,8 +497,10 @@ const CLIPS={
  F30:['vitrina','Alguien indeciso en un pasillo de tienda','4 guiones'],
  F31:['silencio','Las notificaciones se apagan hasta quedar en calma','3 guiones'],
  F32:['lluvia','Lluvia en la ventana, luz cálida adentro','2 guiones'],
+ F33:['rendicion','Se rinde: suelta el libro y agarra el celular','1 guion'],
+ F34:['kindle-real','[REAL, con permiso — MySmartPrice] Encendido: logo Kindle y árbol','sin usar aún'],
  P01:['P01','Paperwhite en la cama de noche · pantalla B/N','10 guiones'],
- P02:['P02','Paperwhite 16GB en la mano · pantalla B/N','14 guiones'],
+ P02:['pagina-real','[REAL, con permiso — MySmartPrice] Paperwhite 16GB en la mano · pantalla B/N','14 guiones'],
  P03:['P03','Paperwhite a pleno sol · pantalla B/N','2 guiones'],
  P04:['P04','Paperwhite jade (verde matcha) a oscuras · B/N','3 guiones'],
  P05:['P05','Kindle Basic liviano en una mano · B/N','6 guiones'],
@@ -464,7 +511,7 @@ const CLIPS={
  P10:['P10','Kobo Clara Colour compacta · A COLOR','1 guion'],
  P11:['P11','Tus cajas selladas reales (stock)','4 guiones']
 };
-function c(id){return CLIPS[id]?`<span class="clip" data-clip="${id}">${id}</span>`:id;}
+function c(id){return CLIPS[id]?`<span class="clip" data-clip="${id}" onclick="event.stopPropagation();irAPrompt('${id}')">${id}</span>`:id;}
 // mapa inverso: nombre de archivo -> código que se usa en los guiones (scroll -> F14)
 const COD={}; for(const k in CLIPS) if(CLIPS[k][0]!==k) COD[CLIPS[k][0]]=k;
 // resumen en español, una frase, de qué le pedimos a la IA en cada prompt
@@ -495,11 +542,13 @@ const RESUMEN={
  mochila:'Mochila escolar sobreestufada de libros en el piso, una mano chica hace fuerza para levantarla, luz de mañana.',
  cafe:'Taza de café humeando junto a una ventana, silla vacía enfrente, calle desenfocada afuera, espera tranquila.',
  viaje:'Maleta abierta sobre una cama siendo empacada, manos acomodando ropa doblada, luz cálida de mañana.',
- silencio:'Enjambre de burbujas de notificación que se apaga y desaparece de a una hasta quedar solo calma y un brillo cálido.',
+ silencio:'Arranca ya casi vacío: quedan cuatro o cinco burbujas apagándose y un brillo cálido al centro. En los primeros 2 segundos se apagan las últimas y queda la calma. Revisa los primeros 3 segundos: si ahí la pantalla está llena de burbujas, el clip no sirve.',
  lluvia:'Lluvia cayendo por una ventana al atardecer, luces desenfocadas afuera, luz cálida de lámpara adentro, ambiente de lectura.',
  lampara:'Lámpara de noche que se enciende de golpe en un dormitorio a oscuras, luz cálida cayendo sobre las sábanas.',
+ rendicion:'Alguien sostiene un libro tratando de seguir leyendo, afloja el agarre y termina soltándolo para agarrar el celular que brilla al lado.',
+ 'kindle-real':'[Metraje REAL, no generado — de un unboxing de MySmartPrice, con permiso] El Kindle se enciende: aparece el logo y el árbol de la pantalla de inicio.',
+ 'pagina-real':'[Metraje REAL, no generado — de un unboxing de MySmartPrice, con permiso] El Paperwhite 16GB sostenido en una mano, pantalla legible con una página real de novela. Sustituye al P02 generado por IA.',
  P01:'Animar la foto: el dispositivo en una cama a oscuras, iluminado por su propio brillo, una mano entra y toca la pantalla.',
- P02:'Animar la foto: el dispositivo sostenido en una mano contra un fondo cálido desenfocado, girando para que la luz le pegue en el borde.',
  P03:'Animar la foto: el dispositivo a pleno sol de mediodía, sombras de hojas moviéndose encima, pantalla legible pese al sol.',
  P04:'Animar la foto: el dispositivo casi a oscuras, su brillo ámbar es la única luz, una mano lo desplaza levemente.',
  P05:'Animar la foto: el dispositivo sostenido en una sola mano, inclinándose para mostrar lo fino y liviano que es.',
@@ -513,17 +562,25 @@ const RESUMEN={
 // dónde se usa un clip: guion, momento, tipo de plano y qué se está diciendo
 function usosDe(archivo){
  const cod=COD[archivo]||archivo, out=[];
- G.forEach(g=>g.tl.forEach(r=>{
+ G.forEach(g=>g.tl.forEach((r,ri)=>{
   if((r[3].match(/\b[FP]\d\d\b/g)||[]).includes(cod))
-   out.push({n:g.n,t:g.t,mom:r[0],tipo:r[2],dice:r[1],ve:r[3]});
+   out.push({n:g.n,ri,t:g.t,mom:r[0],tipo:r[2],dice:r[1],ve:r[3]});
  }));
  return out;
 }
-// abre un guion concreto desde cualquier lado
-function irAGuion(n){
+// abre un guion concreto desde cualquier lado.
+// con ri (indice de fila) salta directo a esa fila de la linea de tiempo y la marca
+function irAGuion(n,ri){
  irA('guiones');
- setTimeout(()=>{const el=document.getElementById('g-'+n);
-  if(el){el.classList.add('abierto');el.scrollIntoView({behavior:'smooth',block:'start'});}},70);
+ setTimeout(()=>{
+  const el=document.getElementById('g-'+n); if(!el)return;
+  el.classList.add('abierto');
+  document.querySelectorAll('tr.tlmarca').forEach(t=>t.classList.remove('tlmarca'));
+  const fila=ri==null?null:document.getElementById('tl-'+n+'-'+ri);
+  if(fila){fila.classList.add('tlmarca');
+   fila.scrollIntoView({behavior:'smooth',block:'center'});}
+  else el.scrollIntoView({behavior:'smooth',block:'start'});
+ },70);
 }
 // tooltip flotante: position:fixed, así ningún contenedor con overflow lo recorta
 document.addEventListener('mouseover',e=>{
@@ -567,7 +624,7 @@ const G=[
   ['5–7s','…diseñada por mil ingenieros…','YO','Punch-in sobre tu cara','transicion_corte','—'],
   ['7–9s','…para que no puedas soltarla.','B-ROLL','F14 a pantalla completa','whoosh_swoosh_2','—'],
   ['9–12s','No es falta de disciplina.','YO','Vuelves al plano medio','reverso_1','baja a −24 dB'],
-  ['12–14s','Es una pelea injusta:','PIP','F17 arriba a la izquierda','ui_blip_1','—'],
+  ['12–14s','Es una pelea injusta:','B-ROLL','F33 a pantalla completa: suelta el libro y agarra el celular','subdrop_1','—'],
   ['14–17s','tú, con tu fuerza de voluntad, contra un algoritmo.','YO','Punch-in en "algoritmo"','impacto_hit','—'],
   ['17–20s','La única forma de ganarla es no pelearla.','YO','Levantas el Kindle al cuadro','whoosh_simple','sube a −20 dB'],
   ['20–23s','Leer en algo que no tenga apps,','PIP','P02 arriba a la derecha','camara_click_2','—'],
@@ -836,11 +893,16 @@ function renderGuiones(){
      <p class="notaflow">No consigas nada de esto para grabar: son clips generados que el
      pipeline inserta encima de tu video. <b>Haz clic en cualquiera para ir a su prompt.</b>
      El archivo se guarda con el nombre en verde, no con el código.</p>
-     ${(()=>{const h=JSON.parse(localStorage.getItem('flow_hechos')||'{}');
-       const ar=clipsDe(g).map(i=>CLIPS[i][0]), falta=ar.filter(a=>!h[a]).length;
-       return `<button class="btn ${falta?'':'ok'}" style="margin-top:10px" onclick="verGuion(${g.n})">
-         ${falta?`⚡ Generar el material de este guion — faltan ${falta} de ${ar.length} clips · ${falta*20} créditos`
-                :`✓ Material completo (${ar.length} clips) — listo para grabar`}</button>`})()}
+     ${(()=>{
+       const ar=clipsDe(g).map(i=>CLIPS[i][0]).filter(a=>P.some(p=>p[0]===a));
+       return `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+         <button class="btn ok" style="background:#0e2a38;border-color:var(--cian);color:var(--cian);font-weight:700;padding:9px 16px;font-size:14px" onclick="event.stopPropagation();abrirTeleprompter(${g.n})">
+           📺 Abrir Teleprompter Tablet (Guion ${g.n})
+         </button>
+         ${ar.length>0?`<button class="btn sec" style="padding:9px 14px" onclick="event.stopPropagation();verGuion(${g.n})">
+           ⚡ Ver ${ar.length} prompts en Flow
+         </button>`:''}
+       </div>`})()}
 
      <h4>Teleprompter</h4>
      <div class="tele">
@@ -860,7 +922,7 @@ function renderGuiones(){
      dice de dónde sale la imagen — <b>YO</b> es tu video crudo.</p>
      <div class="tablawrap">
      <table><tr><th>Momento</th><th style="min-width:210px">Qué estoy diciendo</th><th>En pantalla</th><th>Qué se ve</th><th>Sonido</th><th>Música</th></tr>
-     ${g.tl.map(r=>`<tr><td>${r[0]}</td>
+     ${g.tl.map((r,ri)=>`<tr id="tl-${g.n}-${ri}"><td>${r[0]}</td>
         <td class="digo">"${r[1]}"</td>
         <td><span class="${PILL[r[2]]}">${r[2]}</span></td>
         <td>${r[3].replace(/\b(F\d\d|P\d\d)\b/g,m=>c(m))}</td>
@@ -870,9 +932,15 @@ function renderGuiones(){
 }
 
 /* ═══════════ PROMPTS ═══════════ */
-const BLIND_BN=`Its screen is a black and white electronic ink display showing a page of a Spanish-language novel: several justified paragraphs of small dark grey Spanish body text on a light warm grey background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens.`;
-const BLIND_COL=`Its screen is a colour electronic ink display, with the soft muted pastel tones typical of colour e-ink rather than the vivid saturation of an LCD, showing a page of a Spanish-language illustrated book: a colour illustration above several justified paragraphs of small dark Spanish body text, with clean margins, exactly like a printed page. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens.`;
-const MARCO=`Keep the device exactly as shown: do not alter its shape, proportions, colour or body. Its frame stays completely smooth, blank and unmarked, with no brand name, no logo, no lettering and no engraving anywhere on it.`;
+// La pantalla e-ink es MATE. Sin esto Veo la renderiza como LCD quemado y la
+// convierte en la fuente de luz de la escena (fallo real y repetido en P02).
+const EINK_SUP=`The screen is a matte, non-reflective, paper-like electronic ink surface, not a glossy backlit tablet display: its page background is a soft light warm tone, never pure white and never blown out. Any light on it is a low, soft, perfectly even warm frontlight that leaves the text crisp, dark and readable at all times: no bright white glare, no harsh backlight bloom, no halo, no glowing hotspot, no specular highlight and no mirror reflections on it.`;
+// Un solo lado tiene pantalla. Orbitar el aparato hacía que Veo le inventara una
+// segunda pantalla en el dorso (fallo real en P02). Se afirma primero, se prohíbe después.
+const UNA_CARA=`The device has exactly one screen and it is on the front face only: its back is a plain matte solid panel with no screen, no glass and no display of any kind. Only that front face is ever visible: the device never turns around, never flips and never shows its back, and the camera never travels behind it.`;
+const BLIND_BN=`Its screen is a black and white electronic ink display showing a page of a Spanish-language novel: several justified paragraphs of small dark grey Spanish body text on a light warm grey background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${EINK_SUP}`;
+const BLIND_COL=`Its screen is a colour electronic ink display, with the soft muted pastel tones typical of colour e-ink rather than the vivid saturation of an LCD, showing a page of a Spanish-language illustrated book: a colour illustration above several justified paragraphs of small dark Spanish body text, with clean margins, exactly like a printed page. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${EINK_SUP}`;
+const MARCO=`Keep the device exactly as shown: do not alter its shape, proportions, colour or body. Its frame stays completely smooth, blank and unmarked, with no brand name, no logo, no lettering and no engraving anywhere on it. ${UNA_CARA}`;
 const CIERRE=`No added text outside the screen, no logos, no watermark. No dialogue, no voiceover,`;
 
 const P=[
@@ -890,20 +958,20 @@ const P=[
 ['abandonado','A','1','Ambiente','El libro de la página 30 · 5 guiones',
 `Vertical 9:16. A closed paper book lying forgotten on a bedside table with a bookmark stuck a third of the way in, a thin layer of dust on the cover, soft grey afternoon light from a nearby window, everything still and slightly melancholic. Shot on an 85mm macro lens, very shallow depth of field, natural editorial photography. Camera creeps slowly toward the bookmark. The book stays completely closed and still. Plain cover with no readable title, no text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, silent room tone only.`],
 ['notificaciones','A','1','Ambiente','El bombardeo · 4 guiones',
-`Vertical 9:16. Abstract visualization of relentless digital interruption: dozens of soft glowing rounded rectangles rising and multiplying in dark empty space like a swarm, blurred and out of focus, cool blue and white light, overwhelming and claustrophobic. Cinematic, elegant, minimal, shallow depth of field. Camera slowly pulls back as the swarm grows. The shapes are completely blank: no text, no icons, no symbols, no letters, no numbers, no logos, no watermark. No dialogue, no voiceover, subtle rising hum only.`],
+`Vertical 9:16. Abstract visualization of relentless digital interruption: dozens of soft glowing rounded rectangles crowding the frame like a swarm, blurred and out of focus, cool blue and white light, overwhelming and claustrophobic. The frame is already packed with them in the very first frame: the swarm starts at its densest and never builds up from an empty or nearly empty screen, and more keep pouring in from the edges the whole time. Cinematic, elegant, minimal, shallow depth of field. Camera slowly pulls back as more of them pour in. The shapes are completely blank: no text, no icons, no symbols, no letters, no numbers, no logos, no watermark. No dialogue, no voiceover, subtle rising hum only.`],
 ['insomnio','A','1','Ambiente','Las 3:47 de la mañana · 3 guiones',
 `Vertical 9:16. A person turning restlessly under the covers in a dark bedroom, unable to sleep, then a digital alarm clock on the nightstand glowing faintly in the dark. Cold blue night tones, deep shadows. Shot on a 35mm lens, shallow depth of field, cinematic natural editorial photography. Slow handheld drift toward the clock. The clock display is blurred and unreadable: no text, no numbers, no lettering, no logos, no watermark. No dialogue, no voiceover, only faint night ambience.`],
 /* --- CUENTA A · tanda 2 --- */
 ['regalo','A','2','Ambiente','La caja con moño · 4 guiones',
 `Vertical 9:16. A small elegant gift box with a satin ribbon resting on a table, warm golden light, hands entering frame to slowly untie the bow with anticipation. Soft festive bokeh in the far background. Shot on a 50mm lens, shallow depth of field, natural editorial photography, warm inviting mood. Slow push in. The box stays closed. Completely plain box with no text, no labels, no lettering, no logos, no watermark, no brand names. No dialogue, no voiceover, gentle paper and ribbon sounds only.`],
 ['caja','A','2','Ambiente','El desempaque · 2 guiones',
-`Vertical 9:16. Close-up of a clean plain cardboard box on a table, hands slicing the tape and lifting the flap, revealing soft protective foam inside, warm daylight from a side window, satisfying unboxing mood. Shot on a 50mm lens, shallow depth of field, natural editorial photography. Slow overhead push in. Nothing is taken out of the box. The cardboard is completely blank with no printing, no text, no lettering, no labels, no logos, no watermark. No dialogue, no voiceover, cardboard and tape sounds only.`],
+`Vertical 9:16. Close-up of a clean plain cardboard box on a table, its tape already cut and hands already lifting the flap open in the very first frame, revealing soft protective foam inside, warm daylight from a side window, satisfying unboxing mood. The box is already being opened when the clip starts: the video never opens on a closed untouched box and never waits for the tape to be cut. Shot on a 50mm lens, shallow depth of field, natural editorial photography. Slow overhead push in. Nothing is taken out of the box. The cardboard is completely blank with no printing, no text, no lettering, no labels, no logos, no watermark. No dialogue, no voiceover, cardboard and tape sounds only.`],
 ['vitrina','A','2','Ambiente','No saber qué regalar · 4 guiones',
 `Vertical 9:16. A person standing in a bright store aisle seen from behind, shoulders slumped, hesitating with empty hands in front of shelves of generic products, clearly unable to decide. Soft diffused retail lighting, slightly desaturated. Shot on a 35mm lens, shallow depth of field, natural editorial photography, candid documentary feel. Subtle handheld camera. Face not visible. Products blurred and completely plain: no packaging text, no signage, no lettering, no logos, no watermark. No dialogue, no voiceover, faint store ambience only.`],
 ['tiempo','A','2','Ambiente','El tiempo que se va · 3 guiones',
 `Vertical 9:16. Extreme close-up of fine sand streaming through the narrow waist of an hourglass, backlit by warm golden light, individual grains catching the light, dark background. Slow motion, hypnotic and slightly melancholic. Shot on a 100mm macro lens, very shallow depth of field, cinematic natural editorial photography. Camera almost still, barely drifting. No text, no numbers, no lettering, no logos, no watermark. No dialogue, no voiceover, soft ambient tone only.`],
 ['bateria','A','2','Ambiente','El 1% · 3 guiones',
-`Vertical 9:16. Close-up of a smartphone lying on a bedside table with its screen almost black, showing only a faint dying glow before going dark, a tangled charging cable just out of reach beside it. Dim warm bedroom light, night mood. Shot on an 85mm lens, very shallow depth of field, natural editorial photography. Slow push in as the screen fades. The phone body is completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving. The screen is a flat rigid glass surface, blurred and unreadable, and it stays perfectly flat at all times: nothing ever lifts, peels, curls, flies or emerges from it. No paper, no sheets, no physical pages, no icons, no text, no watermark. No dialogue, no voiceover, silence with faint room tone.`],
+`Vertical 9:16. Close-up of a smartphone lying on a bedside table, its screen already almost black in the very first frame, showing only a faint dying glow, a tangled charging cable just out of reach beside it. The phone is already dying when the clip starts: the video never opens on a bright screen. Dim warm bedroom light, night mood. Shot on an 85mm lens, very shallow depth of field, natural editorial photography. Slow push in as the last of the glow fades. The phone body is completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving. The screen is a flat rigid glass surface, blurred and unreadable, and it stays perfectly flat at all times: nothing ever lifts, peels, curls, flies or emerges from it. No paper, no sheets, no physical pages, no icons, no text, no watermark. No dialogue, no voiceover, silence with faint room tone.`],
 ['entrega','A','2','Ambiente','La moto en la ciudad · 3 guiones',
 `Vertical 9:16. A delivery motorcycle weaving through warm sunlit city traffic in a Latin American city, tropical trees and low buildings, dust and golden late afternoon light, a small plain package secured on the back. Energetic, fast, real. Shot on a 35mm lens, handheld tracking shot following the bike, natural editorial photography, documentary feel. Rider's face not visible. No visible brands, no text, no signage, no lettering, no logos, no watermark. No dialogue, no voiceover, street and engine ambience only.`],
 ['ninos-pantalla','A','2','Ambiente','El niño a las 11 de la noche · 3 guiones',
@@ -932,32 +1000,32 @@ const P=[
 ['viaje','B','3','Ambiente','La maleta · guion 25',
 `Vertical 9:16. An open suitcase on a bed being packed, hands placing folded clothes inside, warm morning light from a window, travel anticipation mood, plain unbranded luggage. Shot on a 35mm lens, shallow depth of field, natural editorial photography. Slow overhead push in. No text, no tags, no labels, no lettering, no logos, no watermark. No dialogue, no voiceover, fabric and zipper sounds only.`],
 ['silencio','B','3','Ambiente','El silencio digital · 3 guiones',
-`Vertical 9:16. Abstract visualization of digital silence: a swarm of soft glowing rounded rectangles floating in dark empty space slowly fades out and vanishes one by one, until only calm empty darkness remains and a single warm gentle glow settles in the centre. A feeling of relief and quiet. Cinematic, elegant, minimal, shallow depth of field. Camera slowly pushes in as the shapes disappear. The shapes are completely blank: no text, no icons, no symbols, no letters, no numbers, no logos, no watermark. No dialogue, no voiceover, a fading hum settling into silence.`],
+`Vertical 9:16. Abstract visualization of digital silence, already calm and almost empty in the very first frame. The video opens on dark quiet space with only four or five soft glowing rounded rectangles left, drifting slowly and dimly, and one small warm amber glow already resting in the centre. Within the first second they start going out: one dims, shrinks and blinks out into the darkness, then another, then another, so that by the second second only one faint shape is still lit. From there the frame stays as calm empty darkness with the single warm amber glow breathing gently in the centre for the rest of the clip. This is the quiet after the noise, never the noise itself: the frame is never crowded and never full, and the shapes only ever disappear. Nothing new ever appears, no shape is ever added, and none of them ever return, multiply or refill the frame. Cinematic, elegant, minimal, shallow depth of field, warm amber calm over deep black. Camera almost still, a very slow push in. The shapes are completely blank: no text, no icons, no symbols, no letters, no numbers, no logos, no watermark. No dialogue, no voiceover, a faint hum already fading into silence.`],
 ['lluvia','B','3','Ambiente','Lluvia en la ventana · 2 guiones',
 `Vertical 9:16. Heavy rain running down a window pane at dusk, the world outside blurred into soft bokeh lights, warm lamp light from inside reflecting on the wet glass, cozy and calm reading mood. Shot on an 85mm lens, very shallow depth of field, natural editorial photography. Camera almost static, drifting slowly along the glass. No text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, gentle rain ambience only.`],
 ['lampara','B','3','Ambiente','La luz que despierta al otro · guion 6',
-`Vertical 9:16. A bedside lamp switching on in a pitch-dark bedroom, the sudden warm light spilling harshly across rumpled sheets and a wall. The contrast between total darkness and the intrusive glow is the subject. Shot on a 35mm lens, shallow depth of field, cinematic natural editorial photography. Camera static, the light does the movement. No text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, a soft click and room tone only.`],
+`Vertical 9:16. A bedside lamp already switched on in a dark bedroom in the very first frame, its harsh warm light spilling across rumpled sheets and a wall while the rest of the room stays in deep shadow. The intrusive glow is there immediately and at full strength from the first frame, and it stays on for the whole clip: the video never opens in darkness, never fades up from black and never shows the lamp being switched on. The light only flickers and settles very slightly. The contrast between the harshly lit sheets and the black room is the subject. Shot on a 35mm lens, shallow depth of field, cinematic natural editorial photography, high contrast. Camera static, a very slow push in, nobody in frame. No text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, quiet room tone only.`],
+['rendicion','B','3','Ambiente','Se rinde: suelta el libro por el celular · guion 7',
+`Vertical 9:16. Close-up on a person's hands giving up on a paperback, the book already slipping in the very first frame. The video opens with the fingers gone loose and the half-closed book sliding out of the hand, while just beside them a smartphone lies face-up with its screen glowing and flickering insistently. Within the first second the book drops away onto the table and the same hand is already drifting over to the phone; by the second second the hand has reached it and is picking it up, and it stays there with the phone for the rest of the clip. The video never opens on someone reading calmly and it never waits: the hand is already losing the book when the clip starts. Shot on a 50mm lens, shallow depth of field, natural editorial photography, warm room light contrasted with a cool blue glow from the screen. Slow quiet camera push in, the hands doing all the movement. Face and body kept out of frame or in soft shadow, not a recognizable person. The book has a plain cover with no readable title, no text, no lettering, no logos, no watermark. The phone body is completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving anywhere on it. Its screen is a flat rigid glass surface showing only a soft indistinct blur of coloured light, and it stays perfectly flat at all times: nothing ever lifts, peels, curls, flies or emerges from it. No dialogue, no voiceover, quiet room tone with a faint phone vibration only.`],
 /* --- CUENTA B · producto --- */
 ['P01','B','4','Producto·B/N','Lectura en cama de noche · 10 guiones','kindle-paperwhite/frontal-negro.jpg',
 `Animate this image. The device rests on a bed in a dark bedroom, lit only by its own soft warm screen glow. A hand enters frame and taps the glass surface once with a fingertip. Very subtle camera push in, shallow depth of field, cinematic low-key lighting, natural editorial photography. ${MARCO} ${BLIND_BN} ${CIERRE} quiet night room tone only.`],
-['P02','B','4','Producto·B/N','En la mano, plano limpio · 14 guiones','kindle-paperwhite-16-gb/frontal.png',
-`Animate this image. The device is held in one hand against a softly blurred warm interior background, rotating slightly to catch the light on its edge. Slow smooth camera orbit, shallow depth of field, natural editorial photography, clean minimal composition. ${MARCO} ${BLIND_BN} ${CIERRE} subtle room tone only.`],
 ['P03','B','4','Producto·B/N','A pleno sol · 2 guiones','kindle-paperwhite/frontal-negro.jpg',
-`Animate this image. The device sits on an outdoor table under harsh bright midday sun, tropical greenery blurred behind, sunlight moving across its surface as leaf shadows drift over it. Slight handheld camera movement, lens flare, high contrast, natural editorial photography. ${MARCO} Its screen is a black and white electronic ink display showing a page of a Spanish-language novel: several justified paragraphs of small dark grey Spanish body text on a light warm grey background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen, perfectly readable in direct sunlight with no glare washing it out. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${CIERRE} outdoor summer ambience only.`],
+`Animate this image. The device sits on an outdoor table under harsh bright midday sun, tropical greenery blurred behind, sunlight moving across its surface as leaf shadows drift over it. Slight handheld camera movement, lens flare, high contrast, natural editorial photography. ${MARCO} Its screen is a black and white electronic ink display showing a page of a Spanish-language novel: several justified paragraphs of small dark grey Spanish body text on a light warm grey background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen, perfectly readable in direct sunlight with no glare washing it out. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${EINK_SUP} ${CIERRE} outdoor summer ambience only.`],
 ['P04','B','4','Producto·B/N','Verde matcha a oscuras · 3 guiones','kindle-paperwhite/frontal-jade.jpg',
-`Animate this image. The device lies in near-total darkness, its warm amber screen glow the only light source, gently illuminating the surface beneath it. A hand enters frame and shifts it slightly. Camera almost static, very shallow depth of field, cinematic low-key lighting, natural editorial photography. ${MARCO} Its screen is a black and white electronic ink display showing a page of a Spanish-language novel: several justified paragraphs of small dark grey Spanish body text on a warm amber-lit background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${CIERRE} silent night ambience.`],
+`Animate this image. The device lies in near-total darkness, its warm amber screen glow the only light source, gently illuminating the surface beneath it. A hand enters frame and shifts it slightly. Camera almost static, very shallow depth of field, cinematic low-key lighting, natural editorial photography. ${MARCO} Its screen is a black and white electronic ink display showing a page of a Spanish-language novel: several justified paragraphs of small dark grey Spanish body text on a warm amber-lit background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${EINK_SUP} ${CIERRE} silent night ambience.`],
 ['P05','B','4','Producto·B/N','Liviano, una sola mano · 6 guiones','kindle-basic/frontal.png',
-`Animate this image. The device is held up in a single hand, tilted slowly to show how thin and light it is, warm window light from the side, softly blurred home interior behind. Smooth slow camera movement, shallow depth of field, natural editorial photography. ${MARCO} ${BLIND_BN} ${CIERRE} subtle room tone only.`],
+`Animate this image. The device is held up in a single hand, its screen facing the camera the whole time, tilting only very slightly at the edge so the thin profile catches the warm window light from the side, softly blurred home interior behind. It is never turned over or rotated to show its back. Smooth slow push in, no orbit and no arc around the device, shallow depth of field, natural editorial photography. ${MARCO} ${BLIND_BN} ${CIERRE} subtle room tone only.`],
 ['P06','B','4','Producto·B/N','Como regalo · 5 guiones','kindle-paperwhite/frontal-raspberry.jpg',
 `Animate this image. The device rests on a table beside a satin ribbon and soft festive bokeh lights, warm golden hour light, hands entering frame to slide it gently toward the camera as a gift. Slow push in, shallow depth of field, natural editorial photography, warm celebratory mood. ${MARCO} ${BLIND_BN} ${CIERRE} soft ribbon sounds only.`],
 ['P07','B','4','Producto·B/N','Niños · 3 guiones','paperwhite-kids/frontal.png',
-`Animate this image. The device is held by small child-sized hands in a bright cozy bedroom, warm afternoon daylight, a soft blanket and stuffed toy blurred in the background. Gentle handheld camera, shallow depth of field, natural editorial photography, warm and hopeful mood. Hands only, no faces. ${MARCO} Its screen is a black and white electronic ink display showing a page of a Spanish-language children's story: several short justified paragraphs of dark grey Spanish body text on a light warm grey background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${CIERRE} quiet room tone only.`],
+`Animate this image. The device is held by small child-sized hands in a bright cozy bedroom, warm afternoon daylight, a soft blanket and stuffed toy blurred in the background. Gentle handheld camera, shallow depth of field, natural editorial photography, warm and hopeful mood. Hands only, no faces. ${MARCO} Its screen is a black and white electronic ink display showing a page of a Spanish-language children's story: several short justified paragraphs of dark grey Spanish body text on a light warm grey background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${EINK_SUP} ${CIERRE} quiet room tone only.`],
 ['P08','B','4','Producto·COLOR','Kindle Colorsoft · 1 guion','colorsoft-32gb/frontal.png',
-`Animate this image. The device rests on a clean light surface as warm directional light slowly sweeps across it, making its colour saturate and glow. Slow smooth camera orbit, shallow depth of field, natural editorial photography, crisp and vivid. ${MARCO} ${BLIND_COL} ${CIERRE} subtle ambient tone only.`],
+`Animate this image. The device rests face up on a clean light surface as warm directional light slowly sweeps across it, making the colours of its body and its page deepen and come alive. The light does all the movement: the device itself stays still, flat and face up, and is never lifted, rotated or turned over. Very slow straight push in from above, no orbit and no arc around the device, shallow depth of field, natural editorial photography, crisp and vivid. ${MARCO} ${BLIND_COL} ${CIERRE} subtle ambient tone only.`],
 ['P09','B','4','Producto·COLOR','Kobo Libra con botones · 2 guiones','kobo-libra-colour-32-gb/frontal.png',
-`Animate this image. The device is held in one hand against a softly blurred warm interior background, the thumb resting on the physical page-turn buttons along its raised side grip, tilting slightly to catch the light on its edge. Slow smooth camera orbit, shallow depth of field, natural editorial photography, clean minimal composition. Keep the device exactly as shown: do not alter its shape, proportions, colour, body or its asymmetric grip with physical buttons. Its frame stays completely smooth, blank and unmarked, with no brand name, no logo, no lettering and no engraving anywhere on it. Its screen is a colour electronic ink display, with the soft muted pastel tones typical of colour e-ink rather than the vivid saturation of an LCD, showing a page of a Spanish-language novel with a few passages highlighted in soft yellow and pink: justified paragraphs of small dark Spanish body text on a light warm background, with clean margins, exactly like printed prose. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${CIERRE} subtle room tone and a soft button click only.`],
+`Animate this image. The device is held in one hand against a softly blurred warm interior background, the thumb resting on the physical page-turn buttons along its raised side grip, the screen facing the camera the whole time and angled just enough that the raised grip and its buttons stay clearly visible along the side. The hand holds it steady, never rotating it or turning it over. Very slow straight push in, no orbit and no arc around the device, shallow depth of field, natural editorial photography, clean minimal composition. Keep the device exactly as shown: do not alter its shape, proportions, colour, body or its asymmetric grip with physical buttons. Its frame stays completely smooth, blank and unmarked, with no brand name, no logo, no lettering and no engraving anywhere on it. ${UNA_CARA} Its screen is a colour electronic ink display, with the soft muted pastel tones typical of colour e-ink rather than the vivid saturation of an LCD, showing a page of a Spanish-language novel with a few passages highlighted in soft yellow and pink: justified paragraphs of small dark Spanish body text on a light warm background, with clean margins, exactly like printed prose. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${EINK_SUP} ${CIERRE} subtle room tone and a soft button click only.`],
 ['P10','B','4','Producto·COLOR','Kobo Clara compacta · 1 guion','kobo-clara-colour-16gb/frontal.png',
-`Animate this image. The device rests on a light wooden table beside a cup of coffee, warm morning window light moving gently across it, a hand entering frame to pick it up and hold it comfortably in one palm to show how compact it is. Slow push in, shallow depth of field, natural editorial photography, warm and inviting. ${MARCO} ${BLIND_COL} ${CIERRE} quiet morning room tone only.`],
+`Animate this image. The device rests on a light wooden table beside a cup of coffee, warm morning window light moving gently across it, a hand entering frame to pick it up and hold it comfortably in one palm to show how compact it is, keeping the screen facing the camera at all times and never turning it over. Slow push in, no orbit and no arc around the device, shallow depth of field, natural editorial photography, warm and inviting. ${MARCO} ${BLIND_COL} ${CIERRE} quiet morning room tone only.`],
 ['P11','B','4','Producto·CAJAS','Cajas selladas, stock real · 4 guiones','varios-modelos-en-la-misma-foto/frontal.png',
 `Animate this image. The sealed retail boxes stand together on a dark surface under warm directional light that slowly sweeps across them, revealing the texture of the cardboard, with a subtle slow camera orbit around the group. Shallow depth of field, natural editorial photography, premium product mood. Keep every box exactly as shown: do not alter their shape, proportions, colours, or any of the printing, artwork and brand markings already on them — preserve all existing packaging graphics exactly as they appear. The boxes stay closed and sealed at all times; nothing is opened, unwrapped or taken out. Do not add any new text, lettering, labels, stickers or logos that are not already in the image. No watermark. No dialogue, no voiceover, subtle room tone only.`]
 ];
@@ -977,16 +1045,22 @@ function irAPrompt(clipId){
  setTimeout(()=>{const el=document.getElementById('pr-'+arch);
   if(el){el.scrollIntoView({behavior:'smooth',block:'center'});
    el.classList.add('destacado'); setTimeout(()=>el.classList.remove('destacado'),2400);}
+  else{
+   // metraje real: no tiene tarjeta de prompt porque no se genera con IA
+   const t=document.getElementById('toast');
+   t.textContent=`${clipId} es metraje real (${arch}.mp4) — no se genera, no tiene prompt`;
+   t.classList.add('on');
+   setTimeout(()=>{t.classList.remove('on');t.textContent='Copiado';},2600);
+  }
  },70);
 }
 // "generar el material de este guion"
 function verGuion(n){ filtro='G'+n; irA('prompts'); renderPrompts(); window.scrollTo(0,0); }
 
 function renderPrompts(){
- const hechos=JSON.parse(localStorage.getItem('flow_hechos')||'{}');
  const f=document.getElementById('filtros');
  const opts=[['todos','Todos'],['A','Cuenta A'],['B','Cuenta B'],
-             ['Producto','Solo producto'],['pend','Pendientes']];
+             ['Producto','Solo producto']];
  f.innerHTML=opts.map(o=>`<button data-f="${o[0]}" class="${o[0]==filtro?'on':''}">${o[1]}</button>`).join('')
   +`<select id="selg" title="Filtrar por guion"><option value="">— por guion —</option>`
   +G.map(g=>`<option value="G${g.n}" ${filtro==='G'+g.n?'selected':''}>Guion ${g.n} · ${g.t.slice(0,30)}</option>`).join('')
@@ -995,7 +1069,6 @@ function renderPrompts(){
  const sel=f.querySelector?.('#selg');
  if(sel)sel.onchange=e=>{if(e.target.value){filtro=e.target.value;renderPrompts();}};
 
- // orden por guion: el mismo en que aparecen en la línea de tiempo
  let ordenGuion=null;
  if(/^G\d+$/.test(filtro)){
   const g=G.find(x=>x.n===+filtro.slice(1));
@@ -1004,24 +1077,20 @@ function renderPrompts(){
  let lista=P.map((p,i)=>({p,i})).filter(({p})=>{
    if(ordenGuion)return ordenGuion.includes(p[0]);
    if(filtro=='todos')return 1;
-   if(filtro=='pend')return !hechos[p[0]];
    if(filtro=='Producto')return p[3].startsWith('Producto');
    return p[1]==filtro;});
  if(ordenGuion)lista.sort((a,b)=>ordenGuion.indexOf(a.p[0])-ordenGuion.indexOf(b.p[0]));
 
  document.getElementById('avisog').innerHTML = ordenGuion
   ? `<div class="avisoguion">🎬 <b>Material del guion ${filtro.slice(1)}</b> —
-      ${G.find(x=>x.n===+filtro.slice(1)).t}. Son <b>${lista.length} clips</b>
-      (${lista.length*20} créditos). Genera estos, arma el video y recién ahí seguí con el próximo guion.
+      ${G.find(x=>x.n===+filtro.slice(1)).t}. Son <b>${lista.length} clips</b>.
       <button class="btn sec" onclick="filtro='todos';renderPrompts()">Ver todos</button></div>`
   : '';
 
  document.getElementById('prompts').innerHTML=lista.map(({p,i},k)=>{
   const esProd=p.length>6, foto=esProd?p[5]:null, txt=esProd?p[6]:p[5];
-  const done=!!hechos[p[0]];
-  return `<div class="pr ${done?'hecho':''}" id="pr-${p[0]}">
+  return `<div class="pr" id="pr-${p[0]}">
    <div class="prcab">
-     <input type="checkbox" ${done?'checked':''} onchange="marcar('${p[0]}',this.checked)">
      <div class="orden">${i+1}</div>
      <div class="prinfo"><b>${p[4].replace(/\s*·\s*(\d+\s*)?guion(es)?[\s\d,y]*$/i,'')}</b><span>${p[3]} · tanda ${p[2]}${
        COD[p[0]]?' · en los guiones aparece como <span class="codref">'+COD[p[0]]+'</span>':''}</span></div>
@@ -1032,10 +1101,10 @@ function renderPrompts(){
      <code>assets/productos/${foto}</code>
      <button class="btn sec" onclick="cp(this,'assets\\\\productos\\\\${foto.replace(/\//g,'\\\\')}')">Copiar ruta</button></div>`:''}
    ${(()=>{const us=usosDe(p[0]);
-     if(!us.length)return `<div class="sinuso">💤 <b>No se usa en los 10 guiones de producción.</b>
-       Es material para los otros 30 del banco — si estás yendo guion por guion, sáltalo por ahora.</div>`;
+     if(!us.length)return `<div class="sinuso">💤 <b>No se usa en los 10 guiones de producción.</b></div>`;
      return `<div class="usos"><div class="usoscab">📍 Dónde se usa · verifica que el clip funcione en estos momentos</div>
-      ${us.map(u=>`<div class="uso" onclick="irAGuion(${u.n})" title="Abrir el guion ${u.n}">
+      ${us.map(u=>`<div class="uso" onclick="irAGuion(${u.n},${u.ri})"
+        title="Ir al guion ${u.n}, al momento ${u.mom}">
         <span class="ug">G${u.n}</span>
         <span class="um">${u.mom}</span>
         <span class="${PILL[u.tipo]}">${u.tipo}</span>
@@ -1049,15 +1118,105 @@ function renderPrompts(){
      <button class="btn sec" onclick="cp(this,'${p[0]}.mp4')">Copiar nombre de archivo</button>
    </div>
   </div>`}).join('');
- prog();
 }
-function marcar(id,v){const h=JSON.parse(localStorage.getItem('flow_hechos')||'{}');
- if(v)h[id]=1;else delete h[id];localStorage.setItem('flow_hechos',JSON.stringify(h));
- renderPrompts(); renderGuiones();}  // re-renderiza guiones: el botón muestra lo que falta
-function prog(){const h=JSON.parse(localStorage.getItem('flow_hechos')||'{}');
- const n=Object.keys(h).length;document.getElementById('progtxt').textContent=n+' / '+P.length;
- document.getElementById('barra').style.width=(n/P.length*100)+'%';}
-function reset(){if(confirm('¿Borrar todas las marcas?')){localStorage.removeItem('flow_hechos');renderPrompts();}}
+
+/* ═══════════ TELEPROMPTER TABLET LOGIC ═══════════ */
+let teleScrollTimer = null;
+let teleScrollSpeed = 3;
+let teleFontSize = 38;
+let telePlaying = false;
+let teleWakeLock = null;
+
+async function requestWakeLock(){
+ try{ if('wakeLock' in navigator) teleWakeLock = await navigator.wakeLock.request('screen'); }catch(e){}
+}
+function releaseWakeLock(){
+ if(teleWakeLock){ teleWakeLock.release().catch(()=>{}); teleWakeLock = null; }
+}
+
+function abrirTeleprompter(gNum){
+ const modal = document.getElementById('telemodal');
+ const sel = document.getElementById('tele-sel');
+ sel.innerHTML = G.map(g=>`<option value="${g.n}" ${g.n===gNum?'selected':''}>Guion ${g.n}: ${g.t}</option>`).join('');
+ teleCargarGuion(gNum);
+ modal.classList.add('on');
+ document.body.style.overflow = 'hidden';
+ requestWakeLock();
+}
+
+function teleCargarGuion(gNum){
+ teleStop();
+ const g = G.find(x=>x.n===gNum);
+ if(!g) return;
+ const content = document.getElementById('tele-content');
+ let html = `<div style="font-size:0.55em;color:var(--cian);margin-bottom:30px;font-weight:800;letter-spacing:1.5px">🎬 GUION ${g.n} · ${g.t.toUpperCase()}</div>`;
+ html += g.tomas.map((t, idx)=>`
+   <div class="tele-frase">
+     <span class="tele-cue">TOMA ${idx+1} (${t[0]}) — ${t[1]}</span>
+     <div>${t[3]}</div>
+     <span class="tele-pausa">⏸ PAUSA // CAMBIO DE PLANO</span>
+   </div>
+ `).join('');
+ content.innerHTML = html;
+ teleReset();
+}
+
+function teleTogglePlay(){
+ if(telePlaying) teleStop();
+ else teleStart();
+}
+
+function teleStart(){
+ telePlaying = true;
+ const btn = document.getElementById('tele-play');
+ btn.textContent = '❚❚ Pausar';
+ btn.style.background = 'var(--warn)';
+ btn.style.color = '#000';
+ if(teleScrollTimer) clearInterval(teleScrollTimer);
+ teleScrollTimer = setInterval(()=>{
+   const body = document.getElementById('tele-body');
+   body.scrollTop += teleScrollSpeed;
+   if(body.scrollTop + body.clientHeight >= body.scrollHeight - 10){
+     teleStop();
+   }
+ }, 30);
+}
+
+function teleStop(){
+ telePlaying = false;
+ const btn = document.getElementById('tele-play');
+ btn.textContent = '▶ Iniciar';
+ btn.style.background = 'var(--cian)';
+ btn.style.color = 'var(--navy)';
+ if(teleScrollTimer){ clearInterval(teleScrollTimer); teleScrollTimer = null; }
+}
+
+function teleSpeed(delta){
+ teleScrollSpeed = Math.max(1, Math.min(15, teleScrollSpeed + delta));
+ document.getElementById('tele-speed-lbl').textContent = teleScrollSpeed + 'x';
+}
+
+function teleFont(delta){
+ teleFontSize = Math.max(20, Math.min(72, teleFontSize + delta));
+ document.getElementById('tele-font-lbl').textContent = teleFontSize + 'px';
+ document.getElementById('tele-content').style.fontSize = teleFontSize + 'px';
+}
+
+function teleToggleEspejo(){
+ document.getElementById('tele-content').classList.toggle('espejo');
+}
+
+function teleReset(){
+ const body = document.getElementById('tele-body');
+ body.scrollTop = 0;
+}
+
+function teleCerrar(){
+ teleStop();
+ releaseWakeLock();
+ document.getElementById('telemodal').classList.remove('on');
+ document.body.style.overflow = '';
+}
 
 /* ═══════════ LOTES ═══════════ */
 function renderLotes(){
