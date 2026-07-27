@@ -456,7 +456,8 @@ def _frase_alrededor(palabras: list, t: float, ventana: float = 3.0) -> str:
 def planificar_insertos_por_palabra(palabras: list, track_rostro: list, dir_tmp: Path,
                                      libre_fn, catalogo: list = None,
                                      generador=None, pendientes: list = None,
-                                     tags_reservados: set = None) -> list:
+                                     tags_reservados: set = None,
+                                     generador_video=None) -> list:
     """Insertos visuales disparados por el guion, no por un tiempo arbitrario.
 
     Recorre la transcripción buscando palabras del vocabulario
@@ -468,9 +469,18 @@ def planificar_insertos_por_palabra(palabras: list, track_rostro: list, dir_tmp:
          Kindle de verdad (verificado por la sesión B).
       2. **Imagen puesta a mano** en assets/generado/manual/ (ver
          contexto/prompts-externos.md).
-      3. **Generada con Flux** en el momento (f9_generar) — solo para conceptos
+      3. **Clip generado con LTX** (f12_video_gen) — solo si la generación de
+         video está encendida (`config.LTX_HABILITADO` o `--video-ambiente`),
+         y solo para conceptos de ambiente. Un ambiente en movimiento retiene
+         mejor que una foto fija. Viene como tarjeta ProRes 4444 con alfa, así
+         que el compositor lo trata igual que a una animación.
+      4. **Generada con Flux** en el momento (f9_generar) — solo para conceptos
          de ambiente que ninguna foto del catálogo cubre: sol, cama, café,
          noche, viaje...
+
+    `generador_video` es opcional y APAGADO por defecto: cada clip son minutos
+    de GPU. Si falla o el concepto no tiene prompt de movimiento, cae al
+    `generador` de imagen — un concepto nunca se pierde por esto.
 
     `tags_reservados` son las etiquetas que ya se llevó una animación
     (config.CONCEPTOS_PREFIEREN_ANIMACION). Para esas NO se busca foto: el
@@ -511,6 +521,32 @@ def planificar_insertos_por_palabra(palabras: list, track_rostro: list, dir_tmp:
             origen = asset["id"]
             if not ruta_img.exists():
                 continue
+        elif generador_video is not None:
+            # El catálogo no tiene nada y la generación de VIDEO está encendida:
+            # un clip de ambiente vale más que una foto fija. Si LTX falla o el
+            # concepto no tiene prompt de movimiento, se cae al generador de
+            # imagen de abajo — nunca se pierde el inserto por esto.
+            tarjeta = generador_video(tag, _frase_alrededor(palabras, t0), len(eventos))
+            if tarjeta is not None:
+                ruta_mov, w_tarjeta, h_tarjeta = tarjeta
+                x, y = _posicion_inserto(w_tarjeta, h_tarjeta, track_rostro, t0)
+                eventos.append({"tipo": "pip-producto", "medio": "video",
+                                "archivo": ruta_mov, "x": x, "y": y,
+                                "ini": round(t0, 3), "fin": round(t1, 3),
+                                "palabra": p["texto"], "tag": tag,
+                                "asset": f"video:{ruta_mov.name}"})
+                ultimo_t = t0
+                continue
+            if generador is None:
+                if pendientes is not None and tag not in [t for t, _ in pendientes]:
+                    pendientes.append((tag, _frase_alrededor(palabras, t0, 2.0)))
+                continue
+            ruta_img = generador(tag, _frase_alrededor(palabras, t0))
+            if ruta_img is None:
+                if pendientes is not None and tag not in [t for t, _ in pendientes]:
+                    pendientes.append((tag, _frase_alrededor(palabras, t0, 2.0)))
+                continue
+            origen = f"generado:{ruta_img.name}"
         elif generador is not None:
             # El catálogo no tiene nada para esta etiqueta: se genera.
             ruta_img = generador(tag, _frase_alrededor(palabras, t0))
@@ -767,9 +803,14 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
                          track_rostro: list = None, generar: bool = True,
                          nombre_video: str = "video", sol_pip_video: bool = False,
                          eventos_manual: list = None,
-                         animaciones_manual: list = None) -> list:
+                         animaciones_manual: list = None,
+                         video_ambiente: bool = None) -> list:
     import f8_hyperframes
     eventos = []
+    # None = "lo que diga config"; True/False = decisión explícita de quien
+    # llama (la bandera --video-ambiente de editor.py).
+    if video_ambiente is None:
+        video_ambiente = config.LTX_HABILITADO
     hf = config.USAR_HYPERFRAMES and f8_hyperframes.disponible()
     semilla = _semilla_video(nombre_video)
     if not hf:
@@ -1029,10 +1070,29 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
             gen_fn = None
             if servidor is not None and f9_generar.instalado():
                 gen_fn = lambda tag, frase: f9_generar.generar_para_tag(tag, frase, servidor=servidor)
+
+            # Ambiente en VIDEO en vez de foto fija. Apagado salvo que se pida
+            # a propósito: cada clip son minutos de GPU y hace falta RAM libre.
+            # Comparte el MISMO ServidorCompartido que Flux — una sola
+            # instancia de ComfyUI, como exige la disciplina de VRAM; f12 pide
+            # /free antes y después de cada clip para que los dos modelos no
+            # convivan en memoria.
+            gen_video_fn = None
+            if servidor is not None and video_ambiente:
+                import f12_video_gen
+                if f12_video_gen.instalado():
+                    gen_video_fn = lambda tag, frase, i: f12_video_gen.tarjeta_para_tag(
+                        tag, frase, dir_tmp, i, servidor=servidor)
+                else:
+                    faltan = f12_video_gen.archivos_faltantes()
+                    print(f"  AVISO: se pidió ambiente en video pero faltan "
+                          f"{len(faltan)} peso(s) de LTX; se sigue con imagen fija.")
+
             insertos = planificar_insertos_por_palabra(
                 palabras, track_rostro or [], dir_tmp, _libre,
                 generador=gen_fn, pendientes=pendientes,
-                tags_reservados=tags_reservados)
+                tags_reservados=tags_reservados,
+                generador_video=gen_video_fn)
         finally:
             if servidor is not None:
                 servidor.cerrar()
@@ -1409,6 +1469,11 @@ def main():
                              "disparo por palabra.")
     parser.add_argument("--sol-pip-video", action="store_true",
                         help="Usar el video de sol en vez de la animación HTML")
+    parser.add_argument("--video-ambiente", action="store_true",
+                        help="Insertos de ambiente como clip de video con LTX 2.3 (f12_video_gen) "
+                             "en vez de foto fija. Apagado por defecto")
+    parser.add_argument("--sin-video-ambiente", action="store_true",
+                        help="Forzar foto fija aunque config.LTX_HABILITADO esté en True")
     args = parser.parse_args()
 
     ruta_video = Path(args.video)
@@ -1439,7 +1504,9 @@ def main():
                                    nombre_video=args.nombre_video or ruta_video.stem,
                                    sol_pip_video=args.sol_pip_video,
                                    eventos_manual=eventos_manual,
-                                   animaciones_manual=animaciones_manual)
+                                   animaciones_manual=animaciones_manual,
+                                   video_ambiente=(True if args.video_ambiente else
+                                                   False if args.sin_video_ambiente else None))
 
     if args.posiciones_manual:
         aplicar_posiciones_manual(eventos, Path(args.posiciones_manual))

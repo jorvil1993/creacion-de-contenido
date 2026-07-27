@@ -55,6 +55,7 @@ import hashlib
 import json
 import re
 import shutil
+import subprocess
 import sys
 import time
 import urllib.error
@@ -508,6 +509,103 @@ def generar_desde_foto(foto: Path, contexto_guion: str = "",
         prompt = f"{prompt}, scene inspired by: {frase}"
     return generar(prompt, nombre=f"foto-{_slug(foto.stem)}", imagen=foto,
                    servidor=servidor)
+
+
+# ---------------------------------------------------------------------------
+# De clip suelto a tarjeta de PiP componible
+# ---------------------------------------------------------------------------
+def render_pip_video(ruta_clip: Path, ruta_salida: Path, ancho=400, alto=520):
+    """Convierte un clip de LTX en una tarjeta de PiP con alfa, componible.
+
+    El compositor (`f4_retencion.componer`) ya sabe manejar overlays de video,
+    pero espera **alfa**: los usa para las animaciones, que son ProRes 4444.
+    LTX no genera alfa y sus clips son rectángulos duros, así que hay que
+    fabricarle el marco y las esquinas redondeadas — es exactamente lo que
+    anticipaba la §6 del PLAN-EDITOR-VISUAL-V2.
+
+    El resultado es visualmente el mismo que `f6_overlays.render_pip_producto`
+    (esquinas redondeadas, borde blanco, acento cian), pero en movimiento. Se
+    reutilizan sus constantes de color y sus medidas para que un PiP de foto y
+    uno de video no se vean como de dos videos distintos.
+
+    Devuelve (ancho, alto) de la tarjeta, igual que render_pip_producto.
+    """
+    from PIL import Image, ImageDraw
+
+    import f6_overlays  # perezoso: f6 también importa de acá
+
+    radio, borde = 36, 10
+    w_tarjeta, h_tarjeta = ancho + borde * 2, alto + borde * 2
+
+    # Marco CON UN HUECO: blanco redondeado con filo cian, y transparente justo
+    # donde va el video. Al superponerlo encima del clip, el hueco deja ver el
+    # video y el blanco tapa las esquinas cuadradas que le sobran.
+    marco = Image.new("RGBA", (w_tarjeta, h_tarjeta), (0, 0, 0, 0))
+    d = ImageDraw.Draw(marco)
+    d.rounded_rectangle([0, 0, w_tarjeta - 1, h_tarjeta - 1],
+                        radius=radio + borde, fill=f6_overlays.BLANCO)
+    d.rounded_rectangle([0, 0, w_tarjeta - 1, h_tarjeta - 1],
+                        radius=radio + borde, outline=f6_overlays.CIAN, width=3)
+    hueco = Image.new("L", (w_tarjeta, h_tarjeta), 0)
+    ImageDraw.Draw(hueco).rounded_rectangle(
+        [borde, borde, borde + ancho - 1, borde + alto - 1], radius=radio, fill=255)
+    # Restar el hueco del alfa del marco: donde el hueco vale 255, alfa 0.
+    alfa = marco.getchannel("A")
+    marco.putalpha(Image.composite(Image.new("L", marco.size, 0), alfa, hueco))
+
+    ruta_marco = ruta_salida.with_suffix(".marco.png")
+    marco.save(ruta_marco)
+
+    # scale con force_original_aspect_ratio=increase + crop = "cubrir y recortar
+    # al centro", el mismo encuadre que hace render_pip_producto con PIL.
+    filtro = (
+        f"[0:v]scale={ancho}:{alto}:force_original_aspect_ratio=increase,"
+        f"crop={ancho}:{alto},format=rgba,"
+        f"pad={w_tarjeta}:{h_tarjeta}:{borde}:{borde}:color=#00000000[vid];"
+        f"[vid][1:v]overlay=0:0:format=auto[out]"
+    )
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(ruta_clip),
+        "-loop", "1", "-i", str(ruta_marco),
+        "-filter_complex", filtro, "-map", "[out]",
+        # ProRes 4444 (profile 4) con yuva444p10le: es el formato con alfa que
+        # el compositor ya consume para las animaciones. No cambiar por webm:
+        # f4_retencion espera este.
+        "-c:v", "prores_ks", "-profile:v", "4444", "-pix_fmt", "yuva444p10le",
+        "-an",                       # el audio de LTX se descarta acá también
+        "-shortest",
+        str(ruta_salida),
+    ]
+    # stderr a un archivo, nunca a un pipe sin lector (trampa #5).
+    log = ruta_salida.with_suffix(".ffmpeg.log")
+    with open(log, "wb") as flog:
+        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, stdout=flog, stderr=flog)
+    if r.returncode != 0 or not ruta_salida.exists():
+        cola = log.read_text(encoding="utf-8", errors="replace")[-1200:]
+        raise RuntimeError(f"ffmpeg no pudo armar la tarjeta de video:\n{cola}")
+
+    ruta_marco.unlink(missing_ok=True)
+    log.unlink(missing_ok=True)
+    return w_tarjeta, h_tarjeta
+
+
+def tarjeta_para_tag(tag: str, contexto_guion: str, dir_tmp: Path, indice: int,
+                     servidor=None) -> tuple | None:
+    """Clip de ambiente ya convertido en tarjeta de PiP lista para componer.
+
+    Devuelve (ruta_mov, ancho, alto) o None. Es lo que consume f6_overlays.
+    """
+    clip = generar_para_tag(tag, contexto_guion, servidor=servidor)
+    if clip is None:
+        return None
+    destino = dir_tmp / f"ov_inserto_video_{indice}.mov"
+    try:
+        w, h = render_pip_video(clip, destino)
+    except Exception as e:
+        _log(f"AVISO: no se pudo armar la tarjeta de video para {tag}: {e}")
+        return None
+    return destino, w, h
 
 
 def main():

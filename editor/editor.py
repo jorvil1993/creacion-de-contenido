@@ -73,6 +73,14 @@ def main():
                              "disparo por palabra de config.ANIMACIONES_POR_PALABRA")
     parser.add_argument("--sol-pip-video", action="store_true",
                         help="Usar el video de sol (sol_video_pip.mov) como PiP en vez de la animación HTML")
+    parser.add_argument("--video-ambiente", action="store_true",
+                        help="Generar los insertos de ambiente como CLIP de video con LTX 2.3 en vez "
+                             "de foto fija (f12_video_gen). APAGADO por defecto: cada clip son "
+                             "minutos de GPU y conviene tener >18 GB de RAM libres. Si un concepto "
+                             "falla, cae solo a la imagen fija de Flux")
+    parser.add_argument("--sin-video-ambiente", action="store_true",
+                        help="Forzar insertos de ambiente como foto fija aunque config.LTX_HABILITADO "
+                             "esté en True")
     parser.add_argument("--sin-editor-visual", action="store_true",
                         help="No generar el editor visual HTML al terminar")
     parser.add_argument("--reaplicar", action="store_true",
@@ -160,6 +168,10 @@ def main():
         cmd_overlays += ["--animaciones-manual", args.animaciones_manual]
     if args.sol_pip_video:
         cmd_overlays.append("--sol-pip-video")
+    if args.video_ambiente:
+        cmd_overlays.append("--video-ambiente")
+    if args.sin_video_ambiente:
+        cmd_overlays.append("--sin-video-ambiente")
     paso("FASE 5a+6: Overlays y generación (hook, ficha, animaciones, insertos, CTA)", cmd_overlays)
 
     paso("FASE 3b+5b+2b: Render único (zoom + overlays + subtítulos + loop, una sola codificación)", [
