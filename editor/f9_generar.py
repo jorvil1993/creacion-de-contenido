@@ -493,6 +493,28 @@ def version_manual(tag: str) -> Path | None:
     return None
 
 
+def version_manual_video(tag: str) -> Path | None:
+    """Clip de VIDEO puesto a mano por José para esta etiqueta.
+
+    Gana sobre TODO: sobre la foto del catálogo, sobre la imagen manual,
+    sobre LTX y sobre Flux. Si existe, el concepto se muestra como B-roll
+    a pantalla completa (1080×1920), no como PiP.
+
+    El nombre del archivo coincide con la etiqueta de config.PALABRAS_A_TAGS
+    (p. ej. sol.mp4, noche.mp4, libros.mp4), no con el código de referencia
+    (F14, F01) que solo se usa en la documentación de guiones.
+    """
+    dir_manual = config.DIR_VIDEO_MANUAL
+    if not dir_manual.is_dir():
+        return None
+    nombre = _slug(tag.lstrip("#"))
+    for ext in (".mp4", ".mov", ".webm"):
+        cand = dir_manual / f"{nombre}{ext}"
+        if cand.exists():
+            return cand
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser(description="Generación de imágenes con ComfyUI + Flux")
     ap.add_argument("--estado", action="store_true", help="Diagnóstico de la instalación")

@@ -105,10 +105,14 @@ Las fases 3b, 5 y 2 se componen en **una sola codificación NVENC** (ver
 
 ---
 
-## De dónde sale cada imagen (orden de prioridad)
+## De dónde sale cada imagen o video (orden de prioridad)
 
 Cuando el guion nombra un concepto (`config.PALABRAS_A_TAGS`):
 
+0. **Clip de video manual** — `assets/generado/video/manual/<etiqueta>.mp4`. Si
+   existe, se muestra como **B-roll a pantalla completa** (1080×1920, fade
+   suave, voz de José continua, subtítulos visibles encima). Gana sobre TODO.
+   El pipeline no genera nada más ni busca fotos para ese concepto.
 1. **Foto real del catálogo** — `contexto/catalogo-assets.json`, 262 assets
    etiquetados. Gana siempre para el producto: Flux no sabe cómo es un Kindle
    real, produce un e-reader genérico creíble.

@@ -508,7 +508,7 @@ def planificar_insertos_por_palabra(palabras: list, track_rostro: list, dir_tmp:
         if not tag:
             continue
         if tag in tags_reservados:
-            continue                       # ese concepto ya lo cuenta una animación
+            continue                       # ese concepto ya lo cuenta una animación o B-roll
         t0 = p["inicio"]
         if t0 - ultimo_t < config.INSERTO_SEPARACION_MIN_S:
             continue
@@ -881,6 +881,59 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
     def _libre(t0, t1):
         return all(t1 <= a or t0 >= b for a, b in ventanas_ocupadas)
 
+    # ---- B-ROLL A PANTALLA COMPLETA (Video Manual / Google Flow) ------------
+    # Prioridad absoluta: si existe un clip manual en assets/generado/video/manual/<tag>.mp4,
+    # se muestra a pantalla completa (1080×1920). La duración es DINÁMICA: se
+    # calcula desde la palabra clave en la transcripción hasta el fin de la frase
+    # o la pausa siguiente, sin pisar el hook ni el CTA.
+    import f9_generar
+    tags_reservados = set()
+    tags_con_broll = set()
+    for idx_p, p in enumerate(palabras):
+        tag = config.PALABRAS_A_TAGS.get(_normalizar(p["texto"]))
+        if not tag or tag in tags_con_broll:
+            continue
+        broll = f9_generar.version_manual_video(tag)
+        if broll is None:
+            continue
+        t0 = p["inicio"]
+
+        # Calcular fin dinámico de la frase según timestamps de palabras
+        t1 = p["fin"]
+        for p_sig in palabras[idx_p + 1:]:
+            if p_sig["inicio"] - t1 > 0.4:
+                break
+            t1 = p_sig["fin"]
+            texto_p = p_sig["texto"].strip()
+            if texto_p.endswith((".", "?", "!")) or (t1 - t0) >= 5.0:
+                break
+
+        fin_broll = max(t1, t0 + config.BROLL_DURACION_MIN_S)
+
+        # Truncar si colisiona con el inicio de alguna ventana ya ocupada (ej. CTA)
+        for a_oc, b_oc in ventanas_ocupadas:
+            if t0 < a_oc and fin_broll > a_oc:
+                fin_broll = a_oc
+
+        dur_real = fin_broll - t0
+        if dur_real < config.BROLL_DURACION_MIN_S:
+            continue
+        if not _libre(t0, fin_broll):
+            continue
+
+        eventos.append({
+            "tipo": "broll", "medio": "video",
+            "archivo": broll, "x": 0, "y": 0,
+            "ini": round(t0, 3), "fin": round(fin_broll, 3),
+            "palabra": p["texto"], "tag": tag,
+            "asset": f"broll-manual:{broll.name}",
+            "broll_fullscreen": True,
+        })
+        ventanas_ocupadas.append((t0, fin_broll))
+        tags_con_broll.add(tag)
+        tags_reservados.add(tag)
+        print(f"  B-roll pantalla completa (duración dinámica {dur_real:.2f}s): {broll.name} por '{p['texto']}' ({tag}) [{t0:.1f}s - {fin_broll:.1f}s]")
+
     # ---- ANIMACIONES ------------------------------------------------------
     # Para conceptos que ninguna foto ilustra bien: "batería" traía la foto de
     # un cargador; ahora es una batería que se llena contando semanas.
@@ -899,7 +952,6 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
     anim_hechas, t_animaciones = {}, []
     # Etiquetas que a partir de ahora NO deben traer una foto del catálogo:
     # para estos conceptos la animación gana (config.CONCEPTOS_PREFIEREN_ANIMACION).
-    tags_reservados = set()
 
     # Con la generación de video encendida, para unos pocos conceptos el clip
     # real le gana la ranura a la animación dibujada (config.LTX_CONCEPTOS_
@@ -1299,22 +1351,45 @@ def _planificar_comparativa(palabras: list, libre_fn) -> dict | None:
 def componer_overlays(ruta_video: Path, eventos: list, ruta_salida: Path, duracion_total: float):
     inputs = ["-i", str(ruta_video)]
     for ev in eventos:
-        # Sin -loop 1 -t, ffmpeg lee el PNG como UN solo frame en PTS=0: el filtro
-        # fade de abajo evaluaría su rampa de opacidad una sola vez en t=0 y esa
-        # imagen (casi transparente) quedaría "congelada" así para todo el video
-        # (overlay repite el último frame al llegar a EOF). Hay que darle duración
-        # real para que el fade avance en el tiempo como corresponde.
-        inputs += ["-loop", "1", "-framerate", str(config.FPS), "-t", f"{duracion_total:.3f}", "-i", str(ev["archivo"])]
+        if ev.get("medio") == "video":
+            # Video real (B-roll, animaciones): se desplaza con -itsoffset
+            inputs += ["-itsoffset", f"{ev['ini']:.3f}", "-i", str(ev["archivo"])]
+        else:
+            # Sin -loop 1 -t, ffmpeg lee el PNG como UN solo frame en PTS=0: el filtro
+            # fade de abajo evaluaría su rampa de opacidad una sola vez en t=0 y esa
+            # imagen (casi transparente) quedaría "congelada" así para todo el video
+            # (overlay repite el último frame al llegar a EOF). Hay que darle duración
+            # real para que el fade avance en el tiempo como corresponde.
+            inputs += ["-loop", "1", "-framerate", str(config.FPS), "-t", f"{duracion_total:.3f}", "-i", str(ev["archivo"])]
 
     filtro_partes = []
     etiqueta_actual = "0:v"
     for i, ev in enumerate(eventos, start=1):
         salida_etiqueta = f"v{i}"
-        dur_fade = 0.15
-        filtro_partes.append(
-            f"[{i}:v]format=rgba,fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
-            f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
-        )
+        if ev.get("broll_fullscreen"):
+            dur_fade = config.BROLL_FADE_S
+            filtro_partes.append(
+                f"[{i}:v]scale={config.ANCHO}:{config.ALTO}:"
+                f"force_original_aspect_ratio=increase,"
+                f"crop={config.ANCHO}:{config.ALTO},"
+                f"setpts=PTS-STARTPTS+{ev['ini']:.3f}/TB,"
+                f"format=rgba,"
+                f"fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
+                f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
+            )
+        elif ev.get("medio") == "video":
+            dur_fade = 0.15
+            filtro_partes.append(
+                f"[{i}:v]format=rgba,setpts=PTS-STARTPTS+{ev['ini']:.3f}/TB,"
+                f"fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
+                f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
+            )
+        else:
+            dur_fade = 0.15
+            filtro_partes.append(
+                f"[{i}:v]format=rgba,fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
+                f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
+            )
         filtro_partes.append(
             f"[{etiqueta_actual}][ov{i}]overlay={ev['x']}:{ev['y']}:"
             f"enable='between(t,{ev['ini']:.3f},{ev['fin']:.3f})'[{salida_etiqueta}]"

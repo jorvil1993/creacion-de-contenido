@@ -64,5 +64,38 @@
     "frames": 73,
     "fps": 24.0,
     "desde_imagen": ""
+  },
+  "c41ac0426146": {
+    "archivo": "assets/generado/video/auto/libros_c41ac0426146.mp4",
+    "prompt": "extreme macro close-up of the stacked paper edges of a thick book, warm side light grazing the paper texture, shallow depth of field, very slow drift, scene inspired by: más este año, pero te da pereza cargar libros pesados? Tienes que ver esto. Esta, cinematic natural lighting, subtle gentle motion, static camera, shallow depth of field, no text, no watermark, no people's faces",
+    "tag": "#libros",
+    "nombre": "libros",
+    "semilla": 155326793301868,
+    "tamano": "704x1280",
+    "frames": 73,
+    "fps": 24.0,
+    "desde_imagen": ""
+  },
+  "a0f1b8cafb17": {
+    "archivo": "assets/generado/video/auto/libros_a0f1b8cafb17.mp4",
+    "prompt": "extreme macro close-up of the stacked paper edges of a thick book, warm side light grazing the paper texture, shallow depth of field, very slow drift, scene inspired by: sin miedo. Llevas miles de libros en tu bolsillo. Y la pantalla se ve perfecta, cinematic natural lighting, subtle gentle motion, static camera, shallow depth of field, no text, no watermark, no people's faces",
+    "tag": "#libros",
+    "nombre": "libros",
+    "semilla": 20831665416153,
+    "tamano": "704x1280",
+    "frames": 73,
+    "fps": 24.0,
+    "desde_imagen": ""
+  },
+  "daaf3cb6db0b": {
+    "archivo": "assets/generado/video/auto/tina_daaf3cb6db0b.mp4",
+    "prompt": "steam rising slowly from a white porcelain bathtub full of clear water, gentle ripples on the surface, gentle spa light, scene inspired by: es resistente al agua. Así que puedes leer hasta en la tina, en la piscina, sin miedo. Llevas, cinematic natural lighting, subtle gentle motion, static camera, shallow depth of field, no text, no watermark, no people's faces",
+    "tag": "#tina",
+    "nombre": "tina",
+    "semilla": 277370993936181,
+    "tamano": "704x1280",
+    "frames": 73,
+    "fps": 24.0,
+    "desde_imagen": ""
   }
 }

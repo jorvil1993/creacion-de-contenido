@@ -761,6 +761,17 @@ LTX_PROMPT_DESDE_FOTO = ("the object stays exactly as it is while the light shif
 
 DIR_VIDEO_GENERADO = DIR_ASSETS / "generado" / "video"
 DIR_VIDEO_GENERADO_AUTO = DIR_VIDEO_GENERADO / "auto"   # caché por hash del prompt
+DIR_VIDEO_MANUAL = DIR_VIDEO_GENERADO / "manual"         # clips de Google Flow puestos a mano
+
+# B-roll a pantalla completa: un clip manual que tapa TODO el frame durante su
+# ventana. La voz de José sigue sonando (el audio no se toca), los subtítulos
+# quedan encima (el ass= va después de los overlays en el filter_complex) y la
+# transición es un fade suave — no un corte brusco.
+# La duración NO es fija: se calcula de los timestamps de la transcripción
+# (desde la palabra clave hasta el fin de la frase). Si el resultado es menor
+# que BROLL_DURACION_MIN_S, no se muestra — sería un flashazo, no un B-roll.
+BROLL_DURACION_MIN_S = 1.0     # debajo de esto no vale la pena mostrar el clip
+BROLL_FADE_S = 0.20            # un pelo más largo que el 0.15 de PiP, más cinematográfico
 
 # Animaciones que, CON LA GENERACIÓN DE VIDEO ENCENDIDA, le ceden su lugar a un
 # clip real. Se declara por NOMBRE DE ANIMACIÓN, no por etiqueta, y la diferencia

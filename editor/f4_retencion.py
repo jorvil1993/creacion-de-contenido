@@ -328,8 +328,23 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
     etiqueta = "0:v"
     for i, ev in enumerate(eventos_overlay):
         idx_input = 2 + i
-        dur_fade = 0.15
-        if ev.get("medio") == "video":
+        if ev.get("broll_fullscreen"):
+            # B-roll a pantalla completa: escala el clip a 1080×1920 (cubre y
+            # recorta al centro, sin barras), con fade más largo y suave.
+            # format=rgba le agrega alfa al clip opaco para que el fade por
+            # alpha funcione — no es por transparencia del contenido.
+            dur_fade = config.BROLL_FADE_S
+            filtro_partes.append(
+                f"[{idx_input}:v]scale={config.ANCHO}:{config.ALTO}:"
+                f"force_original_aspect_ratio=increase,"
+                f"crop={config.ANCHO}:{config.ALTO},"
+                f"setpts=PTS-STARTPTS+{ev['ini']:.3f}/TB,"
+                f"format=rgba,"
+                f"fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
+                f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
+            )
+        elif ev.get("medio") == "video":
+            dur_fade = 0.15
             # La animación ya trae su propio movimiento y ya está desplazada en
             # el tiempo por -itsoffset; solo se le suaviza la entrada y salida.
             filtro_partes.append(
@@ -338,6 +353,7 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
                 f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
             )
         else:
+            dur_fade = 0.15
             filtro_partes.append(
                 f"[{idx_input}:v]format=rgba,fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
                 f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
