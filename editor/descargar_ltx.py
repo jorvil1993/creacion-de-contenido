@@ -39,6 +39,27 @@ ARCHIVOS = [
         "text_encoders",
         2.31,
     ),
+    # El VAE de audio NO estaba en la lista de 4 archivos del traspaso, pero
+    # hace falta igual aunque el audio se tire a la basura: LTX 2.3 es un
+    # modelo audio-video y el sampler recibe UN latente que es la pareja
+    # (video, audio) — ver LTXVConcatAVLatent en comfy_extras/nodes_lt.py.
+    # El nodo que arma el latente de audio vacio (LTXVEmptyLatentAudio) exige
+    # el VAE de audio solo para leerle la configuracion (canales, bins de
+    # frecuencia). Son 0.36 GB: mas barato bajarlo que pelear contra el diseno
+    # del modelo. El audio generado se descarta despues, al no conectarlo al
+    # nodo que arma el video.
+    #
+    # Va a `checkpoints/`, NO a `vae/`, aunque sea un VAE: el nodo que lo carga
+    # (LTXVAudioVAELoader, comfy_extras/nodes_lt_audio.py:19) lista la carpeta
+    # `checkpoints`. Verificado ademas que el archivo trae los prefijos
+    # `audio_vae.`/`vocoder.` y el `config` en metadata que ese nodo espera
+    # (leido de la cabecera safetensors por rango HTTP, sin bajar el archivo).
+    (
+        "Kijai/LTX2.3_comfy",
+        "vae/LTX23_audio_vae_bf16.safetensors",
+        "checkpoints",
+        0.36,
+    ),
     (
         "GitMylo/LTX-2-comfy_gemma_fp8_e4m3fn",
         "gemma_3_12B_it_fp8_e4m3fn.safetensors",

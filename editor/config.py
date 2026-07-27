@@ -603,6 +603,127 @@ PROMPTS_POR_TAG = {
 }
 
 # ---------------------------------------------------------------------------
+# Video generado en la GPU — LTX 2.3 22B (distilled 1.1) en GGUF Q4
+# ---------------------------------------------------------------------------
+# Mismo principio que Flux, un escalón más arriba: en vez de una foto fija para
+# el ambiente, un clip de 2-3 s. Y para el PRODUCTO sigue ganando la foto real
+# (verificado: ningún modelo generativo sabe cómo es un Kindle) — por eso el
+# caso de más valor es imagen-a-video partiendo de los recortes reales de
+# assets/productos/*/frontal.png, no texto-a-video del producto.
+#
+# APAGADO POR DEFECTO. Cada clip son minutos y hace falta RAM libre; se
+# enciende a propósito con --video-ambiente o poniendo esto en True.
+LTX_HABILITADO = False
+
+# El cuello de botella es la RAM del sistema, no la VRAM: el modelo de 16.4 GB
+# no entra en los 16 GB de la 5070 Ti, así que ComfyUI hace *block swap* y las
+# capas que no están en VRAM viven en RAM. Con menos de este mínimo libre, el
+# swap se va al archivo de paginación y el clip pasa de minutos a decenas de
+# minutos. Se comprueba ANTES de arrancar y se avisa; no se bloquea, porque es
+# una decisión de José si quiere igual.
+LTX_RAM_LIBRE_MINIMA_GB = 18.0
+
+# Los 5 archivos. El de audio hace falta aunque el audio se descarte: LTX 2.3
+# es audio-video y el sampler recibe la pareja (video, audio) como un solo
+# latente. Ver el comentario largo en editor/descargar_ltx.py.
+LTX_UNET_GGUF = "ltx-2.3-22b-distilled-1.1-UD-Q4_K_M.gguf"
+LTX_TEXT_ENCODER = "gemma_3_12B_it_fp8_e4m3fn.safetensors"
+LTX_TEXT_PROJECTION = "ltx-2.3_text_projection_bf16.safetensors"
+LTX_VAE_VIDEO = "LTX23_video_vae_bf16.safetensors"
+LTX_VAE_AUDIO = "LTX23_audio_vae_bf16.safetensors"
+
+# Geometría. width/height múltiplos de 32 (el VAE de LTX 2.3 comprime 32x en
+# espacio, ver EmptyLTXVLatentVideo en comfy_extras/nodes_lt.py) y el nº de
+# frames tiene que ser múltiplo de 8 más 1.
+#
+# 704x1280 y no 1080x1920: el costo del sampler crece con el nº de tokens, que
+# es (W/32)x(H/32)x(frames/8+1). A 1080x1920 son ~2.5x más tokens que acá para
+# un PiP que se muestra dentro de una tarjeta de 400x520 px. Se genera a esta
+# resolución y el compositor lo escala. 704x1280 mantiene 9:16 exacto.
+LTX_ANCHO = 704
+LTX_ALTO = 1280
+LTX_FRAMES = 73          # 73 = 8*9+1 -> 3.04 s a 24 fps
+LTX_FPS = 24.0
+
+# Pasos y sigmas del modelo *destilado*: el workflow oficial
+# (custom_nodes/ComfyUI-LTXVideo/example_workflows/2.3/
+#  LTX-2.3_T2V_I2V_Single_Stage_Distilled_Full.json) usa esta lista fija de
+# sigmas con 8 pasos y cfg 1.0. No es un schedule genérico: es el que
+# corresponde a la destilación 1.1. Copiado de ahí, no inventado.
+LTX_SIGMAS = "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
+LTX_SAMPLER = "euler_ancestral_cfg_pp"
+LTX_CFG = 1.0
+LTX_PASOS = 8            # solo informativo: manda LTX_SIGMAS
+
+# Fuerza del primer fotograma en imagen-a-video. 0.7 es el valor del workflow
+# oficial: por debajo se despega demasiado de la foto real del producto, que es
+# justo lo que queremos conservar.
+LTX_STRENGTH_IMAGEN = 0.7
+
+# Un clip tarda minutos, no segundos: la primera pasada además carga 16 GB de
+# pesos con block swap desde la RAM.
+LTX_GENERACION_TIMEOUT_S = 1800
+
+# Negativo del workflow oficial, adaptado: fuera estética de videojuego y
+# artefactos. Sin esto los ambientes salen con look de render 3D.
+LTX_PROMPT_NEGATIVO = ("pc game, console game, video game, cartoon, childish, ugly, "
+                       "watermark, text, logo, distorted, blurry, low quality")
+
+# Estilo común, hermano de PROMPT_ESTILO pero con lenguaje de MOVIMIENTO: a un
+# modelo de video hay que decirle qué se mueve, si no produce una foto quieta
+# con ruido. "static camera" a propósito: el compositor ya hace punch-in y dos
+# movimientos de cámara encima se pelean.
+LTX_PROMPT_ESTILO = ("cinematic natural lighting, subtle gentle motion, static camera, "
+                     "shallow depth of field, no text, no watermark, no people's faces")
+
+# Qué se mueve en cada ambiente. Son los MISMOS conceptos de PROMPTS_POR_TAG,
+# reescritos en términos de movimiento — un prompt de foto fija ("terraza
+# soleada") le da a un modelo de video una postal quieta.
+# Los modelos de e-reader NO están acá, misma razón que en Flux: para el
+# producto, foto real.
+LTX_PROMPTS_POR_TAG = {
+    "#agua": "clear water droplets falling and splashing in slow motion on a dark "
+             "waterproof surface, ripples spreading outward, poolside sunlight",
+    "#tina": "steam rising slowly from a white porcelain bathtub full of clear water, "
+             "gentle ripples on the surface, gentle spa light",
+    "#bateria": "a warm reading lamp glowing steadily in a dark room while the light "
+                "outside the window shifts from dusk to night, time passing",
+    "#viaje": "an open suitcase on a bed by a window, curtains moving gently in the "
+              "morning breeze, warm travel light",
+    "#cama": "white bed linen breathing slightly in a dark bedroom, a warm bedside lamp "
+             "flickering softly at night",
+    "#sol": "dappled sunlight moving across a garden terrace as leaves sway in the "
+            "breeze, bright warm summer afternoon",
+    "#cafe": "steam curling up from a cup of coffee on a wooden table by a window, "
+             "quiet morning light in a cafe corner",
+    "#playa": "turquoise sea waves rolling gently onto golden sand, a beach towel "
+              "fluttering in the wind, bright sunny day",
+    "#noche": "a soft warm reading light glowing in a dark bedroom, faint shadows "
+              "shifting slowly on the wall",
+    "#biblioteca": "slow camera-free drift of dust motes floating in warm light between "
+                   "tall wooden bookshelves full of books",
+    "#libros": "pages of a thick hardcover book turning slowly on a table, dramatic "
+               "side light, dust in the air",
+    "#regalo": "a satin ribbon on an elegant gift box moving gently, warm festive light "
+               "shifting across the surface",
+    "#estudio": "a warm desk lamp lighting an open notebook, a page turning slowly, "
+                "focused quiet study atmosphere",
+    "#broll": "a motorbike courier with a backpack riding through a bolivian city "
+              "street, warm afternoon light, traffic moving in the background",
+}
+
+# Movimiento para imagen-a-video partiendo de una foto REAL de producto. Acá el
+# prompt NO describe la escena (ya está en la foto): describe solo cómo se
+# mueve, para que el modelo no reinvente el aparato. Este es el caso de más
+# valor de LTX en este pipeline.
+LTX_PROMPT_DESDE_FOTO = ("the object stays exactly as it is while the light shifts "
+                         "gently across its surface, subtle realistic motion, "
+                         "no shape changes")
+
+DIR_VIDEO_GENERADO = DIR_ASSETS / "generado" / "video"
+DIR_VIDEO_GENERADO_AUTO = DIR_VIDEO_GENERADO / "auto"   # caché por hash del prompt
+
+# ---------------------------------------------------------------------------
 # Presentadores (sección 2 del plan: el sistema debe soportar 2)
 # ---------------------------------------------------------------------------
 # Hasta ahora ninguna fase tenía parámetro de presentador: todos los umbrales
