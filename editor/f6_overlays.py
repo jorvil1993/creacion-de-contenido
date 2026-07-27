@@ -815,7 +815,8 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
                          nombre_video: str = "video", sol_pip_video: bool = False,
                          eventos_manual: list = None,
                          animaciones_manual: list = None,
-                         video_ambiente: bool = None) -> list:
+                         video_ambiente: bool = None,
+                         broll_manual: list = None) -> list:
     import f8_hyperframes
     eventos = []
     # None = "lo que diga config"; True/False = decisión explícita de quien
@@ -889,50 +890,61 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
     import f9_generar
     tags_reservados = set()
     tags_con_broll = set()
-    for idx_p, p in enumerate(palabras):
-        tag = config.PALABRAS_A_TAGS.get(_normalizar(p["texto"]))
-        if not tag or tag in tags_con_broll:
-            continue
-        broll = f9_generar.version_manual_video(tag)
-        if broll is None:
-            continue
-        t0 = p["inicio"]
 
-        # Calcular fin dinámico de la frase según timestamps de palabras
-        t1 = p["fin"]
-        for p_sig in palabras[idx_p + 1:]:
-            if p_sig["inicio"] - t1 > 0.4:
-                break
-            t1 = p_sig["fin"]
-            texto_p = p_sig["texto"].strip()
-            if texto_p.endswith((".", "?", "!")) or (t1 - t0) >= 5.0:
-                break
+    if broll_manual is not None:
+        print(f"  B-roll manual cargado ({len(broll_manual)} eventos) — se ignora la búsqueda automática de B-roll.")
+        for ev in broll_manual:
+            eventos.append(ev)
+            ventanas_ocupadas.append((ev["ini"], ev["fin"]))
+            if ev.get("tag"):
+                tags_con_broll.add(ev["tag"])
+                tags_reservados.add(ev["tag"])
+    else:
+        # B-roll automático (cuando no viene --broll-manual)
+        for idx_p, p in enumerate(palabras):
+            tag = config.PALABRAS_A_TAGS.get(_normalizar(p["texto"]))
+            if not tag or tag in tags_con_broll:
+                continue
+            broll = f9_generar.version_manual_video(tag)
+            if broll is None:
+                continue
+            t0 = p["inicio"]
 
-        fin_broll = max(t1, t0 + config.BROLL_DURACION_MIN_S)
+            # Calcular fin dinámico de la frase según timestamps de palabras
+            t1 = p["fin"]
+            for p_sig in palabras[idx_p + 1:]:
+                if p_sig["inicio"] - t1 > 0.4:
+                    break
+                t1 = p_sig["fin"]
+                texto_p = p_sig["texto"].strip()
+                if texto_p.endswith((".", "?", "!")) or (t1 - t0) >= 5.0:
+                    break
 
-        # Truncar si colisiona con el inicio de alguna ventana ya ocupada (ej. CTA)
-        for a_oc, b_oc in ventanas_ocupadas:
-            if t0 < a_oc and fin_broll > a_oc:
-                fin_broll = a_oc
+            fin_broll = max(t1, t0 + config.BROLL_DURACION_MIN_S)
 
-        dur_real = fin_broll - t0
-        if dur_real < config.BROLL_DURACION_MIN_S:
-            continue
-        if not _libre(t0, fin_broll):
-            continue
+            # Truncar si colisiona con el inicio de alguna ventana ya ocupada (ej. CTA)
+            for a_oc, b_oc in ventanas_ocupadas:
+                if t0 < a_oc and fin_broll > a_oc:
+                    fin_broll = a_oc
 
-        eventos.append({
-            "tipo": "broll", "medio": "video",
-            "archivo": broll, "x": 0, "y": 0,
-            "ini": round(t0, 3), "fin": round(fin_broll, 3),
-            "palabra": p["texto"], "tag": tag,
-            "asset": f"broll-manual:{broll.name}",
-            "broll_fullscreen": True,
-        })
-        ventanas_ocupadas.append((t0, fin_broll))
-        tags_con_broll.add(tag)
-        tags_reservados.add(tag)
-        print(f"  B-roll pantalla completa (duración dinámica {dur_real:.2f}s): {broll.name} por '{p['texto']}' ({tag}) [{t0:.1f}s - {fin_broll:.1f}s]")
+            dur_real = fin_broll - t0
+            if dur_real < config.BROLL_DURACION_MIN_S:
+                continue
+            if not _libre(t0, fin_broll):
+                continue
+
+            eventos.append({
+                "tipo": "broll", "medio": "video",
+                "archivo": broll, "x": 0, "y": 0,
+                "ini": round(t0, 3), "fin": round(fin_broll, 3),
+                "palabra": p["texto"], "tag": tag,
+                "asset": f"broll-manual:{broll.name}",
+                "broll_fullscreen": True,
+            })
+            ventanas_ocupadas.append((t0, fin_broll))
+            tags_con_broll.add(tag)
+            tags_reservados.add(tag)
+            print(f"  B-roll pantalla completa (duración dinámica {dur_real:.2f}s): {broll.name} por '{p['texto']}' ({tag}) [{t0:.1f}s - {fin_broll:.1f}s]")
 
     # ---- ANIMACIONES ------------------------------------------------------
     # Para conceptos que ninguna foto ilustra bien: "batería" traía la foto de
@@ -1503,12 +1515,65 @@ def cargar_eventos_manual(ruta_json: Path, dir_tmp: Path, catalogo: list = None)
             print(f"AVISO: evento manual #{i} sin ini/fin válidos — omitido.")
             continue
 
-        eventos.append({
+        ev_dict = {
             "tipo": ev.get("tipo", "pip-producto"), "archivo": ruta_png,
             "x": int(ev.get("x", 0)), "y": int(ev.get("y", 0)),
             "ini": round(ini, 3), "fin": round(fin, 3),
             "palabra": ev.get("palabra", ""), "tag": ev.get("tag", ""),
             "asset": asset_id or ev.get("asset", "manual"),
+        }
+        if "medio" in ev:
+            ev_dict["medio"] = ev["medio"]
+        if "broll_fullscreen" in ev:
+            ev_dict["broll_fullscreen"] = ev["broll_fullscreen"]
+        if "codigo" in ev:
+            ev_dict["codigo"] = ev["codigo"]
+        eventos.append(ev_dict)
+    return eventos
+
+
+def cargar_broll_manual(ruta_json: Path) -> list | None:
+    """Lista completa de B-rolls a pantalla completa armada en el editor o por f13_guion.
+
+    None si el archivo no existe o no es válido.
+    """
+    if not ruta_json.exists():
+        return None
+    try:
+        datos = json.loads(ruta_json.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"AVISO: {ruta_json} no es un JSON válido ({e}) — B-roll automático.")
+        return None
+    if isinstance(datos, dict):
+        datos = datos.get("broll", [])
+    if not isinstance(datos, list):
+        return None
+
+    eventos = []
+    for i, ev in enumerate(datos):
+        archivo = ev.get("archivo")
+        if not (archivo and Path(archivo).exists()):
+            print(f"AVISO: B-roll manual #{i} sin 'archivo' válido ({archivo}) — omitido.")
+            continue
+        try:
+            ini, fin = float(ev["ini"]), float(ev["fin"])
+        except (KeyError, TypeError, ValueError):
+            print(f"AVISO: B-roll manual #{i} sin ini/fin válidos — omitido.")
+            continue
+
+        eventos.append({
+            "tipo": ev.get("tipo", "broll"),
+            "medio": ev.get("medio", "video"),
+            "broll_fullscreen": ev.get("broll_fullscreen", True),
+            "archivo": Path(archivo),
+            "x": int(ev.get("x", 0)),
+            "y": int(ev.get("y", 0)),
+            "ini": round(ini, 3),
+            "fin": round(fin, 3),
+            "palabra": ev.get("palabra", ""),
+            "tag": ev.get("tag", ""),
+            "asset": ev.get("asset", "broll-manual"),
+            "codigo": ev.get("codigo", ""),
         })
     return eventos
 
@@ -1590,6 +1655,9 @@ def main():
                         help="Lista completa de insertos pip-producto armada en el editor visual "
                              "(Fase 2): sustituye QUÉ asset se muestra, no solo dónde. Distinto de "
                              "--posiciones-manual.")
+    parser.add_argument("--broll-manual", type=str, default=None, metavar="JSON",
+                        help="Lista completa de B-rolls a pantalla completa (generados por guion o editor visual). "
+                             "Reemplaza la búsqueda automática de B-roll.")
     parser.add_argument("--nombre-video", type=str, default=None,
                         help="Nombre del video: de aquí sale la semilla determinista que elige la "
                              "variante de cada animación. Mismo nombre = mismo resultado siempre.")
@@ -1622,6 +1690,10 @@ def main():
     if args.eventos_manual:
         eventos_manual = cargar_eventos_manual(Path(args.eventos_manual), dir_tmp)
 
+    broll_manual = None
+    if args.broll_manual:
+        broll_manual = cargar_broll_manual(Path(args.broll_manual))
+
     animaciones_manual = None
     if args.animaciones_manual:
         animaciones_manual = cargar_animaciones_manual(Path(args.animaciones_manual))
@@ -1636,7 +1708,8 @@ def main():
                                    eventos_manual=eventos_manual,
                                    animaciones_manual=animaciones_manual,
                                    video_ambiente=(True if args.video_ambiente else
-                                                   False if args.sin_video_ambiente else None))
+                                                   False if args.sin_video_ambiente else None),
+                                   broll_manual=broll_manual)
 
     if args.posiciones_manual:
         aplicar_posiciones_manual(eventos, Path(args.posiciones_manual))

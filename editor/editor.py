@@ -48,6 +48,13 @@ def main():
     parser.add_argument("entrada", type=str)
     parser.add_argument("--nombre", type=str, default=None, help="Nombre base para los archivos de salida")
     parser.add_argument("--sin-musica", action="store_true", help="Omitir música de fondo en la Fase 4")
+    parser.add_argument("--guion", type=int, default=None, metavar="N",
+                        help="Número de guion (de PANEL-PRODUCCION.html) a ejecutar. Incursiona el "
+                             "modo dirigido por guion: extrae hook, SFX, animaciones, PIP y B-roll "
+                             "alineándolos con la transcripción.")
+    parser.add_argument("--musica", type=str, default=None, help="Nombre de archivo de música en assets/musica/")
+    parser.add_argument("--broll-manual", type=str, default=None, metavar="JSON",
+                        help="Lista completa de B-rolls a pantalla completa")
     parser.add_argument("--hook", type=str, default=None, metavar="TEXTO",
                         help="Texto del banner de hook (los primeros segundos). Si se omite se usa la "
                              "primera frase completa del video. Hooks curados en contexto/banco-hooks.md")
@@ -145,6 +152,23 @@ def main():
             "--salida", str(dir_trabajo / "03_retencion.mp4"), "--sin-render", *perfil,
         ])
 
+    # ---- MODO DIRIGIDO POR GUION (--guion N) ------------------------------
+    if args.guion is not None:
+        import f13_guion
+        res_g = f13_guion.procesar_guion(args.guion, json_cortado, dir_trabajo)
+        if not args.sfx_manual and res_g["sfx"].exists():
+            args.sfx_manual = str(res_g["sfx"])
+        if not args.animaciones_manual and res_g["animaciones"].exists():
+            args.animaciones_manual = str(res_g["animaciones"])
+        if not args.eventos_manual and res_g["eventos"].exists():
+            args.eventos_manual = str(res_g["eventos"])
+        if not args.broll_manual and res_g["broll"].exists():
+            args.broll_manual = str(res_g["broll"])
+        if not args.hook and res_g.get("hook"):
+            args.hook = res_g["hook"]
+        if not args.musica and res_g.get("musica"):
+            args.musica = res_g["musica"]
+
     paso("FASE 2: Subtítulos ASS", [
         "f3_subtitulos.py", str(json_cortado), "--salida", str(subtitulos_ass)
     ])
@@ -164,6 +188,8 @@ def main():
         cmd_overlays += ["--posiciones-manual", args.posiciones_manual]
     if args.eventos_manual:
         cmd_overlays += ["--eventos-manual", args.eventos_manual]
+    if args.broll_manual:
+        cmd_overlays += ["--broll-manual", args.broll_manual]
     if args.animaciones_manual:
         cmd_overlays += ["--animaciones-manual", args.animaciones_manual]
     if args.sol_pip_video:
@@ -189,6 +215,8 @@ def main():
                  "--hoja-sonido", str(dir_trabajo / "08_hoja-sonido.md")]
     if args.sin_musica:
         cmd_audio.append("--sin-musica")
+    if args.musica:
+        cmd_audio += ["--musica", args.musica]
     if args.sfx_manual:
         cmd_audio += ["--sfx-manual", args.sfx_manual]
     paso("FASE 4: Audio (música + ducking + SFX + loudnorm; el video se copia sin recomprimir)", cmd_audio)

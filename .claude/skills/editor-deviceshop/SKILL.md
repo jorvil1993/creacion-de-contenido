@@ -17,6 +17,10 @@ contradice, gana el plan.
 ## Comando
 
 ```bash
+# Modo 1: Dirigido por Guion (Recomendado — ejecuta el guion del panel)
+C:\ai-video\venv312\Scripts\python.exe editor\editor.py "contexto\Guion-7.mp4" --guion 7
+
+# Modo 2: Disparo automático (por palabras clave)
 C:\ai-video\venv312\Scripts\python.exe editor\editor.py "contexto\VIDEOV2.mp4"
 ```
 
@@ -25,17 +29,30 @@ Correr desde la raíz del proyecto
 del venv312**, no con el `python` del sistema: el del sistema no tiene torch con
 CUDA y la transcripción se caería a CPU.
 
+**Con `--guion N`, mirá siempre `salida/<nombre>/10_guion-alineado.md` antes de
+publicar.** Ahí dice, beat por beat, si la frase del guion se encontró en el
+audio y con qué confianza. Los segundos que figuran en el panel (`3–5s`) son una
+estimación de escritura y el pipeline los ignora por completo: los tiempos
+reales salen de alinear el texto contra la transcripción ya cortada.
+
+Si un beat no se encuentra, se omite ese inserto y la corrida sigue. Si **no se
+encuentra ninguno**, el pipeline avisa a gritos: casi siempre significa que se
+pidió el guion equivocado para esa grabación, y el video saldría sin insertos,
+sin B-roll y sin los efectos del guion.
+
 ### Opciones
 
 | Opción | Para qué |
 |---|---|
+| `--guion N` | **Modo Dirigido por Guion**: ejecuta el guion $N$ de `PANEL-PRODUCCION.html` (fuente de verdad), extrayendo hook, SFX, animaciones, PIP y B-roll alineados con la transcripción real |
 | `--nombre NOMBRE` | Nombre de la corrida. También es la **semilla** de las variantes de animación: mismo nombre = mismo video, siempre |
-| `--hook "TEXTO"` | Hook curado en vez del automático. 40 opciones en `contexto/banco-hooks.md`. **Recomendado**: el automático usa la primera frase completa del video, que suele pasar de 7 palabras |
+| `--hook "TEXTO"` | Hook curado en vez del automático. 40 opciones en `contexto/banco-hooks.md`. **Recomendado**: el automático usa la primera frase completa del video |
+| `--musica ARCHIVO` | Selecciona una pista de música específica de `assets/musica/` (ej. `02-lofi`) |
 | `--presentador jose\|esposa` | Perfil de quien habla. Cambia muletillas, umbral de silencio y calibración de punch-ins |
 | `--sin-generar` | No levantar ComfyUI cuando falte una imagen. La 1ª generación cuesta ~40s de arranque; después va por caché |
-| `--video-ambiente` | Los insertos de ambiente salen como **clip de video** (LTX 2.3) en vez de foto fija. **Apagado por defecto**: cada clip son minutos de GPU y conviene tener >18 GB de RAM libres. Ver `contexto/GUIA-VIDEO-LOCAL.md` |
-| `--sfx-manual JSON` | Efectos de sonido elegidos a mano (los exporta el editor visual) |
-| `--posiciones-manual JSON` | Posiciones de los insertos elegidas a mano (idem) |
+| `--video-ambiente` | Los insertos de ambiente salen como **clip de video** (LTX 2.3) en vez de foto fija |
+| `--sfx-manual JSON` | Efectos de sonido elegidos a mano (reemplaza los automáticos o del guion) |
+| `--posiciones-manual JSON` | Posiciones de los insertos elegidas a mano en el editor visual |
 | `--sin-musica` | Sin cama musical |
 | `--sin-editor-visual` | No generar el HTML del editor al terminar |
 

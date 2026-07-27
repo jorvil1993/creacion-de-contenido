@@ -109,8 +109,22 @@ def _alineacion_sfx() -> dict:
 
 
 def _ruta_musica(nombre_archivo: str) -> Path | None:
-    ruta = config.DIR_ASSETS / "musica" / nombre_archivo
-    return ruta if ruta.exists() else None
+    """Pista de assets/musica/ por nombre exacto o por prefijo.
+
+    El prefijo existe porque los guiones del panel nombran la pista corta
+    ("entra 02-lofi a -20 dB") y el archivo real es `02-lofi-brillante.mp3`.
+    Sin esto, `--guion N` pasaba `02-lofi`, no resolvía, y el video salía
+    SIN música con solo un aviso en el log.
+    """
+    dir_musica = config.DIR_ASSETS / "musica"
+    ruta = dir_musica / nombre_archivo
+    if ruta.exists():
+        return ruta
+    if not dir_musica.is_dir():
+        return None
+    candidatos = sorted(p for p in dir_musica.glob(f"{nombre_archivo}*")
+                        if p.suffix.lower() in (".mp3", ".wav", ".m4a", ".ogg"))
+    return candidatos[0] if candidatos else None
 
 
 def clave_ancla(ev: dict, vistas: dict = None) -> str:
@@ -529,7 +543,8 @@ def main():
         eventos_overlay = json.loads(Path(args.overlays).read_text(encoding="utf-8"))
 
     if args.sfx_manual and Path(args.sfx_manual).exists():
-        eventos = json.loads(Path(args.sfx_manual).read_text(encoding="utf-8"))
+        datos_sfx = json.loads(Path(args.sfx_manual).read_text(encoding="utf-8"))
+        eventos = datos_sfx.get("sfx", datos_sfx) if isinstance(datos_sfx, dict) else datos_sfx
         for e in eventos:
             e.setdefault("volumen", config.SFX_VOLUMEN)
             e.setdefault("razon", "manual")

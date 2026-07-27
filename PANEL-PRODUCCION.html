@@ -329,26 +329,18 @@ a{color:var(--cian)}
     <tr><td><span class="codref">F31</span></td><td><b>silencio.mp4</b></td><td>Notificaciones que se apagan</td></tr>
     <tr><td><span class="codref">P02</span></td><td><b>P02.mp4</b></td><td>Los de producto sí usan su código</td></tr>
   </table>
-  <p>La razón: los nombres de concepto (<code>scroll</code>, <code>noche</code>,
-  <code>sol</code>, <code>libros</code>) coinciden con etiquetas que el pipeline
-  usa hoy para las <b>imágenes fijas</b> (<code>config.PALABRAS_A_TAGS</code>). Si
-  algún día conectamos el video a ese mismo sistema, guardarlos así evita
-  renombrar 40 archivos.</p>
+  <p>En el modo dirigido por guion (<code>--guion N</code>), el pipeline consulta directamente el objeto <code>CLIPS</code> de este HTML: mapea cada código <code>F01–F32</code> a su nombre de concepto (ej. <code>F16 → abandonado.mp4</code>) y los <code>P01–P11</code> a su código de producto (ej. <code>P02 → P02.mp4</code>). En el modo automático sin guion, se consultan las 12 etiquetas coincidentes con <code>config.PALABRAS_A_TAGS</code>.</p>
   <p>Todos van a <code>assets\generado\video\manual\</code>. Esa carpeta no existe
   todavía: créala al bajar el primero.</p>
-  <div class="aviso"><b>✅ Integrado en el pipeline:</b>
-  si guardas un clip de video en <code>assets/generado/video/manual/&lt;etiqueta&gt;.mp4</code>
-  (por ejemplo <code>sol.mp4</code>, <code>libros.mp4</code>, <code>noche.mp4</code>),
-  el pipeline lo reconoce automáticamente y lo inserta como <b>B-roll a pantalla completa</b> (1080×1920)
-  durante la frase correspondiente del guion. Tu voz no se corta y los subtítulos permanecen en pantalla.
-  Tiene la <b>prioridad más alta</b> (gana sobre fotos del catálogo y sobre cualquier generación).
-  <b>Un solo archivo sirve para las dos cosas.</b> Verificado con un clip real: el mismo
-  <code>.mp4</code> vertical se usa a pantalla completa para el B-ROLL, y para el PIP el pipeline
-  lo recorta solo a 400×520 y le pone el marco blanco con filo cian, en movimiento
-  (<code>render_pip_video()</code>). Así que un mismo <code>F0X</code> puede ser PIP en un guion y
-  B-ROLL en otro sin generar nada extra: <b>lo decide esta tabla, guion por guion</b>. Todo va en
-  la misma carpeta, sin separar. Los <code>P0X</code> de producto
-  son al revés: esos SIEMPRE quedan como PIP, nunca a pantalla completa.</div>
+  <div class="aviso"><b>✅ Integrado en el pipeline (Modo `--guion N`):</b>
+  al ejecutar <code>python editor/editor.py "contexto/Guion-7.mp4" --guion 7</code>,
+  el pipeline lee las instrucciones de este guion tal cual están escritas en el panel.
+  Inserta los B-rolls a pantalla completa (1080×1920) y los PIPs en tarjetas con marco (400×520 via <code>render_pip_video()</code>),
+  desencadena los SFX exactos de la tabla y ajusta los subtítulos karaoke.
+  Tu voz no se corta y los subtítulos permanecen en pantalla.
+  <b>Un solo archivo sirve para las dos cosas:</b> el mismo <code>.mp4</code> vertical se usa a pantalla completa para el B-ROLL,
+  y para el PIP el pipeline lo recorta solo a 400×520 y le pone el marco blanco con filo cian en movimiento.
+  <b>Lo decide esta tabla, guion por guion.</b> Todo va en la misma carpeta, sin separar.</div>
 
   <h4>Glosario · qué significa cada término</h4>
   <table class="tabla-simple">
