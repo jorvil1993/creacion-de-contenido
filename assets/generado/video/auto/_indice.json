@@ -9,5 +9,16 @@
     "frames": 73,
     "fps": 24.0,
     "desde_imagen": ""
+  },
+  "e79665aa5ced": {
+    "archivo": "assets/generado/video/auto/foto-frontal_e79665aa5ced.mp4",
+    "prompt": "the object stays exactly as it is while the light shifts gently across its surface, subtle realistic motion, no shape changes, scene inspired by: el colorsoft de 32 gigas llega en caja sellada, cinematic natural lighting, subtle gentle motion, static camera, shallow depth of field, no text, no watermark, no people's faces",
+    "tag": "",
+    "nombre": "foto-frontal",
+    "semilla": 191255924084485,
+    "tamano": "704x1280",
+    "frames": 73,
+    "fps": 24.0,
+    "desde_imagen": "..\\assets\\productos\\colorsoft-32gb\\frontal.png"
   }
 }
