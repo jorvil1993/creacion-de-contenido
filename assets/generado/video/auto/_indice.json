@@ -1,0 +1,13 @@
+{
+  "ac8e38dc8b33": {
+    "archivo": "assets/generado/video/auto/sol_ac8e38dc8b33.mp4",
+    "prompt": "dappled sunlight moving across a garden terrace as leaves sway in the breeze, bright warm summer afternoon, cinematic natural lighting, subtle gentle motion, static camera, shallow depth of field, no text, no watermark, no people's faces",
+    "tag": "#sol",
+    "nombre": "sol",
+    "semilla": 191839338924231,
+    "tamano": "704x1280",
+    "frames": 73,
+    "fps": 24.0,
+    "desde_imagen": ""
+  }
+}

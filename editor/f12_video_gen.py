@@ -165,9 +165,20 @@ def liberar_memoria():
     donde revienta. ComfyUI descarga por LRU solo, pero el LRU actúa cuando ya
     hizo falta la memoria — acá se adelanta.
     """
+    # OJO: no usar f9_generar._post_json acá. `/free` responde 200 con el
+    # cuerpo VACÍO (server.py: `return web.Response(status=200)`), y esa función
+    # hace json.loads de la respuesta — reventaba con "Expecting value: line 1
+    # column 1" DESPUÉS de que el servidor ya había liberado, así que la memoria
+    # sí se liberaba pero el log decía que había fallado.
+    cuerpo = json.dumps({"unload_models": True, "free_memory": True}).encode("utf-8")
+    req = urllib.request.Request(f"{BASE}/free", data=cuerpo,
+                                 headers={"Content-Type": "application/json"})
     try:
-        f9_generar._post_json("/free", {"unload_models": True, "free_memory": True})
-        _log("  VRAM/RAM liberadas antes de cargar LTX.")
+        with urllib.request.urlopen(req, timeout=60) as r:
+            if r.status != 200:
+                _log(f"  (ComfyUI respondió {r.status} al pedir liberar memoria)")
+                return
+        _log("  VRAM/RAM liberadas.")
     except Exception as e:
         # No es fatal: si el servidor recién arrancó, no hay nada que liberar.
         _log(f"  (no se pudo pedir liberar memoria: {e})")
