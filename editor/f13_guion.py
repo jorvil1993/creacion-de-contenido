@@ -218,7 +218,7 @@ def espaciar_sfx(ordenes: list) -> list:
 
 
 def resolver_codigo_asset(texto_ve: str, clips_map: dict) -> tuple[str | None, Path | None, str]:
-    """Extrae el código (F16, P02) de la celda 'qué se ve' y busca su archivo.
+    """Extrae el código (F16, P02) o el nombre de asset directo de 'qué se ve' y busca su archivo.
 
     Devuelve (codigo, ruta_archivo, slug).
     """
@@ -226,12 +226,22 @@ def resolver_codigo_asset(texto_ve: str, clips_map: dict) -> tuple[str | None, P
         return None, None, ""
 
     match = re.search(r"\b([FP]\d{2})\b", texto_ve)
-    if not match:
-        return None, None, ""
-
-    codigo = match.group(1)
-    entry = clips_map.get(codigo)
-    slug = entry[0] if entry else codigo
+    if match:
+        codigo = match.group(1)
+        entry = clips_map.get(codigo)
+        slug = entry[0] if entry else codigo
+    else:
+        codigo = None
+        # Buscar en video manual cualquier palabra/slug explícito mencionado en texto_ve
+        dir_v_manual = config.DIR_VIDEO_MANUAL
+        for word in re.findall(r"\b[a-zA-Z0-9_\-]+\b", texto_ve):
+            for ext in (".mp4", ".mov", ".webm"):
+                cand = dir_v_manual / f"{word}{ext}"
+                if cand.exists():
+                    return None, cand, word
+        # Fallback al primer token
+        first_word = re.search(r"\b[a-zA-Z0-9_\-]+\b", texto_ve)
+        slug = first_word.group(0) if first_word else ""
 
     # Buscar primero en assets/generado/video/manual/
     dir_v_manual = config.DIR_VIDEO_MANUAL
