@@ -1546,3 +1546,128 @@ todavía en ningún lado que se pudo verificar. Con lo que existe hoy (FP8,
 RAM — funciona, pero lento (probablemente varios minutos por clip). Se le
 devolvió esto a José con la fuente exacta y sin bajar nada — la decisión
 (aceptar lento, esperar el FP4, o pivotar a Wan 2.2 5B) es suya.
+
+
+---
+
+# Sesión — Instalación e integración de LTX 2.3 (2026-07-26, ~22:35 en adelante)
+
+José decidió, con los tamaños reales y las alternativas más livianas ya sobre
+la mesa: **LTX 2.3 22B en Q4**, integrado al pipeline (no solo instalado), con
+flag para apagarlo, y descargando en segundo plano mientras se trabaja. Se
+avisó a mitad de sesión de que se iba a dormir y pidió garantía de no
+encontrarse por la mañana con un error y nada hecho.
+
+## 1 · Lo primero, antes de instalar nada: `constraints-comfy.txt`
+
+`venv-comfy` no tenía archivo de restricciones; el `C:i-video\constraints.txt`
+que existe solo protege a `venv312`. Se congeló
+`C:i-video\constraints-comfy.txt` con las versiones **medidas con `pip freeze`
+sobre el venv sano**, no copiadas de la documentación (coincidieron exactamente
+con lo que decía el traspaso).
+
+Después se instalaron `diffusers 0.39.0`, `timm 1.0.28`, `accelerate 1.14.0`,
+`protobuf 7.35.1` y `ninja 1.11.1.4` con `-c`. `kornia` y `gguf` ya estaban.
+**Verificado inmediatamente después:** `torch 2.11.0+cu128`, `sm_120` presente,
+CUDA disponible en la RTX 5070 Ti; `numpy`, `transformers` y `safetensors` sin
+moverse. El constraints hizo su trabajo.
+
+## 2 · Dos correcciones a la lista de archivos del traspaso
+
+**Faltaba un quinto archivo: el VAE de audio** (`LTX23_audio_vae_bf16`, 0.36 GB).
+LTX 2.3 es un modelo audio-video y el sampler recibe la pareja (video, audio)
+como un solo latente anidado (`LTXVConcatAVLatent`). El nodo que arma el latente
+de audio vacío exige el VAE de audio solo para leerle la configuración. El audio
+se sigue descartando —nunca se decodifica— pero sin ese archivo no arranca.
+
+**Y va en `models/checkpoints/`, no en `models/vae/`**, aunque sea un VAE:
+`LTXVAudioVAELoader` (`comfy_extras/nodes_lt_audio.py:19`) lista la carpeta
+`checkpoints`.
+
+Las dos cosas se verificaron **sin descargar nada**, leyendo cabeceras por rango
+HTTP: el GGUF de unsloth declara `general.architecture = ltxv` (lo acepta
+ComfyUI-GGUF), y el VAE de audio trae los prefijos `audio_vae.`/`vocoder.` y el
+`config` en metadata que ese nodo espera.
+
+## 3 · El workflow: copiado del oficial, con dos sustituciones deliberadas
+
+Base: `custom_nodes/ComfyUI-LTXVideo/example_workflows/2.3/
+LTX-2.3_T2V_I2V_Single_Stage_Distilled_Full.json`, desarmado nodo por nodo.
+
+1. El oficial carga un checkpoint todo-en-uno (42 GB) con modelo + VAE +
+   proyección de texto. Acá se usan las piezas sueltas con el transformer en
+   GGUF Q4 (16.4 GB). Esa es toda la razón por la que entra en 16 GB.
+2. El oficial le aplica encima un LoRA de destilación. Acá no hace falta: el
+   GGUF elegido ya es la variante `distilled-1.1`.
+
+Detalle que costó encontrar: `LTXAVTextEncoderLoader` pide su segundo archivo de
+`checkpoints/`, pero **`DualCLIPLoader` con `type="ltxv"` lee los dos de
+`text_encoders/`** (`nodes.py:1038-1039`), que es el layout que planeaba el
+traspaso. Se usa ese.
+
+Se quitó `ModelSamplingLTXV`, que se había puesto por costumbre: el workflow
+oficial de 2.3 no lo usa, con las sigmas fijas su shift es redundante, y
+recibiría el latente ya concatenado, que es un `NestedTensor` y no un tensor
+plano.
+
+**Validado contra `/object_info` del ComfyUI real antes de generar nada:** los
+21 tipos de nodo existen y todos los nombres de input son correctos, en las dos
+variantes (texto-a-video e imagen-a-video).
+
+## 4 · Integración (apagada por defecto)
+
+- `editor/f12_video_gen.py` — hermano de `f9_generar.py`. **Reutiliza su
+  `ServidorCompartido`**, su caché por hash y su forma de hablar con ComfyUI.
+- `f6_overlays.planificar_insertos_por_palabra` acepta `generador_video`:
+  cuando el catálogo no tiene foto para un concepto de ambiente, puede pedir un
+  clip. **Si LTX falla o el concepto no tiene prompt de movimiento, cae solo al
+  generador de imagen** — un inserto nunca se pierde por esto.
+- `f12_video_gen.render_pip_video` convierte el mp4 en tarjeta ProRes 4444 con
+  alfa y esquinas redondeadas, con el mismo aspecto y medidas que
+  `render_pip_producto`. El compositor ya sabe componer overlays `medio=video`
+  (los usa para las animaciones), así que **no hubo que tocar `f4_retencion`**.
+- Disciplina de VRAM: una sola instancia de ComfyUI compartida con Flux, y
+  `/free` antes y después de cada clip para que los dos modelos no convivan.
+- Banderas `--video-ambiente` / `--sin-video-ambiente` en `editor.py` y
+  `f6_overlays.py`. Sin ellas manda `config.LTX_HABILITADO`, que está en `False`.
+- Prompts de ambiente reescritos en términos de **movimiento**
+  (`config.LTX_PROMPTS_POR_TAG`): pedirle "terraza soleada" a un modelo de video
+  da una postal quieta.
+
+## 5 · Dos errores míos, anotados porque costaron tiempo
+
+**a) Di por colgada una descarga sana y la maté.** `Get-ChildItem` de PowerShell
+reportaba un `.incomplete` congelado en 7.24 GB desde hacía 22 minutos, y
+`Get-NetTCPConnection` no mostraba conexiones. Las dos medidas eran falsas: el
+mismo archivo, medido con `os.stat` de Python, tenía 9.72 GB y crecía a
+6.7 MB/s. **En Windows el listado del shell devuelve el tamaño cacheado en la
+entrada de directorio, que para un archivo abierto se queda congelado.** Es la
+trampa #9 del plan (comprobar la herramienta de medición antes de diagnosticar)
+y la pisé igual. Anotado en memoria como lección reutilizable. No se perdió
+nada: la descarga es resumible y retomó donde iba.
+
+La reescritura que salió de ese susto igual sirve y quedó: cada descarga corre
+en un **subproceso vigilado desde afuera** mirando crecer el archivo con
+`os.stat`, con reintentos. Un cuelgue de verdad no lanza excepción y ningún
+`try/except` lo salva.
+
+**b) El PNG del marco en bucle mandaba sobre el video.** Con `-loop 1` el marco
+es un stream infinito y `-shortest` no lo frena: la primera prueba del conversor
+a tarjeta escribió **39 GB con 1h24m de video** a partir de un clip de 10 s.
+Se encontró probando el conversor **aislado, con un clip que ya existía**, antes
+de conectarlo a un render real. Arreglo: el marco entra como un solo fotograma y
+`overlay` lo sostiene con `eof_action=repeat`; más un tope duro de 15 s con `-t`
+para que un fallo parecido no pueda llenar el disco de noche.
+
+## 6 · Verificaciones hechas
+
+- **Tarjeta de PiP de video, extremo a extremo:** 240 frames entran y 240 salen
+  (`-count_frames`), 420x540, `prores yuva444p12le`, 0.9 s de proceso. Frame 120
+  extraído **seleccionando por número** (no con `-ss`, que da un cuadro liso en
+  un MOV compuesto) y mirado: marco blanco con filo cian y esquinas redondeadas,
+  idéntico al PiP de foto. El canal alfa solo confirma las cuatro esquinas
+  transparentes.
+- **Flux sigue funcionando después de tocar pip:** imagen nueva (no de caché)
+  generada en 29.4 s en la GPU.
+- **torch intacto** tras la instalación (§1).
+- **Workflow válido** contra los nodos reales (§3).

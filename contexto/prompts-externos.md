@@ -48,3 +48,14 @@ heavy stack of thick hardcover books on a table, dramatic side light, scene insp
 ```text
 heavy stack of thick hardcover books on a table, dramatic side light, scene inspired by: sin miedo. Llevas miles de libros en tu bolsillo. Y la pantalla se ve perfecta, natural editorial photography, soft warm daylight, shallow depth of field, clean minimal composition, no text, no watermark, no logo, no people's faces
 ```
+
+### prueba_flux_post_pip
+
+- **Para reemplazarla, guarda tu versión en:** `assets/generado/manual/prueba_flux_post_pip.png`
+  (una sola imagen por concepto; sustituye a todas las de abajo)
+
+- `assets/generado/auto/prueba_flux_post_pip_1f7bbae92897.png` · semilla `143740213363584` · 768x1024
+
+```text
+a single ripe lemon on a white marble table, morning light, natural editorial photography, soft warm daylight, shallow depth of field, clean minimal composition, no text, no watermark, no logo, no people's faces
+```

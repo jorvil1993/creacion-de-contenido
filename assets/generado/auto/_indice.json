@@ -22,5 +22,13 @@
     "nombre": "libros",
     "semilla": 127987426578397,
     "tamano": "768x1024"
+  },
+  "1f7bbae92897": {
+    "archivo": "assets/generado/auto/prueba_flux_post_pip_1f7bbae92897.png",
+    "prompt": "a single ripe lemon on a white marble table, morning light, natural editorial photography, soft warm daylight, shallow depth of field, clean minimal composition, no text, no watermark, no logo, no people's faces",
+    "tag": "",
+    "nombre": "prueba_flux_post_pip",
+    "semilla": 143740213363584,
+    "tamano": "768x1024"
   }
 }

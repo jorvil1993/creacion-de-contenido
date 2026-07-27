@@ -232,11 +232,13 @@ def workflow_api(prompt: str, semilla: int, ancho: int, alto: int, frames: int,
                "inputs": {"video_latent": ["30", 0], "audio_latent": ["31", 0]}},
 
         # --- muestreo ------------------------------------------------------
-        "40": {"class_type": "ModelSamplingLTXV",
-               "inputs": {"model": ["10", 0], "max_shift": 2.05,
-                          "base_shift": 0.95, "latent": ["32", 0]}},
+        # El modelo va DIRECTO del cargador al guider, sin ModelSamplingLTXV.
+        # Es lo que hace el workflow oficial de 2.3, y hay dos razones:
+        # (a) con LTX_SIGMAS fijas el shift que calcularía ese nodo es
+        #     redundante, y (b) recibiría el latente ya concatenado, que es un
+        #     NestedTensor (video, audio) y no un tensor plano.
         "41": {"class_type": "CFGGuider",
-               "inputs": {"model": ["40", 0], "positive": ["22", 0],
+               "inputs": {"model": ["10", 0], "positive": ["22", 0],
                           "negative": ["22", 1], "cfg": config.LTX_CFG}},
         "42": {"class_type": "KSamplerSelect",
                "inputs": {"sampler_name": config.LTX_SAMPLER}},
