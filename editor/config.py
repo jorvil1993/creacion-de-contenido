@@ -762,21 +762,29 @@ LTX_PROMPT_DESDE_FOTO = ("the object stays exactly as it is while the light shif
 DIR_VIDEO_GENERADO = DIR_ASSETS / "generado" / "video"
 DIR_VIDEO_GENERADO_AUTO = DIR_VIDEO_GENERADO / "auto"   # caché por hash del prompt
 
-# Conceptos donde, CON LA GENERACIÓN DE VIDEO ENCENDIDA, el clip real le gana la
-# ranura a la animación de Hyperframes.
+# Animaciones que, CON LA GENERACIÓN DE VIDEO ENCENDIDA, le ceden su lugar a un
+# clip real. Se declara por NOMBRE DE ANIMACIÓN, no por etiqueta, y la diferencia
+# no es cosmética — se midió:
 #
-# Sin esto no pasa nada cuando José dice "piscina" o "sol": esas etiquetas están
-# en CONCEPTOS_PREFIEREN_ANIMACION, así que se las lleva la animación (splash,
-# rayos de sol) y el inserto de video nunca llega a dispararse.
+# Declarándolo por etiqueta (`#agua`, `#sol`) no funcionaba. En VIDEOV2, las
+# palabras "tina" y "directo" también disparan `splash` y `sol`, y aunque sus
+# etiquetas fueran otras (o ninguna), la animación igual ocupaba la ventana de
+# tiempo y el inserto de video se caía por solapamiento. Resultado: cero clips
+# de agua y de sol, que era justo lo que se quería. Por nombre de animación se
+# libera la franja entera y el clip entra.
 #
-# El criterio es que un B-roll REAL de agua o de sol dice más que la animación
-# dibujada, pero SOLO cuando se pagó el costo de generarlo. Con `--video-ambiente`
-# apagado —el caso normal— este conjunto no se mira siquiera y las animaciones
-# siguen mandando exactamente como antes.
+# El criterio: un B-roll REAL de agua o de sol dice más que la animación
+# dibujada, pero SOLO cuando se pagó el costo de generarlo. Con
+# `--video-ambiente` apagado —el caso normal— este conjunto ni se consulta y las
+# animaciones siguen mandando exactamente como antes.
+#
+# `bateria` y `moto` NO están: la de batería cuenta el paso del tiempo y la de
+# moto es la entrega en Bolivia; ninguna de las dos es un ambiente que LTX pueda
+# hacer mejor.
 #
 # Si José edita las animaciones a mano desde el editor visual, su lista gana:
 # esto solo afecta al disparo automático.
-LTX_CONCEPTOS_GANAN_A_ANIMACION = {"#agua", "#sol"}
+LTX_ANIMACIONES_CEDEN_AL_VIDEO = {"splash", "sol"}
 
 # ---------------------------------------------------------------------------
 # Presentadores (sección 2 del plan: el sistema debe soportar 2)

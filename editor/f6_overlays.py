@@ -908,8 +908,15 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
     # video no se dispararía nunca.
     # Con `animaciones_manual` NO se aplica: si José armó la lista a mano, manda
     # su lista.
-    ganan_video = (config.LTX_CONCEPTOS_GANAN_A_ANIMACION
+    anims_ceden = (config.LTX_ANIMACIONES_CEDEN_AL_VIDEO
                    if (video_ambiente and animaciones_manual is None) else set())
+    # Las etiquetas que quedan libres son las de las palabras cuya animación
+    # cede. Se derivan, no se escriben a mano, para que agregar una palabra a
+    # ANIMACIONES_POR_PALABRA no exija acordarse de tocar esto también.
+    ganan_video = {
+        tag for pal, anim in config.ANIMACIONES_POR_PALABRA.items()
+        if anim in anims_ceden and (tag := config.PALABRAS_A_TAGS.get(pal))
+    }
 
     plan_animaciones = animaciones_manual
     if plan_animaciones is None:
@@ -918,7 +925,7 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
             nombre = config.ANIMACIONES_POR_PALABRA.get(_normalizar(p["texto"]))
             if not nombre:
                 continue
-            if config.PALABRAS_A_TAGS.get(_normalizar(p["texto"])) in ganan_video:
+            if nombre in anims_ceden:
                 continue          # esta la cuenta un clip de video, no la animación
             plan_animaciones.append({"nombre": nombre, "ini": p["inicio"],
                                      "palabra": p["texto"]})
@@ -933,9 +940,9 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
         n = _normalizar(p["texto"])
         if n not in config.ANIMACIONES_POR_PALABRA:
             continue
-        tag_palabra = config.PALABRAS_A_TAGS.get(n)
-        if tag_palabra in ganan_video:
+        if config.ANIMACIONES_POR_PALABRA.get(n) in anims_ceden:
             continue              # liberado a propósito para que entre el clip
+        tag_palabra = config.PALABRAS_A_TAGS.get(n)
         if tag_palabra in config.CONCEPTOS_PREFIEREN_ANIMACION:
             tags_reservados.add(tag_palabra)
 
