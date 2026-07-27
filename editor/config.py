@@ -762,6 +762,22 @@ LTX_PROMPT_DESDE_FOTO = ("the object stays exactly as it is while the light shif
 DIR_VIDEO_GENERADO = DIR_ASSETS / "generado" / "video"
 DIR_VIDEO_GENERADO_AUTO = DIR_VIDEO_GENERADO / "auto"   # caché por hash del prompt
 
+# Conceptos donde, CON LA GENERACIÓN DE VIDEO ENCENDIDA, el clip real le gana la
+# ranura a la animación de Hyperframes.
+#
+# Sin esto no pasa nada cuando José dice "piscina" o "sol": esas etiquetas están
+# en CONCEPTOS_PREFIEREN_ANIMACION, así que se las lleva la animación (splash,
+# rayos de sol) y el inserto de video nunca llega a dispararse.
+#
+# El criterio es que un B-roll REAL de agua o de sol dice más que la animación
+# dibujada, pero SOLO cuando se pagó el costo de generarlo. Con `--video-ambiente`
+# apagado —el caso normal— este conjunto no se mira siquiera y las animaciones
+# siguen mandando exactamente como antes.
+#
+# Si José edita las animaciones a mano desde el editor visual, su lista gana:
+# esto solo afecta al disparo automático.
+LTX_CONCEPTOS_GANAN_A_ANIMACION = {"#agua", "#sol"}
+
 # ---------------------------------------------------------------------------
 # Presentadores (sección 2 del plan: el sistema debe soportar 2)
 # ---------------------------------------------------------------------------

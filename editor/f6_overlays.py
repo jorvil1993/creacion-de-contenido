@@ -457,7 +457,8 @@ def planificar_insertos_por_palabra(palabras: list, track_rostro: list, dir_tmp:
                                      libre_fn, catalogo: list = None,
                                      generador=None, pendientes: list = None,
                                      tags_reservados: set = None,
-                                     generador_video=None) -> list:
+                                     generador_video=None,
+                                     tags_prefieren_video: set = None) -> list:
     """Insertos visuales disparados por el guion, no por un tiempo arbitrario.
 
     Recorre la transcripción buscando palabras del vocabulario
@@ -490,6 +491,7 @@ def planificar_insertos_por_palabra(palabras: list, track_rostro: list, dir_tmp:
     sus otros usos; lo único que cambia es que estas ya no disparan un inserto.
     """
     tags_reservados = tags_reservados or set()
+    tags_prefieren_video = tags_prefieren_video or set()
     catalogo = _cargar_catalogo() if catalogo is None else catalogo
 
     producto = _producto_dominante(palabras)
@@ -515,6 +517,15 @@ def planificar_insertos_por_palabra(palabras: list, track_rostro: list, dir_tmp:
             continue
 
         asset = _elegir_asset(tag, catalogo, usados, producto)
+        # Para estos conceptos el clip generado también le gana a la foto del
+        # catálogo. No contradice la regla de "la foto real gana siempre": esa
+        # regla es para el PRODUCTO, y acá pasa lo contrario — el catálogo tiene
+        # 30 fotos etiquetadas `#agua` porque son Kindles resistentes al agua,
+        # así que decir "piscina" devolvía una foto de producto en vez de agua.
+        # Es el mismo motivo por el que `#agua` ya estaba en
+        # CONCEPTOS_PREFIEREN_ANIMACION.
+        if tag in tags_prefieren_video and generador_video is not None:
+            asset = None
         origen = None
         if asset is not None and asset["medio"] == "imagen":
             ruta_img = _version_sin_fondo(asset) or (config.RAIZ_PROYECTO / asset["ruta"])
@@ -890,6 +901,16 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
     # para estos conceptos la animación gana (config.CONCEPTOS_PREFIEREN_ANIMACION).
     tags_reservados = set()
 
+    # Con la generación de video encendida, para unos pocos conceptos el clip
+    # real le gana la ranura a la animación dibujada (config.LTX_CONCEPTOS_
+    # GANAN_A_ANIMACION). Si no se hiciera acá, la animación ocuparía la ventana
+    # de tiempo y además dejaría el concepto reservado, así que el inserto de
+    # video no se dispararía nunca.
+    # Con `animaciones_manual` NO se aplica: si José armó la lista a mano, manda
+    # su lista.
+    ganan_video = (config.LTX_CONCEPTOS_GANAN_A_ANIMACION
+                   if (video_ambiente and animaciones_manual is None) else set())
+
     plan_animaciones = animaciones_manual
     if plan_animaciones is None:
         plan_animaciones = []
@@ -897,6 +918,8 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
             nombre = config.ANIMACIONES_POR_PALABRA.get(_normalizar(p["texto"]))
             if not nombre:
                 continue
+            if config.PALABRAS_A_TAGS.get(_normalizar(p["texto"])) in ganan_video:
+                continue          # esta la cuenta un clip de video, no la animación
             plan_animaciones.append({"nombre": nombre, "ini": p["inicio"],
                                      "palabra": p["texto"]})
 
@@ -911,6 +934,8 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
         if n not in config.ANIMACIONES_POR_PALABRA:
             continue
         tag_palabra = config.PALABRAS_A_TAGS.get(n)
+        if tag_palabra in ganan_video:
+            continue              # liberado a propósito para que entre el clip
         if tag_palabra in config.CONCEPTOS_PREFIEREN_ANIMACION:
             tags_reservados.add(tag_palabra)
 
@@ -1092,7 +1117,8 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
                 palabras, track_rostro or [], dir_tmp, _libre,
                 generador=gen_fn, pendientes=pendientes,
                 tags_reservados=tags_reservados,
-                generador_video=gen_video_fn)
+                generador_video=gen_video_fn,
+                tags_prefieren_video=ganan_video)
         finally:
             if servidor is not None:
                 servidor.cerrar()
