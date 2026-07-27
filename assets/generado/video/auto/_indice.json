@@ -20,5 +20,49 @@
     "frames": 73,
     "fps": 24.0,
     "desde_imagen": "..\\assets\\productos\\colorsoft-32gb\\frontal.png"
+  },
+  "718508c6dda7": {
+    "archivo": "assets/generado/video/auto/libros_718508c6dda7.mp4",
+    "prompt": "pages of a thick hardcover book turning slowly on a table, dramatic side light, dust in the air, scene inspired by: más este año, pero te da pereza cargar libros pesados? Tienes que ver esto. Esta, cinematic natural lighting, subtle gentle motion, static camera, shallow depth of field, no text, no watermark, no people's faces",
+    "tag": "#libros",
+    "nombre": "libros",
+    "semilla": 68962675293704,
+    "tamano": "704x1280",
+    "frames": 73,
+    "fps": 24.0,
+    "desde_imagen": ""
+  },
+  "7bf7fad408d2": {
+    "archivo": "assets/generado/video/auto/libros_7bf7fad408d2.mp4",
+    "prompt": "pages of a thick hardcover book turning slowly on a table, dramatic side light, dust in the air, scene inspired by: sin miedo. Llevas miles de libros en tu bolsillo. Y la pantalla se ve perfecta, cinematic natural lighting, subtle gentle motion, static camera, shallow depth of field, no text, no watermark, no people's faces",
+    "tag": "#libros",
+    "nombre": "libros",
+    "semilla": 117259295840067,
+    "tamano": "704x1280",
+    "frames": 73,
+    "fps": 24.0,
+    "desde_imagen": ""
+  },
+  "ecabef93c14a": {
+    "archivo": "assets/generado/video/auto/libros_ecabef93c14a.mp4",
+    "prompt": "pages of a thick hardcover book turning slowly on a table, dramatic side light, dust in the air, scene inspired by: un libro grueso pesa mas que todo esto junto, cinematic natural lighting, subtle gentle motion, static camera, shallow depth of field, no text, no watermark, no people's faces",
+    "tag": "#libros",
+    "nombre": "libros",
+    "semilla": 250957921841434,
+    "tamano": "704x1280",
+    "frames": 73,
+    "fps": 24.0,
+    "desde_imagen": ""
+  },
+  "5fb583e428f9": {
+    "archivo": "assets/generado/video/auto/libros_5fb583e428f9.mp4",
+    "prompt": "extreme macro close-up of the stacked paper edges of a thick book, warm side light grazing the paper texture, shallow depth of field, very slow drift, scene inspired by: un libro grueso pesa mas que todo esto junto, cinematic natural lighting, subtle gentle motion, static camera, shallow depth of field, no text, no watermark, no people's faces",
+    "tag": "#libros",
+    "nombre": "libros",
+    "semilla": 60738109631951,
+    "tamano": "704x1280",
+    "frames": 73,
+    "fps": 24.0,
+    "desde_imagen": ""
   }
 }

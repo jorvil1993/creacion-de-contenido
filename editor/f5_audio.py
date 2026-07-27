@@ -81,6 +81,33 @@ def _niveles_sfx() -> dict:
     return datos
 
 
+def _alineacion_sfx() -> dict:
+    """Dónde golpea cada sonido dentro de su propio archivo.
+
+    No todos los efectos golpean en el primer frame. Medido sobre el pack
+    (assets/sfx/_alineacion.json, campo `punto`):
+
+    - `impacto_hit.mp3` golpea a los 0.00s  -> golpe
+    - `whoosh_swoosh.mp3` llega a su cresta a los 0.49s -> swell
+    - `riser_1.mp3` revienta a los 2.38s    -> build
+
+    Colocar los tres con `adelay` al segundo del evento visual solo acierta con
+    el primero: el whoosh sube DESPUÉS del corte y el riser revienta dos segundos
+    y medio tarde, que es lo mismo que no ponerlo. Por eso el archivo se coloca
+    en `t - punto`, para que sea el GOLPE el que caiga sobre el evento.
+
+    Si el JSON no está, todo vale 0.0 y el comportamiento es el de antes.
+    """
+    ruta = config.DIR_ASSETS / "sfx" / "_alineacion.json"
+    if not ruta.exists():
+        return {}
+    try:
+        return json.loads(ruta.read_text(encoding="utf-8"))
+    except Exception:
+        _log("AVISO: no se pudo leer _alineacion.json — los SFX se colocan por el inicio del archivo.")
+        return {}
+
+
 def _ruta_musica(nombre_archivo: str) -> Path | None:
     ruta = config.DIR_ASSETS / "musica" / nombre_archivo
     return ruta if ruta.exists() else None
@@ -330,8 +357,19 @@ def escribir_hoja_sonido(eventos: list, palabras: list, ruta: Path, duracion: fl
         L.append(f"| {', '.join(f'`{a}`' for a in cfg['archivos'])} | {tipo} (vol {cfg['volumen']}) |")
 
     if sin_usar:
+        # Agrupado por categoría: en un pack de 141 sonidos, una lista corrida de
+        # 98 nombres no sirve para elegir nada.
+        alineacion = _alineacion_sfx()
+        por_categoria = {}
+        for a in sin_usar:
+            cat = alineacion.get(a, {}).get("categoria", "otros")
+            por_categoria.setdefault(cat, []).append(a)
         L += ["", "### Disponibles sin usar", "",
-              ", ".join(f"`{a}`" for a in sin_usar), ""]
+              "Para meter uno, agrégalo a la lista de ajustes manuales de abajo.", ""]
+        for cat in sorted(por_categoria):
+            L.append(f"**{cat}** ({len(por_categoria[cat])}): "
+                     + ", ".join(f"`{a}`" for a in sorted(por_categoria[cat])))
+            L.append("")
 
     L += [
         "",
@@ -351,6 +389,11 @@ def escribir_hoja_sonido(eventos: list, palabras: list, ruta: Path, duracion: fl
         "`ancla` es opcional. Si está, el `t` se recalcula solo a partir de dónde esté",
         "hoy ese evento visual (`desfase` es cuánto se adelanta o atrasa respecto a él).",
         "Un sonido sin `ancla` se queda exactamente en su `t`.",
+        "",
+        "`t` es el segundo en que el sonido GOLPEA, no en el que empieza a sonar. Un",
+        "riser con `t: 12.0` arranca solo unos segundos antes y revienta en el 12.0,",
+        "que es donde tiene que estar el reveal. Cuánto se adelanta cada archivo está",
+        "medido en `assets/sfx/_alineacion.json`.",
     ]
     ruta.write_text("\n".join(L), encoding="utf-8")
 
@@ -373,6 +416,7 @@ def mezclar_audio(ruta_video: Path, eventos_sfx: list, ruta_salida: Path,
         idx_siguiente += 1
 
     niveles = _niveles_sfx()
+    alineacion = _alineacion_sfx()
     eventos_validos = []
     for ev in eventos_sfx:
         ruta = _ruta_sfx(ev["archivo"])
@@ -384,7 +428,9 @@ def mezclar_audio(ruta_video: Path, eventos_sfx: list, ruta_salida: Path,
         pico = niveles.get(ev["archivo"], 0.0)
         vol = ev.get("volumen", config.SFX_VOLUMEN)
         ganancia_db = (config.SFX_PICO_OBJETIVO_DB - pico) + 20 * math.log10(max(vol, 0.001))
-        eventos_validos.append({**ev, "idx": idx_siguiente, "ganancia_db": ganancia_db})
+        punto = float(alineacion.get(ev["archivo"], {}).get("punto", 0.0))
+        eventos_validos.append({**ev, "idx": idx_siguiente, "ganancia_db": ganancia_db,
+                                "punto": punto})
         idx_siguiente += 1
 
     filtro_partes = []
@@ -406,7 +452,15 @@ def mezclar_audio(ruta_video: Path, eventos_sfx: list, ruta_salida: Path,
         labels_mezcla.append("[mus_duck]")
 
     for i, ev in enumerate(eventos_validos):
-        ms = round(ev["t"] * 1000)
+        # El evento visual cae en ev["t"]; lo que tiene que coincidir con él es el
+        # GOLPE del sonido, que está `punto` segundos dentro del archivo. Así que
+        # el archivo arranca antes. Si no cabe (un riser de 2.4s anclado al
+        # segundo 1), se recorta por delante lo que no entra y el golpe sigue
+        # cayendo donde debe.
+        punto = ev["punto"]
+        corte = max(0.0, punto - ev["t"])
+        ms = round(max(0.0, ev["t"] - punto) * 1000)
+        ventana = (punto - corte) + config.SFX_DURACION_MAX_S
         label = f"sfx{i}"
         filtro_partes.append(
             # 1) llevar el archivo a un pico común (compensa los 20 dB de
@@ -415,8 +469,8 @@ def mezclar_audio(ruta_video: Path, eventos_sfx: list, ruta_salida: Path,
             #    entonces aplicar el volumen artístico del tipo de evento.
             f"[{ev['idx']}:a]aformat=sample_rates={config.AUDIO_SAMPLE_RATE}:channel_layouts=stereo,"
             f"volume={ev['ganancia_db']:.2f}dB,"
-            f"atrim=0:{config.SFX_DURACION_MAX_S},asetpts=PTS-STARTPTS,"
-            f"afade=t=out:st={max(0.05, config.SFX_DURACION_MAX_S - 0.25):.2f}:d=0.25,"
+            f"atrim=start={corte:.3f}:end={corte + ventana:.3f},asetpts=PTS-STARTPTS,"
+            f"afade=t=out:st={max(0.05, ventana - 0.25):.2f}:d=0.25,"
             f"adelay={ms}:all=1[{label}]"
         )
         labels_mezcla.append(f"[{label}]")

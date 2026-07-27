@@ -294,22 +294,42 @@ SFX_CIERRE = "notificacion_success.mp3"
 # todos". El error fue confundir "sutil" con "inaudible": el ducking ya baja la
 # música, pero los SFX compiten con la VOZ, que no se agacha nunca.
 # Referencia: el hook (0.9) se oye claramente; nada debe bajar de ~0.55.
+# Ampliado el 2026-07-27 con el pack nuevo (141 sonidos, ver assets/sfx/README.md).
+# Solo se ampliaron las rotaciones: cada evento sigue sonando al mismo tipo de
+# cosa que antes y con el MISMO volumen calibrado. Lo que cambia es que un video
+# con 6 punch-ins ya no repite whoosh.
+# Los risers y los reverses del pack nuevo NO están aquí a propósito: son de un
+# solo uso por video (el reveal grande) y colocarlos automáticamente en cada
+# corte los volvería ruido. Se usan a mano desde la hoja de sonido.
 SFX_POR_EVENTO = {
-    "hook":         {"archivos": ["impacto_dramatico.mp3"],                    "volumen": 0.90},
-    "corte":        {"archivos": ["transicion_corte.mp3",
-                                  "transicion_swipe.mp3"],                     "volumen": 0.75},
+    "hook":         {"archivos": ["impacto_dramatico.mp3", "impacto_bang_cine.mp3",
+                                  "impacto_pesado.mp3", "impacto_boom_cine_2.mp3",
+                                  "impacto_subdrop.mp3"],                      "volumen": 0.90},
+    "corte":        {"archivos": ["transicion_corte.mp3", "transicion_swipe.mp3",
+                                  "transicion_corte_2.mp3", "whoosh_swish_2.mp3",
+                                  "whoosh_crash.mp3", "whoosh_rapido_golpe.mp3",
+                                  "whoosh_swish_corte.mp3"],                   "volumen": 0.75},
     "punch-in":     {"archivos": ["whoosh_simple.mp3", "whoosh_rapido.mp3",
-                                  "whoosh_deep_1.mp3", "whoosh_deep_2.mp3"],   "volumen": 0.65},
-    "pip-producto": {"archivos": ["pop.mp3"],                                  "volumen": 0.95},
+                                  "whoosh_deep_1.mp3", "whoosh_deep_2.mp3",
+                                  "whoosh_simple_2.mp3", "whoosh_rapido_2.mp3",
+                                  "whoosh_grave_3.mp3", "whoosh_grave_4.mp3",
+                                  "whoosh_corto_grave.mp3", "whoosh_swoosh.mp3",
+                                  "whoosh_aspero.mp3", "whoosh_metal.mp3"],    "volumen": 0.65},
+    "pip-producto": {"archivos": ["pop.mp3", "ui_blip_1.mp3", "ui_boton.mp3",
+                                  "ui_click.mp3"],                             "volumen": 0.95},
     # "sticker" es el cajón por defecto: aquí caen también las animaciones y la
     # ficha técnica. Con un solo archivo la rotación de arriba no podía hacer
     # nada y el mismo chime sonaba 4 veces en 37s (medido en el video de
     # prueba) — se oye como un tic del editor, no como una intención. Segundo
     # archivo añadido para que la rotación funcione; los volúmenes calibrados
     # NO se tocan.
-    "sticker":      {"archivos": ["notificacion_chime.mp3",
-                                  "notificacion_1.mp3"],                       "volumen": 0.80},
-    "cta":          {"archivos": ["notificacion_success.mp3"],                 "volumen": 0.90},
+    "sticker":      {"archivos": ["notificacion_chime.mp3", "notificacion_1.mp3",
+                                  "ui_1.mp3", "ui_4.mp3", "ui_6.mp3", "ui_8.mp3",
+                                  "ui_blip_2.mp3", "ui_blip_3.mp3",
+                                  "camara_click_4.mp3", "camara_click_5.mp3"], "volumen": 0.80},
+    "cta":          {"archivos": ["notificacion_success.mp3", "notificacion_pago.mp3",
+                                  "tada_cierre.mp3", "whoosh_logro.mp3",
+                                  "ui_game_start.mp3"],                        "volumen": 0.90},
 }
 
 # Cuántos punch-ins llevan sonido como máximo. Los demás hacen el zoom en
@@ -527,9 +547,14 @@ ANIMACIONES_POR_PALABRA = {
     "entrega": "moto", "delivery": "moto", "bolivia": "moto",
 }
 
-# Largo máximo de un SFX, con desvanecido al final. `impacto_dramatico.mp3`
-# dura 8.5s: sin recorte se solapa con la frase siguiente en vez de puntuar
-# un momento.
+# Cuánto se deja sonar un SFX DESPUÉS de su golpe, con desvanecido al final.
+# `impacto_dramatico.mp3` dura 8.5s: sin recorte se solapa con la frase
+# siguiente en vez de puntuar un momento.
+#
+# Se cuenta desde el punto de impacto, no desde el inicio del archivo. La
+# diferencia importa desde que el pack tiene risers: `riser_1.mp3` tarda 2.4s en
+# llegar a su clímax, así que recortarlo a 1.6s CONTANDO DESDE EL INICIO se
+# llevaba justo la parte que vale. Ver assets/sfx/_alineacion.json.
 SFX_DURACION_MAX_S = 1.6
 
 # Distancia mínima entre dos SFX cualesquiera. Evita que se amontonen cuando
@@ -666,8 +691,15 @@ LTX_GENERACION_TIMEOUT_S = 1800
 
 # Negativo del workflow oficial, adaptado: fuera estética de videojuego y
 # artefactos. Sin esto los ambientes salen con look de render 3D.
+#
+# La parte de subtítulos NO es decorativa: la primera prueba de `#libros` salió
+# con SUBTÍTULOS FALSOS quemados arriba y abajo del cuadro, en los dos clips.
+# El modelo imita el material con el que se entrenó, y los videos de libros
+# suelen venir subtitulados. "text" solo no alcanzó; hay que nombrar la forma.
 LTX_PROMPT_NEGATIVO = ("pc game, console game, video game, cartoon, childish, ugly, "
-                       "watermark, text, logo, distorted, blurry, low quality")
+                       "watermark, text, logo, distorted, blurry, low quality, "
+                       "subtitles, captions, closed captions, burned-in text, "
+                       "overlay text, title card, lower third, letters, words")
 
 # Estilo común, hermano de PROMPT_ESTILO pero con lenguaje de MOVIMIENTO: a un
 # modelo de video hay que decirle qué se mueve, si no produce una foto quieta
@@ -702,8 +734,15 @@ LTX_PROMPTS_POR_TAG = {
               "shifting slowly on the wall",
     "#biblioteca": "slow camera-free drift of dust motes floating in warm light between "
                    "tall wooden bookshelves full of books",
-    "#libros": "pages of a thick hardcover book turning slowly on a table, dramatic "
-               "side light, dust in the air",
+    # OJO con este: la primera versión ("pages of a thick hardcover book turning
+    # slowly, dramatic side light") salió con SUBTÍTULOS FALSOS quemados en el
+    # cuadro, las tres veces que se generó. Reforzar el prompt negativo NO
+    # alcanzó. El encuadre "video de un libro" arrastra el sesgo del material
+    # con el que se entrenó el modelo, que viene subtitulado. La salida es
+    # pedirle un MACRO de textura, que no se parece a un video narrado.
+    "#libros": "extreme macro close-up of the stacked paper edges of a thick book, "
+               "warm side light grazing the paper texture, shallow depth of field, "
+               "very slow drift",
     "#regalo": "a satin ribbon on an elegant gift box moving gently, warm festive light "
                "shifting across the surface",
     "#estudio": "a warm desk lamp lighting an open notebook, a page turning slowly, "

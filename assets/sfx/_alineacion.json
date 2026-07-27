@@ -1,0 +1,848 @@
+{
+  "caja_registradora.mp3": {
+    "punto": 0.007,
+    "familia": "golpe",
+    "categoria": "venta",
+    "duracion": 1.45
+  },
+  "camara_analogica_1.mp3": {
+    "punto": 0.06,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.507
+  },
+  "camara_analogica_2.mp3": {
+    "punto": 0.06,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.549
+  },
+  "camara_analogica_3.mp3": {
+    "punto": 0.06,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.504
+  },
+  "camara_analogica_4.mp3": {
+    "punto": 0.018,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.528
+  },
+  "camara_click_1.mp3": {
+    "punto": 0.229,
+    "familia": "swell",
+    "categoria": "camara",
+    "duracion": 0.387
+  },
+  "camara_click_2.mp3": {
+    "punto": 0.05,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.589
+  },
+  "camara_click_3.mp3": {
+    "punto": 0.161,
+    "familia": "swell",
+    "categoria": "camara",
+    "duracion": 1.003
+  },
+  "camara_click_4.mp3": {
+    "punto": 0.043,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.267
+  },
+  "camara_click_5.mp3": {
+    "punto": 0.091,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.312
+  },
+  "camara_click_6.mp3": {
+    "punto": 0.118,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.377
+  },
+  "camara_dslr.mp3": {
+    "punto": 0.124,
+    "familia": "swell",
+    "categoria": "camara",
+    "duracion": 0.43
+  },
+  "camara_enfoque_1.mp3": {
+    "punto": 0.021,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 2.522
+  },
+  "camara_enfoque_2.mp3": {
+    "punto": 0.044,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.407
+  },
+  "camara_enfoque_3.mp3": {
+    "punto": 0.064,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 1.177
+  },
+  "camara_enfoque_4.mp3": {
+    "punto": 0.07,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.436
+  },
+  "camara_flash.mp3": {
+    "punto": 0.088,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 1.251
+  },
+  "camara_flash_pop_1.mp3": {
+    "punto": 0.005,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.807
+  },
+  "camara_flash_pop_10.mp3": {
+    "punto": 0.143,
+    "familia": "swell",
+    "categoria": "camara",
+    "duracion": 0.828
+  },
+  "camara_flash_pop_11.mp3": {
+    "punto": 0.048,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.817
+  },
+  "camara_flash_pop_12.mp3": {
+    "punto": 0.143,
+    "familia": "swell",
+    "categoria": "camara",
+    "duracion": 0.901
+  },
+  "camara_flash_pop_2.mp3": {
+    "punto": 0.007,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.823
+  },
+  "camara_flash_pop_3.mp3": {
+    "punto": 0.114,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.814
+  },
+  "camara_flash_pop_4.mp3": {
+    "punto": 0.002,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.843
+  },
+  "camara_flash_pop_5.mp3": {
+    "punto": 0.122,
+    "familia": "swell",
+    "categoria": "camara",
+    "duracion": 0.834
+  },
+  "camara_flash_pop_6.mp3": {
+    "punto": 0.099,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.99
+  },
+  "camara_flash_pop_7.mp3": {
+    "punto": 0.106,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.775
+  },
+  "camara_flash_pop_8.mp3": {
+    "punto": 0.087,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.848
+  },
+  "camara_flash_pop_9.mp3": {
+    "punto": 0.12,
+    "familia": "golpe",
+    "categoria": "camara",
+    "duracion": 0.825
+  },
+  "camara_zenit.mp3": {
+    "punto": 0.283,
+    "familia": "swell",
+    "categoria": "camara",
+    "duracion": 2.77
+  },
+  "glitch_digital.mp3": {
+    "punto": 0.009,
+    "familia": "golpe",
+    "categoria": "glitch",
+    "duracion": 0.4
+  },
+  "glitch_stutter_1.mp3": {
+    "punto": 0.011,
+    "familia": "golpe",
+    "categoria": "glitch",
+    "duracion": 0.55
+  },
+  "glitch_stutter_2.mp3": {
+    "punto": 0.186,
+    "familia": "swell",
+    "categoria": "glitch",
+    "duracion": 0.7
+  },
+  "glitch_tape_stop.mp3": {
+    "punto": 0.096,
+    "familia": "golpe",
+    "categoria": "glitch",
+    "duracion": 0.9
+  },
+  "impacto_bang_cine.mp3": {
+    "punto": 2.505,
+    "familia": "build",
+    "categoria": "impacto",
+    "duracion": 4.0
+  },
+  "impacto_boom_cine_1.mp3": {
+    "punto": 0.055,
+    "familia": "golpe",
+    "categoria": "impacto",
+    "duracion": 0.547
+  },
+  "impacto_boom_cine_2.mp3": {
+    "punto": 0.78,
+    "familia": "swell",
+    "categoria": "impacto",
+    "duracion": 1.829
+  },
+  "impacto_dramatico.mp3": {
+    "punto": 1.532,
+    "familia": "build",
+    "categoria": "impacto",
+    "duracion": 8.568
+  },
+  "impacto_grave.mp3": {
+    "punto": 0.141,
+    "familia": "swell",
+    "categoria": "impacto",
+    "duracion": 3.937
+  },
+  "impacto_grave_2.mp3": {
+    "punto": 0.056,
+    "familia": "golpe",
+    "categoria": "impacto",
+    "duracion": 2.555
+  },
+  "impacto_grave_3.mp3": {
+    "punto": 0.012,
+    "familia": "golpe",
+    "categoria": "impacto",
+    "duracion": 1.479
+  },
+  "impacto_hit.mp3": {
+    "punto": 0.059,
+    "familia": "golpe",
+    "categoria": "impacto",
+    "duracion": 1.829
+  },
+  "impacto_hit_2.mp3": {
+    "punto": 0.169,
+    "familia": "swell",
+    "categoria": "impacto",
+    "duracion": 2.465
+  },
+  "impacto_hit_3.mp3": {
+    "punto": 0.024,
+    "familia": "golpe",
+    "categoria": "impacto",
+    "duracion": 1.24
+  },
+  "impacto_hit_4.mp3": {
+    "punto": 0.035,
+    "familia": "golpe",
+    "categoria": "impacto",
+    "duracion": 1.476
+  },
+  "impacto_hit_5.mp3": {
+    "punto": 0.018,
+    "familia": "golpe",
+    "categoria": "impacto",
+    "duracion": 2.137
+  },
+  "impacto_inception.mp3": {
+    "punto": 0.026,
+    "familia": "golpe",
+    "categoria": "impacto",
+    "duracion": 2.526
+  },
+  "impacto_lanzamiento.mp3": {
+    "punto": 0.12,
+    "familia": "golpe",
+    "categoria": "impacto",
+    "duracion": 1.845
+  },
+  "impacto_latido.mp3": {
+    "punto": 0.008,
+    "familia": "golpe",
+    "categoria": "impacto",
+    "duracion": 1.5
+  },
+  "impacto_pesado.mp3": {
+    "punto": 0.308,
+    "familia": "swell",
+    "categoria": "impacto",
+    "duracion": 2.808
+  },
+  "impacto_subdrop.mp3": {
+    "punto": 0.019,
+    "familia": "golpe",
+    "categoria": "impacto",
+    "duracion": 2.519
+  },
+  "impacto_vidrio.mp3": {
+    "punto": 0.35,
+    "familia": "swell",
+    "categoria": "impacto",
+    "duracion": 2.85
+  },
+  "moneda_1.mp3": {
+    "punto": 0.009,
+    "familia": "golpe",
+    "categoria": "venta",
+    "duracion": 1.025
+  },
+  "moneda_2.mp3": {
+    "punto": 0.002,
+    "familia": "golpe",
+    "categoria": "venta",
+    "duracion": 1.025
+  },
+  "notificacion_1.mp3": {
+    "punto": 0.15,
+    "familia": "swell",
+    "categoria": "notificacion",
+    "duracion": 1.959
+  },
+  "notificacion_chime.mp3": {
+    "punto": 0.034,
+    "familia": "golpe",
+    "categoria": "notificacion",
+    "duracion": 1.593
+  },
+  "notificacion_pago.mp3": {
+    "punto": 0.148,
+    "familia": "swell",
+    "categoria": "notificacion",
+    "duracion": 0.965
+  },
+  "notificacion_success.mp3": {
+    "punto": 0.366,
+    "familia": "swell",
+    "categoria": "notificacion",
+    "duracion": 3.03
+  },
+  "pop.mp3": {
+    "punto": 0.064,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 1.358
+  },
+  "reverso_1.mp3": {
+    "punto": 2.569,
+    "familia": "build",
+    "categoria": "reverso",
+    "duracion": 2.602
+  },
+  "reverso_10.mp3": {
+    "punto": 1.484,
+    "familia": "build",
+    "categoria": "reverso",
+    "duracion": 1.505
+  },
+  "reverso_11.mp3": {
+    "punto": 3.0,
+    "familia": "build",
+    "categoria": "reverso",
+    "duracion": 3.346
+  },
+  "reverso_2.mp3": {
+    "punto": 2.26,
+    "familia": "build",
+    "categoria": "reverso",
+    "duracion": 3.111
+  },
+  "reverso_3.mp3": {
+    "punto": 2.538,
+    "familia": "build",
+    "categoria": "reverso",
+    "duracion": 2.587
+  },
+  "reverso_4.mp3": {
+    "punto": 2.338,
+    "familia": "build",
+    "categoria": "reverso",
+    "duracion": 2.477
+  },
+  "reverso_5.mp3": {
+    "punto": 1.887,
+    "familia": "build",
+    "categoria": "reverso",
+    "duracion": 2.009
+  },
+  "reverso_6.mp3": {
+    "punto": 0.903,
+    "familia": "swell",
+    "categoria": "reverso",
+    "duracion": 1.034
+  },
+  "reverso_7.mp3": {
+    "punto": 2.407,
+    "familia": "build",
+    "categoria": "reverso",
+    "duracion": 2.596
+  },
+  "reverso_8.mp3": {
+    "punto": 2.393,
+    "familia": "build",
+    "categoria": "reverso",
+    "duracion": 2.617
+  },
+  "reverso_9.mp3": {
+    "punto": 2.256,
+    "familia": "build",
+    "categoria": "reverso",
+    "duracion": 2.795
+  },
+  "reverso_whoosh.mp3": {
+    "punto": 1.309,
+    "familia": "build",
+    "categoria": "reverso",
+    "duracion": 3.809
+  },
+  "riser_1.mp3": {
+    "punto": 2.385,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 3.492
+  },
+  "riser_2.mp3": {
+    "punto": 2.253,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 2.535
+  },
+  "riser_3.mp3": {
+    "punto": 1.874,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 2.931
+  },
+  "riser_buildup_1.mp3": {
+    "punto": 1.477,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 1.566
+  },
+  "riser_buildup_2.mp3": {
+    "punto": 0.796,
+    "familia": "swell",
+    "categoria": "riser",
+    "duracion": 0.921
+  },
+  "riser_buildup_3.mp3": {
+    "punto": 0.852,
+    "familia": "swell",
+    "categoria": "riser",
+    "duracion": 1.004
+  },
+  "riser_buildup_4.mp3": {
+    "punto": 1.818,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 1.912
+  },
+  "riser_cortado.mp3": {
+    "punto": 1.749,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 2.0
+  },
+  "riser_cyberpunk.mp3": {
+    "punto": 2.202,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 4.0
+  },
+  "riser_reveal.mp3": {
+    "punto": 0.578,
+    "familia": "swell",
+    "categoria": "riser",
+    "duracion": 3.078
+  },
+  "riser_sweep_1.mp3": {
+    "punto": 2.167,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 2.2
+  },
+  "riser_sweep_2.mp3": {
+    "punto": 1.374,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 1.4
+  },
+  "riser_sweep_3.mp3": {
+    "punto": 2.98,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 3.0
+  },
+  "riser_tremolo.mp3": {
+    "punto": 0.751,
+    "familia": "swell",
+    "categoria": "riser",
+    "duracion": 3.251
+  },
+  "riser_whip_1.mp3": {
+    "punto": 1.658,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 1.819
+  },
+  "riser_whip_2.mp3": {
+    "punto": 1.962,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 2.048
+  },
+  "riser_whip_3.mp3": {
+    "punto": 0.832,
+    "familia": "swell",
+    "categoria": "riser",
+    "duracion": 0.886
+  },
+  "riser_wildfire.mp3": {
+    "punto": 3.0,
+    "familia": "build",
+    "categoria": "riser",
+    "duracion": 4.0
+  },
+  "subdrop_1.mp3": {
+    "punto": 0.013,
+    "familia": "golpe",
+    "categoria": "impacto",
+    "duracion": 1.6
+  },
+  "subdrop_2.mp3": {
+    "punto": 0.317,
+    "familia": "swell",
+    "categoria": "impacto",
+    "duracion": 2.2
+  },
+  "tada_cierre.mp3": {
+    "punto": 0.082,
+    "familia": "golpe",
+    "categoria": "venta",
+    "duracion": 1.5
+  },
+  "transicion_corte.mp3": {
+    "punto": 0.355,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 1.28
+  },
+  "transicion_corte_2.mp3": {
+    "punto": 0.293,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 0.748
+  },
+  "transicion_swipe.mp3": {
+    "punto": 0.045,
+    "familia": "golpe",
+    "categoria": "whoosh",
+    "duracion": 0.078
+  },
+  "ui_1.mp3": {
+    "punto": 0.363,
+    "familia": "swell",
+    "categoria": "ui",
+    "duracion": 0.93
+  },
+  "ui_3.mp3": {
+    "punto": 0.248,
+    "familia": "swell",
+    "categoria": "ui",
+    "duracion": 0.957
+  },
+  "ui_4.mp3": {
+    "punto": 0.169,
+    "familia": "swell",
+    "categoria": "ui",
+    "duracion": 0.502
+  },
+  "ui_6.mp3": {
+    "punto": 0.032,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.782
+  },
+  "ui_7.mp3": {
+    "punto": 0.089,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.403
+  },
+  "ui_8.mp3": {
+    "punto": 0.224,
+    "familia": "swell",
+    "categoria": "ui",
+    "duracion": 0.892
+  },
+  "ui_apagar.mp3": {
+    "punto": 0.139,
+    "familia": "swell",
+    "categoria": "ui",
+    "duracion": 0.683
+  },
+  "ui_atras.mp3": {
+    "punto": 0.186,
+    "familia": "swell",
+    "categoria": "ui",
+    "duracion": 0.39
+  },
+  "ui_blip_1.mp3": {
+    "punto": 0.009,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.13
+  },
+  "ui_blip_2.mp3": {
+    "punto": 0.001,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.13
+  },
+  "ui_blip_3.mp3": {
+    "punto": 0.007,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.1
+  },
+  "ui_boton.mp3": {
+    "punto": 0.022,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.677
+  },
+  "ui_click.mp3": {
+    "punto": 0.09,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.839
+  },
+  "ui_error.mp3": {
+    "punto": 0.011,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.5
+  },
+  "ui_game_1.mp3": {
+    "punto": 0.104,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.75
+  },
+  "ui_game_2.mp3": {
+    "punto": 0.022,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.745
+  },
+  "ui_game_3.mp3": {
+    "punto": 0.047,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.738
+  },
+  "ui_game_4.mp3": {
+    "punto": 0.049,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.939
+  },
+  "ui_game_start.mp3": {
+    "punto": 0.015,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.808
+  },
+  "ui_hover.mp3": {
+    "punto": 0.079,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.343
+  },
+  "ui_laser.mp3": {
+    "punto": 0.008,
+    "familia": "golpe",
+    "categoria": "ui",
+    "duracion": 0.55
+  },
+  "ui_sparkle.mp3": {
+    "punto": 0.192,
+    "familia": "swell",
+    "categoria": "ui",
+    "duracion": 1.625
+  },
+  "whoosh_aspero.mp3": {
+    "punto": 0.096,
+    "familia": "golpe",
+    "categoria": "whoosh",
+    "duracion": 0.404
+  },
+  "whoosh_corto_grave.mp3": {
+    "punto": 0.214,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 0.711
+  },
+  "whoosh_crash.mp3": {
+    "punto": 0.265,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 0.826
+  },
+  "whoosh_deep_1.mp3": {
+    "punto": 0.481,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 3.156
+  },
+  "whoosh_deep_2.mp3": {
+    "punto": 0.501,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 3.061
+  },
+  "whoosh_grave_3.mp3": {
+    "punto": 0.384,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 2.271
+  },
+  "whoosh_grave_4.mp3": {
+    "punto": 0.507,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 2.903
+  },
+  "whoosh_logro.mp3": {
+    "punto": 0.356,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 2.033
+  },
+  "whoosh_metal.mp3": {
+    "punto": 0.321,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 0.956
+  },
+  "whoosh_rapido.mp3": {
+    "punto": 0.203,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 0.8
+  },
+  "whoosh_rapido_2.mp3": {
+    "punto": 0.216,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 0.599
+  },
+  "whoosh_rapido_golpe.mp3": {
+    "punto": 0.139,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 0.598
+  },
+  "whoosh_simple.mp3": {
+    "punto": 0.096,
+    "familia": "golpe",
+    "categoria": "whoosh",
+    "duracion": 0.467
+  },
+  "whoosh_simple_2.mp3": {
+    "punto": 0.014,
+    "familia": "golpe",
+    "categoria": "whoosh",
+    "duracion": 0.312
+  },
+  "whoosh_swish_1.mp3": {
+    "punto": 0.732,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 1.789
+  },
+  "whoosh_swish_2.mp3": {
+    "punto": 0.052,
+    "familia": "golpe",
+    "categoria": "whoosh",
+    "duracion": 0.457
+  },
+  "whoosh_swish_3.mp3": {
+    "punto": 0.794,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 1.603
+  },
+  "whoosh_swish_corte.mp3": {
+    "punto": 0.224,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 1.106
+  },
+  "whoosh_swoosh.mp3": {
+    "punto": 0.359,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 1.296
+  },
+  "whoosh_swoosh_1.mp3": {
+    "punto": 0.847,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 2.098
+  },
+  "whoosh_swoosh_2.mp3": {
+    "punto": 0.367,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 1.616
+  },
+  "whoosh_swoosh_3.mp3": {
+    "punto": 0.901,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 2.733
+  },
+  "whoosh_swoosh_4.mp3": {
+    "punto": 0.741,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 2.664
+  },
+  "whoosh_swoosh_5.mp3": {
+    "punto": 0.279,
+    "familia": "swell",
+    "categoria": "whoosh",
+    "duracion": 1.75
+  }
+}

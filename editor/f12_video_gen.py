@@ -328,8 +328,12 @@ def _guardar_indice(indice: dict):
 
 
 def _clave(prompt: str, ancho: int, alto: int, frames: int, imagen: str) -> str:
-    crudo = (f"{prompt}|{ancho}x{alto}x{frames}|{config.LTX_UNET_GGUF}"
-             f"|{config.LTX_SIGMAS}|{imagen or ''}")
+    # El prompt NEGATIVO entra en la clave. Parece un detalle y no lo es: al
+    # afinarlo (por ejemplo para sacar los subtítulos falsos que salían en
+    # `#libros`) la caché seguiría devolviendo el clip viejo y daría la
+    # impresión de que el cambio no sirvió.
+    crudo = (f"{prompt}|{config.LTX_PROMPT_NEGATIVO}|{ancho}x{alto}x{frames}"
+             f"|{config.LTX_UNET_GGUF}|{config.LTX_SIGMAS}|{imagen or ''}")
     return hashlib.sha1(crudo.encode("utf-8")).hexdigest()[:12]
 
 
