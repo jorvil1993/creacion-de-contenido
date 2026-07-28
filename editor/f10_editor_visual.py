@@ -339,9 +339,48 @@ def inventario_animaciones() -> list:
     return inv
 
 
+def clips_manuales() -> list:
+    """Los clips de Google Flow de `assets/generado/video/manual/`.
+
+    No están en `catalogo-assets.json` —los pone José a mano y el pipeline los
+    encuentra por su nombre de tag (`f9_generar.version_manual_video`)— así que
+    el selector del editor no los ofrecía y solo se podían usar dejando que el
+    guion los disparara. Se presentan con la misma forma que un asset del
+    catálogo para que la rejilla, la miniatura y la selección no necesiten un
+    camino aparte.
+
+    El `id` lleva el prefijo `broll-manual:` que ya usa el resto del pipeline
+    para nombrarlos, y son B-roll a pantalla completa, no tarjetas PiP.
+    """
+    dir_clips = config.DIR_ASSETS / "generado" / "video" / "manual"
+    if not dir_clips.is_dir():
+        return []
+    clips = []
+    for p in sorted(dir_clips.glob("*.mp4")):
+        clips.append({
+            "id": f"broll-manual:{p.stem}",
+            "producto": p.stem.replace("-", " "),
+            "tipo": "clip-flow",
+            "medio": "video",
+            "ruta": str(p.relative_to(config.RAIZ_PROYECTO)).replace("\\", "/"),
+            "archivo": str(p.resolve()),
+            "duracion_s": round(_duracion(p), 2),
+            "orientacion": "vertical",
+            "fondo": "ambiente",
+            "tags": [],
+            "usos": ["pip", "broll"],
+            "es_clip": True,
+        })
+    return clips
+
+
 def catalogo_pip(dir_trabajo: Path | None = None, todos: bool = False) -> dict:
     """Los assets aptos para PiP (`"pip" in usos`), filtrados por el producto
-    dominante del video salvo que `todos=True` (Fase 2, punto 1-2)."""
+    dominante del video salvo que `todos=True` (Fase 2, punto 1-2).
+
+    Los clips de Flow van SIEMPRE delante y sin filtrar: son ocho, son los que
+    más peso visual tienen y filtrarlos por el producto dominante los escondería
+    justo cuando hacen falta."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import f6_overlays
 
@@ -359,14 +398,23 @@ def catalogo_pip(dir_trabajo: Path | None = None, todos: bool = False) -> dict:
     if dominante and not todos:
         filtrados = [a for a in aptos if dominante in a.get("tags", [])] or aptos
 
+    clips = clips_manuales()
     return {
         "producto_dominante": dominante,
-        "total_catalogo": len(aptos),
-        "total_filtrado": len(filtrados),
+        "total_catalogo": len(aptos) + len(clips),
+        "total_filtrado": len(filtrados) + len(clips),
+        "total_clips": len(clips),
         "assets": [{
+            "id": c["id"], "producto": c["producto"], "tipo": c["tipo"],
+            "color": None, "orientacion": c["orientacion"],
+            "fondo": c["fondo"], "tags": [], "medio": "video",
+            "archivo": c["archivo"], "duracion_s": c["duracion_s"],
+            "es_clip": True, "fondo_pendiente": False,
+        } for c in clips] + [{
             "id": a["id"], "producto": a["producto"], "tipo": a["tipo"],
             "color": a.get("color"), "orientacion": a.get("orientacion"),
             "fondo": a.get("fondo"), "tags": a.get("tags", []),
+            "medio": a.get("medio", "imagen"), "es_clip": False,
             "fondo_pendiente": fondo_pendiente(a),
         } for a in filtrados],
     }

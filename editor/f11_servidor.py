@@ -130,7 +130,13 @@ def _catalogo() -> list:
 
 
 def _asset_por_id(asset_id: str) -> dict | None:
-    return next((a for a in _catalogo() if a["id"] == asset_id), None)
+    encontrado = next((a for a in _catalogo() if a["id"] == asset_id), None)
+    if encontrado is not None:
+        return encontrado
+    # Los clips de Flow no viven en catalogo-assets.json (los deja José a mano
+    # en assets/generado/video/manual), pero la rejilla los ofrece igual y
+    # necesita poder pedirles la miniatura.
+    return next((c for c in f10.clips_manuales() if c["id"] == asset_id), None)
 
 
 def _archivo_permitido(ruta: Path) -> bool:
@@ -633,6 +639,13 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
                             background: #000; }
 .grid-catalogo .item .pend { position: absolute; top: 2px; right: 2px; background: rgba(230,180,40,.85);
                               color: #201800; font-size: 9px; padding: 1px 4px; border-radius: 3px; }
+/* Los clips de Flow van primeros y se marcan en violeta, el mismo color con el
+   que ya salen los B-Roll en la linea de tiempo. */
+.grid-catalogo .item.clip { border-color: #8b5cf6; }
+.grid-catalogo .item.clip:hover { border-color: #c4b5fd; }
+.grid-catalogo .item .clip-badge { position: absolute; bottom: 2px; left: 2px;
+                                    background: rgba(139,92,246,.9); color: #fff; font-size: 9px;
+                                    padding: 1px 4px; border-radius: 3px; }
 .editor-caja { border: 1px dashed var(--linea); border-radius: 8px; padding: 10px; margin-top: 10px;
                display: none; }
 .editor-caja.activa { display: block; }
@@ -1582,12 +1595,20 @@ async function cargarGridCatalogo() {
   grid.innerHTML = "";
   for (const a of datos.assets) {
     const item = document.createElement("div");
-    item.className = "item";
-    item.title = `${a.producto} · ${a.tipo} · ${a.color || ""}`;
+    item.className = "item" + (a.es_clip ? " clip" : "");
+    item.title = a.es_clip
+      ? `Clip de Flow · ${a.producto} · ${a.duracion_s}s · entra como B-Roll a pantalla completa`
+      : `${a.producto} · ${a.tipo} · ${a.color || ""}`;
     const img = document.createElement("img");
     img.loading = "lazy";
     img.src = `/miniatura?asset_id=${encodeURIComponent(a.id)}`;
     item.appendChild(img);
+    if (a.es_clip) {
+      const et = document.createElement("span");
+      et.className = "clip-badge";
+      et.textContent = `▶ ${a.duracion_s}s`;
+      item.appendChild(et);
+    }
     if (a.fondo_pendiente) {
       const pend = document.createElement("span");
       pend.className = "pend"; pend.textContent = "sin recorte";
@@ -1599,15 +1620,28 @@ async function cargarGridCatalogo() {
 }
 
 function elegirAsset(asset) {
+  // Un clip de Flow entra como B-ROLL a pantalla completa, no como tarjeta:
+  // asi es como los usa el pipeline (`broll-manual:`) y como estan pensados.
+  // Su id no es del catalogo, asi que viaja por `archivo`, no por `asset_id`.
+  const nuevo = asset.es_clip
+    ? {
+        ini: video.currentTime,
+        fin: Math.min(DATA.duracion, video.currentTime + (asset.duracion_s || 3)),
+        x: 0, y: 0, asset_id: null, asset: asset.id, archivo: asset.archivo,
+        tarjeta: null, tipo: "broll", medio: "video", broll_fullscreen: true,
+      }
+    : {
+        ini: video.currentTime, fin: Math.min(DATA.duracion, video.currentTime + 2.8),
+        x: 620, y: 134, asset_id: asset.id, asset: asset.id, archivo: null,
+        tarjeta: null, tipo: "pip-producto", medio: "imagen", broll_fullscreen: false,
+      };
+
   if (editandoIdx === -1) {
-    edicionPip.push({
-      ini: video.currentTime, fin: Math.min(DATA.duracion, video.currentTime + 2.8),
-      x: 620, y: 134, asset_id: asset.id, archivo: null, tarjeta: null,
-    });
+    edicionPip.push(nuevo);
   } else {
-    edicionPip[editandoIdx].asset_id = asset.id;
-    edicionPip[editandoIdx].archivo = null;
-    edicionPip[editandoIdx].tarjeta = null;
+    // Sustituir conserva el hueco de tiempo que ya tenia el inserto.
+    const viejo = edicionPip[editandoIdx];
+    edicionPip[editandoIdx] = { ...nuevo, ini: viejo.ini, fin: viejo.fin };
   }
   document.getElementById("cajaCatalogo").classList.remove("activa");
   editandoIdx = null;
