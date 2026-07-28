@@ -150,7 +150,7 @@ def miniatura_catalogo(asset: dict, dir_cache: Path | None = None, ancho: int = 
     """Miniatura cacheada de un asset del catálogo (grid de PiP, Fase 2).
     Nunca sirve el original al navegador: hay fotos de 4000x3000. Se
     invalida por mtime del archivo original, no por conteo ni por tiempo."""
-    dir_cache = dir_cache or (config.DIR_EDITOR_CACHE / "thumbs")
+    dir_cache = dir_cache or (config.DIR_EDITOR_CACHE / "thumbs-v2")
     dir_cache.mkdir(parents=True, exist_ok=True)
     nombre = asset["id"].replace("\\", "__").replace("/", "__") + ".jpg"
     destino = dir_cache / nombre
@@ -168,9 +168,7 @@ def miniatura_catalogo(asset: dict, dir_cache: Path | None = None, ancho: int = 
         if r.returncode != 0 or not destino.exists():
             return None
     else:
-        from PIL import Image
-        Image.MAX_IMAGE_PIXELS = None  # fotos propias de 4000x3000+, no hay riesgo que mitigar
-        with Image.open(origen) as im:
+        with config.abrir_imagen(origen) as im:
             im = im.convert("RGB")
             im.thumbnail((ancho, ancho * 2))
             im.save(destino, "JPEG", quality=85)
@@ -184,7 +182,7 @@ def render_tarjeta_catalogo(asset: dict, dir_cache: Path | None = None) -> Path 
     grid es la que va a salir en el video, no una aproximación (233 de los
     262 assets son horizontales; la tarjeta es vertical). Cachea por mtime
     del origen."""
-    dir_cache = dir_cache or (config.DIR_EDITOR_CACHE / "tarjetas")
+    dir_cache = dir_cache or (config.DIR_EDITOR_CACHE / "tarjetas-v2")
     dir_cache.mkdir(parents=True, exist_ok=True)
     nombre = asset["id"].replace("\\", "__").replace("/", "__") + ".png"
     destino = dir_cache / nombre

@@ -76,7 +76,7 @@ def _detectar_fondo(ruta: Path) -> str:
     inserto o fondo).
     """
     try:
-        with Image.open(ruta) as im:
+        with config.abrir_imagen(ruta) as im:
             if im.mode in ("RGBA", "LA") and im.getchannel("A").getextrema()[0] < 250:
                 return "transparente"
             im = im.convert("RGB")
@@ -148,7 +148,9 @@ def escanear() -> list:
             fondo = "ambiente"
         else:
             try:
-                with Image.open(ruta) as im:
+                # Con la orientación EXIF aplicada: si no, 169 fotos verticales
+                # quedaban anotadas como `horizontal` en el catálogo.
+                with config.abrir_imagen(ruta) as im:
                     w, h = im.size
             except Exception:
                 w = h = None

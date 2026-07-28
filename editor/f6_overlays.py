@@ -254,7 +254,9 @@ def render_pip_producto(ruta_foto: Path, ruta_salida: Path, ancho=520, alto=680,
     si el PNG ocupa todo el ancho, cualquier desplazamiento horizontal se
     duplica y la tarjeta se sale del cuadro.
     """
-    foto = Image.open(ruta_foto).convert("RGBA")
+    # abrir_imagen y no Image.open: sin aplicar la orientación EXIF, 169 de las
+    # 198 fotos del catálogo componían la tarjeta volcada DENTRO DEL VIDEO.
+    foto = config.abrir_imagen(ruta_foto).convert("RGBA")
     w, h = foto.size
     aspecto_objetivo = ancho / alto
     if (w / h) > aspecto_objetivo:

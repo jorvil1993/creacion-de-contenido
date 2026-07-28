@@ -100,7 +100,7 @@ def main():
                 fallidas += 1
                 continue
             try:
-                with Image.open(origen) as im:
+                with config.abrir_imagen(origen) as im:
                     im = im.convert("RGBA")
                     # limitar tamaño: el inserto se ve a 400px, no hace falta 4K
                     im.thumbnail((1400, 1400), Image.LANCZOS)

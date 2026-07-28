@@ -947,3 +947,26 @@ COLOR_BLANCO = "#FFFFFF"
 
 WHATSAPP_NUMERO = "69214437"
 TIKTOK_HANDLE = "@deviceshopbo"
+
+
+def abrir_imagen(ruta):
+    """Abre una foto YA GIRADA según su etiqueta EXIF de orientación.
+
+    Las fotos del catálogo salen del teléfono en horizontal con una etiqueta que
+    dice "esto va girado 90°": 169 de las 198 aptas para PiP la traen. PIL no la
+    aplica sola, así que abrirlas con `Image.open()` a secas las deja volcadas —
+    y no solo en la rejilla del editor: la tarjeta que se compone dentro del
+    video salía volcada también, y el catálogo las anotaba como `horizontal`
+    cuando son verticales.
+
+    Devuelve una imagen suelta (ya cerrada la original), lista para usar en un
+    `with`.
+    """
+    from PIL import Image, ImageOps
+    # Fotos propias de 4000x3000+: no hay ninguna bomba de descompresión que
+    # mitigar aquí, es la cámara de José.
+    Image.MAX_IMAGE_PIXELS = None
+    with Image.open(ruta) as im:
+        im.load()
+        corregida = ImageOps.exif_transpose(im)
+        return corregida if corregida is not im else im.copy()

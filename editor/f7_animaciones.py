@@ -283,7 +283,7 @@ def _dispositivo_pil(foto: Path | None, alto: int) -> Image.Image:
     """
     if foto is not None and Path(foto).exists():
         try:
-            img = Image.open(foto).convert("RGBA")
+            img = config.abrir_imagen(foto).convert("RGBA")
             escala = alto / img.height
             return img.resize((max(1, int(img.width * escala)), alto), Image.LANCZOS)
         except Exception:

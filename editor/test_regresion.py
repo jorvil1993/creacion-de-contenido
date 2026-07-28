@@ -704,6 +704,80 @@ def pruebas_preview_animaciones():
         kb < 500, f"{kb:.1f} KB")
 
 
+# ===========================================================================
+# 9. Orientacion de las fotos
+# ===========================================================================
+# 169 de las 198 fotos aptas para PiP salen del telefono en horizontal con una
+# etiqueta EXIF que dice "va girada 90". PIL no la aplica sola: la rejilla del
+# editor las enseñaba volcadas, el catalogo las anotaba como `horizontal`
+# siendo verticales, y —lo caro— la tarjeta que se compone DENTRO DEL VIDEO
+# salia volcada tambien.
+def pruebas_orientacion():
+    import json
+    import tempfile
+
+    from PIL import Image
+
+    seccion("9. Orientacion de las fotos")
+
+    tmp = Path(tempfile.mkdtemp())
+    # Foto de mentira con la misma trampa: apaisada + "girala 90" en el EXIF.
+    foto = tmp / "volcada.jpg"
+    im = Image.new("RGB", (400, 200), (200, 30, 30))
+    exif = im.getexif()
+    exif[274] = 6
+    im.save(foto, exif=exif)
+
+    with config.abrir_imagen(foto) as abierta:
+        medidas = abierta.size
+    chk("abrir_imagen aplica la orientacion EXIF",
+        medidas == (200, 400),
+        f"{medidas} para una foto guardada 400x200 con EXIF 'girala 90'")
+
+    with Image.open(foto) as cruda:
+        crudas = cruda.size
+    chk("y hacia falta: Image.open a secas la deja volcada",
+        crudas == (400, 200),
+        "por eso no vale abrir las fotos del catalogo con PIL directamente")
+
+    # El catalogo tiene que estar de acuerdo consigo mismo: si guarda que un
+    # asset es vertical, sus dimensiones tienen que decir lo mismo.
+    # Con la MISMA regla que usa el indexador (tiene una banda de tolerancia
+    # para lo casi cuadrado), no con una inventada aqui.
+    import catalogo_assets
+
+    ruta_cat = config.DIR_CONTEXTO / "catalogo-assets.json"
+    incoherentes = []
+    if ruta_cat.exists():
+        for a in json.loads(ruta_cat.read_text(encoding="utf-8"))["assets"]:
+            dim = a.get("dimensiones")
+            if not dim or not dim[0] or not dim[1]:
+                continue
+            esperada = catalogo_assets._orientacion(dim[0], dim[1])
+            if a.get("orientacion") != esperada:
+                incoherentes.append(f"{a['id']}: dice {a.get('orientacion')} y mide {dim[0]}x{dim[1]}")
+    chk("la orientacion del catalogo concuerda con las dimensiones",
+        not incoherentes,
+        "\n          ".join(incoherentes[:4]) if incoherentes
+        else "ningun asset se contradice")
+
+    # Y ningun modulo que componga fotos reales puede saltarse el ajuste.
+    saltan = []
+    for modulo in ("f6_overlays.py", "f7_animaciones.py", "quitar_fondos.py",
+                   "catalogo_assets.py", "f10_editor_visual.py"):
+        fuente = (AQUI / modulo).read_text(encoding="utf-8")
+        for linea in fuente.splitlines():
+            # Los fotogramas que extrae el propio pipeline no llevan EXIF; los
+            # que importan son los que abren un archivo del catalogo.
+            if "Image.open(" in linea and "ruta_logo" not in linea and "cuadros" not in linea \
+                    and "(f)" not in linea and "foto, exif" not in linea:
+                saltan.append(f"{modulo}: {linea.strip()[:70]}")
+    chk("nadie abre una foto del catalogo saltandose la orientacion",
+        not saltan,
+        "\n          ".join(saltan) if saltan
+        else "todos pasan por config.abrir_imagen()")
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -715,6 +789,7 @@ def main():
     pruebas_duplicados()
     pruebas_round_trip()
     pruebas_preview_animaciones()
+    pruebas_orientacion()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")
