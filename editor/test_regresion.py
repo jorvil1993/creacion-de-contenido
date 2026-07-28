@@ -607,6 +607,44 @@ def pruebas_round_trip():
         "00_corrida.json" in fuente_editor,
         "sin ese archivo el editor no sabe que era un video dirigido por guion")
 
+    # --- guardar y recargar la pagina no puede perder los B-roll -----------
+    # Los insertos y los B-roll se guardan en DOS archivos porque el pipeline
+    # los recibe por banderas distintas. El editor los enseña en una sola tira,
+    # asi que tiene que volver a juntarlos al cargar: leyendo solo
+    # ajustes.eventos.json los B-roll guardados desaparecian de la pantalla, y
+    # de ahi al video en el render siguiente.
+    dir_falso = tmp / "corrida"
+    dir_falso.mkdir(exist_ok=True)
+    (dir_falso / "ajustes.eventos.json").write_text(json.dumps({"eventos": [
+        {"ini": 18.0, "fin": 20.0, "tipo": "pip-producto", "archivo": str(clip)}]}), encoding="utf-8")
+    (dir_falso / "ajustes.broll.json").write_text(json.dumps({"broll": [
+        {"ini": 7.0, "fin": 11.0, "tipo": "broll", "medio": "video",
+         "broll_fullscreen": True, "archivo": str(clip)}]}), encoding="utf-8")
+
+    recargados = f10.eventos_del_editor(dir_falso, ids_catalogo)
+    chk("al recargar la pagina siguen estando los insertos Y los B-roll",
+        len(recargados) == 2 and sum(1 for e in recargados if e.get("broll_fullscreen")) == 1,
+        f"{len(recargados)} eventos, en orden de tiempo: "
+        f"{[round(float(e['ini']), 1) for e in recargados]}")
+
+    # --- ajustes de una version anterior no pueden dejar insertos fantasma --
+    dir_viejo = tmp / "corrida_vieja"
+    dir_viejo.mkdir(exist_ok=True)
+    # Formato viejo: asset_id que no es del catalogo y ninguna ruta de archivo.
+    (dir_viejo / "ajustes.eventos.json").write_text(json.dumps({"eventos": [
+        {"ini": 7.8, "fin": 11.0, "x": 0, "y": 0, "asset_id": "broll-manual:scroll"}]}),
+        encoding="utf-8")
+    (dir_viejo / "05_overlays.eventos.json").write_text(json.dumps([
+        {"ini": 7.8, "fin": 11.0, "tipo": "broll", "medio": "video",
+         "broll_fullscreen": True, "archivo": str(clip), "asset": "broll-manual:scroll"}]),
+        encoding="utf-8")
+
+    del_viejo = f10.eventos_del_editor(dir_viejo, ids_catalogo)
+    chk("unos ajustes viejos e irreconstruibles no borran el inserto",
+        len(del_viejo) == 1 and del_viejo[0].get("archivo") == str(clip),
+        "se vuelve a los del ultimo render en vez de cargar un evento sin archivo "
+        "que el render descartaria")
+
 
 # ===========================================================================
 # 8. Preview de animaciones en el editor

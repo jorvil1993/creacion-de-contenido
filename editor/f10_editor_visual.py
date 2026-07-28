@@ -402,38 +402,85 @@ def _plan_encuadre_editable(dir_trabajo: Path, plan: dict) -> dict:
     }
 
 
+def ids_catalogo() -> set:
+    """Qué `asset` son de verdad un id del catálogo. El editor solo puede mandar
+    `asset_id` de vuelta al pipeline para estos: los demás (`video:…`,
+    `broll-manual:…`, los generados) no resuelven contra el catálogo y hay que
+    devolverlos por su ruta de archivo, o el inserto desaparece del render."""
+    try:
+        return {a["id"] for a in json.loads(
+            (config.DIR_CONTEXTO / "catalogo-assets.json").read_text(encoding="utf-8"))["assets"]}
+    except Exception:
+        return set()
+
+
+def _lista_json(f: Path, clave: str) -> list:
+    if not f.exists():
+        return []
+    try:
+        raw = json.loads(f.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    lista = raw.get(clave, raw) if isinstance(raw, dict) else raw
+    return lista if isinstance(lista, list) else []
+
+
+def eventos_del_editor(dir_trabajo: Path, ids: set = None) -> list:
+    """Insertos y B-rolls con los que arranca el editor, en una sola colección.
+
+    En el pipeline son DOS listas (`--eventos-manual` y `--broll-manual`) y por
+    eso se guardan en dos archivos, pero en la interfaz son una sola tira de
+    bloques. Leer solo `ajustes.eventos.json` hacía que los B-rolls guardados
+    desaparecieran de la pantalla al recargar, y de ahí al video en el render
+    siguiente.
+
+    Prioridad: lo ajustado a mano -> el último render -> lo que pidió el guion.
+    """
+    dir_trabajo = Path(dir_trabajo)
+    ids = ids_catalogo() if ids is None else ids
+
+    def reconstruible(ev: dict) -> bool:
+        """¿Alcanza este evento para volver a montar el inserto en el render?"""
+        archivo = ev.get("archivo")
+        if archivo and Path(archivo).exists():
+            return True
+        return ev.get("asset") in ids
+
+    guardados = (_lista_json(dir_trabajo / "ajustes.eventos.json", "eventos")
+                 + _lista_json(dir_trabajo / "ajustes.broll.json", "broll"))
+    for ev in guardados:
+        # El editor viejo guardaba `asset_id` y no `asset`.
+        if not ev.get("asset") and ev.get("asset_id"):
+            ev["asset"] = ev["asset_id"]
+
+    if guardados and all(reconstruible(ev) for ev in guardados):
+        return sorted(guardados, key=lambda e: float(e.get("ini", 0)))
+    if guardados:
+        # Ajustes de una versión anterior: traen `asset_id` sueltos como
+        # `broll-manual:scroll` y ninguna ruta, o sea que no se puede saber qué
+        # archivo era. Cargarlos igual dejaría insertos fantasma que el render
+        # descarta sin más aviso que una línea en el log.
+        print(f"AVISO: los ajustes guardados en {dir_trabajo.name} son de un formato "
+              "anterior y no se pueden reconstruir — se parte de los del último render.")
+
+    del_render = _lista_json(dir_trabajo / "05_overlays.eventos.json", "eventos")
+    if del_render:
+        return del_render
+    # Antes de que exista un render: lo que pidió el guion, que también viene
+    # repartido en dos archivos.
+    return sorted(_lista_json(dir_trabajo / "guion.eventos.json", "eventos")
+                  + _lista_json(dir_trabajo / "guion.broll.json", "broll"),
+                  key=lambda e: float(e.get("ini", 0)))
+
+
 def recolectar(dir_trabajo: Path) -> dict:
     """Junta todo lo que el editor necesita desde la carpeta de trabajo."""
     dir_trabajo = Path(dir_trabajo)
     f_cortado = dir_trabajo / "02_cortado.json"
     transcripcion = json.loads(f_cortado.read_text(encoding="utf-8")) if f_cortado.exists() else {"palabras": []}
-    
-    # Cargar eventos (priorizar ajustes guardados a mano si no están vacíos)
-    eventos = []
-    f_eventos = dir_trabajo / "ajustes.eventos.json"
-    if f_eventos.exists():
-        try:
-            raw_evt = json.loads(f_eventos.read_text(encoding="utf-8"))
-            eventos = raw_evt.get("eventos", raw_evt) if isinstance(raw_evt, dict) else raw_evt
-        except Exception:
-            eventos = []
 
-    if not eventos:
-        f_auto = dir_trabajo / "05_overlays.eventos.json"
-        if f_auto.exists():
-            try:
-                raw_evt = json.loads(f_auto.read_text(encoding="utf-8"))
-                eventos = raw_evt.get("eventos", raw_evt) if isinstance(raw_evt, dict) else raw_evt
-            except Exception:
-                eventos = []
-        if not eventos:
-            f_guion = dir_trabajo / "guion.eventos.json"
-            if f_guion.exists():
-                try:
-                    raw_evt = json.loads(f_guion.read_text(encoding="utf-8"))
-                    eventos = raw_evt.get("eventos", raw_evt) if isinstance(raw_evt, dict) else raw_evt
-                except Exception:
-                    eventos = []
+    ids_cat = ids_catalogo()
+    eventos = eventos_del_editor(dir_trabajo, ids_cat)
 
     f_plan = dir_trabajo / "03_retencion.plan.json"
     plan = json.loads(f_plan.read_text(encoding="utf-8")) if f_plan.exists() else {}
@@ -474,16 +521,6 @@ def recolectar(dir_trabajo: Path) -> dict:
     for p in sorted(dir_sfx.glob("*.mp3")):
         sonidos[p.name] = _b64(p, "audio/mpeg")
 
-    # Qué `asset` son de verdad un id del catálogo. El editor solo puede mandar
-    # `asset_id` de vuelta al pipeline para estos: los demás (`video:…`,
-    # `broll-manual:…`, los generados) no resuelven contra el catálogo y hay que
-    # devolverlos por su ruta de archivo, o el inserto desaparece del render.
-    try:
-        ids_catalogo = {a["id"] for a in json.loads(
-            (config.DIR_CONTEXTO / "catalogo-assets.json").read_text(encoding="utf-8"))["assets"]}
-    except Exception:
-        ids_catalogo = set()
-
     # Incluir TODOS los eventos de superposición e insertos (tanto imágenes como videos/b-rolls)
     movibles = []
     overlays_list = []
@@ -512,7 +549,7 @@ def recolectar(dir_trabajo: Path) -> dict:
             "x": ev.get("x", 0), "y": ev.get("y", 0),
             "palabra": ev.get("palabra", ""),
             "asset": ev.get("asset", ""),
-            "asset_catalogo": ev.get("asset", "") in ids_catalogo,
+            "asset_catalogo": ev.get("asset", "") in ids_cat,
             "tag": ev.get("tag", ""),
             "codigo": ev.get("codigo", ""),
             "broll_fullscreen": bool(ev.get("broll_fullscreen")),
