@@ -36,6 +36,13 @@ def main():
             sys.exit(1)
         print(f"Abriendo la corrida más reciente: {ruta.name}")
         args = [str(ruta)]
+    elif not args[0].startswith("-"):
+        # Aceptar el NOMBRE de la corrida y no solo la ruta entera: escribir
+        # `abrir_editor.py Guion-7` es lo natural, y sin esto se resolvía
+        # contra el directorio actual y no existía.
+        cand = config.DIR_SALIDA / args[0]
+        if not Path(args[0]).exists() and cand.is_dir():
+            args[0] = str(cand)
 
     import f11_servidor
     sys.argv = ["f11_servidor.py", *args]

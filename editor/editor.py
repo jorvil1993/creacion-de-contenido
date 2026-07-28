@@ -168,6 +168,11 @@ def main():
                              "esté en True")
     parser.add_argument("--sin-editor-visual", action="store_true",
                         help="No generar el editor visual HTML al terminar")
+    parser.add_argument("--abrir-editor", action="store_true",
+                        help="Al terminar, abrir el editor visual v2 (f11_servidor) con esta "
+                             "corrida ya cargada, en vez de tener que lanzarlo aparte. Es el "
+                             "editor de verdad: B-roll, animaciones, encuadre y re-renderizar. "
+                             "Queda ocupando la terminal hasta que se cierre con Ctrl+C")
     parser.add_argument("--reaplicar", action="store_true",
                         help="Reutiliza la transcripción, el corte y el plan de retención de una "
                              "corrida existente (mismo --nombre): entra directo en overlays -> "
@@ -384,7 +389,17 @@ def main():
     print(f"\nVideo final (trabajo):   {video_final}")
     print(f"Video final (OneDrive):  {publicado}")
     if not args.sin_editor_visual:
-        print(f"Editor visual:           {dir_trabajo / '09_editor-visual.html'}")
+        # Se aclara que este es el HTML suelto (v1: solo sonidos y posiciones).
+        # Sin la aclaración parecía ser "el editor" a secas, y el que sirve para
+        # trabajar —B-roll, animaciones, encuadre, re-renderizar— es el v2.
+        print(f"Editor v1 (HTML suelto): {dir_trabajo / '09_editor-visual.html'}")
+
+    if args.abrir_editor:
+        print(f"\n{'='*70}\nEditor visual v2 — Ctrl+C para cerrarlo\n{'='*70}")
+        subprocess.run([sys.executable, "f11_servidor.py", str(dir_trabajo)], cwd=str(AQUI))
+    else:
+        print(f"\nPara retocarlo:          python editor/abrir_editor.py {nombre}")
+        print("                         (o «Abrir Editor DeviceShop.bat», que abre la última)")
 
 
 if __name__ == "__main__":
