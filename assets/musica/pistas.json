@@ -26,5 +26,327 @@
     "nombre": "Corporate inspiradora",
     "mood": "Corporate, inspiradora",
     "duracion": 25.0
+  },
+  {
+    "id": "05-comercial-power-upbeat.mp3",
+    "archivo": "05-comercial-power-upbeat.mp3",
+    "nombre": "Comercial Power Upbeat",
+    "mood": "Comercial, enérgica",
+    "duracion": 30.0
+  },
+  {
+    "id": "06-groove-comercial-pop.mp3",
+    "archivo": "06-groove-comercial-pop.mp3",
+    "nombre": "Groove Comercial Pop",
+    "mood": "Comercial, pop ritmico",
+    "duracion": 110.6
+  },
+  {
+    "id": "07-upbeat-summer-pop.mp3",
+    "archivo": "07-upbeat-summer-pop.mp3",
+    "nombre": "Upbeat Summer Pop",
+    "mood": "Comercial, alegre, verano",
+    "duracion": 30.0
+  },
+  {
+    "id": "08-tropical-house-beat.mp3",
+    "archivo": "08-tropical-house-beat.mp3",
+    "nombre": "Tropical House Beat",
+    "mood": "Comercial, fresca, tropical",
+    "duracion": 30.0
+  },
+  {
+    "id": "09-happy-clapping-ukulele.mp3",
+    "archivo": "09-happy-clapping-ukulele.mp3",
+    "nombre": "Happy Clapping Ukulele",
+    "mood": "Comercial, alegre, optimista",
+    "duracion": 147.2
+  },
+  {
+    "id": "10-fashion-dance-beat.mp3",
+    "archivo": "10-fashion-dance-beat.mp3",
+    "nombre": "Fashion Dance Beat",
+    "mood": "Comercial, moderna, moda",
+    "duracion": 30.0
+  },
+  {
+    "id": "11-lofi-study-chill.mp3",
+    "archivo": "11-lofi-study-chill.mp3",
+    "nombre": "Lo-Fi Study Chill",
+    "mood": "Lo-Fi, estudio, relajada",
+    "duracion": 147.2
+  },
+  {
+    "id": "12-cozy-coffee-lofi.mp3",
+    "archivo": "12-cozy-coffee-lofi.mp3",
+    "nombre": "Cozy Coffee Lo-Fi",
+    "mood": "Lo-Fi, cafe, ambiente calido",
+    "duracion": 30.0
+  },
+  {
+    "id": "13-lofi-vintage-vinyl.mp3",
+    "archivo": "13-lofi-vintage-vinyl.mp3",
+    "nombre": "Lo-Fi Vintage Vinyl",
+    "mood": "Lo-Fi, vinilo nostalgico",
+    "duracion": 30.0
+  },
+  {
+    "id": "14-chillhop-sunset.mp3",
+    "archivo": "14-chillhop-sunset.mp3",
+    "nombre": "Chillhop Sunset",
+    "mood": "Lo-Fi, chillhop atardecer",
+    "duracion": 30.0
+  },
+  {
+    "id": "15-lofi-midnight-rain.mp3",
+    "archivo": "15-lofi-midnight-rain.mp3",
+    "nombre": "Lo-Fi Midnight Rain",
+    "mood": "Lo-Fi, lluvia suave",
+    "duracion": 30.0
+  },
+  {
+    "id": "16-soft-ambient-lofi.mp3",
+    "archivo": "16-soft-ambient-lofi.mp3",
+    "nombre": "Soft Ambient Lo-Fi",
+    "mood": "Lo-Fi, ambiente suave",
+    "duracion": 30.0
+  },
+  {
+    "id": "17-funk-groove-corporate.mp3",
+    "archivo": "17-funk-groove-corporate.mp3",
+    "nombre": "Funk Groove Corporate",
+    "mood": "Corporate, funky, dinamica",
+    "duracion": 30.0
+  },
+  {
+    "id": "18-modern-corporate-tech.mp3",
+    "archivo": "18-modern-corporate-tech.mp3",
+    "nombre": "Modern Corporate Tech",
+    "mood": "Corporate, tecnologia, limpia",
+    "duracion": 30.0
+  },
+  {
+    "id": "19-funky-bass-groove.mp3",
+    "archivo": "19-funky-bass-groove.mp3",
+    "nombre": "Funky Bass Groove",
+    "mood": "Corporate, bajo ritmico",
+    "duracion": 30.0
+  },
+  {
+    "id": "20-corporate-success.mp3",
+    "archivo": "20-corporate-success.mp3",
+    "nombre": "Corporate Success",
+    "mood": "Corporate, logro, motivacion",
+    "duracion": 30.0
+  },
+  {
+    "id": "21-pop-rock-enthusiasm.mp3",
+    "archivo": "21-pop-rock-enthusiasm.mp3",
+    "nombre": "Pop Rock Enthusiasm",
+    "mood": "Corporate, entusiasmada, pop rock",
+    "duracion": 30.0
+  },
+  {
+    "id": "22-corporate-innovation.mp3",
+    "archivo": "22-corporate-innovation.mp3",
+    "nombre": "Corporate Innovation",
+    "mood": "Corporate, innovacion, avance",
+    "duracion": 30.0
+  },
+  {
+    "id": "23-inspiring-cinematic-piano.mp3",
+    "archivo": "23-inspiring-cinematic-piano.mp3",
+    "nombre": "Inspiring Piano",
+    "mood": "Inspiradora, piano emotivo",
+    "duracion": 30.0
+  },
+  {
+    "id": "24-uplifting-strings.mp3",
+    "archivo": "24-uplifting-strings.mp3",
+    "nombre": "Uplifting Strings",
+    "mood": "Inspiradora, cuerdas cinemáticas",
+    "duracion": 30.0
+  },
+  {
+    "id": "25-hopeful-acoustic-guitar.mp3",
+    "archivo": "25-hopeful-acoustic-guitar.mp3",
+    "nombre": "Hopeful Acoustic Guitar",
+    "mood": "Inspiradora, guitarra acustica",
+    "duracion": 30.0
+  },
+  {
+    "id": "26-emotional-motivation.mp3",
+    "archivo": "26-emotional-motivation.mp3",
+    "nombre": "Emotional Motivation",
+    "mood": "Inspiradora, motivacion calida",
+    "duracion": 30.0
+  },
+  {
+    "id": "27-triumphant-anthem.mp3",
+    "archivo": "27-triumphant-anthem.mp3",
+    "nombre": "Triumphant Anthem",
+    "mood": "Inspiradora, triunfo, exito",
+    "duracion": 30.0
+  },
+  {
+    "id": "28-soft-inspirational.mp3",
+    "archivo": "28-soft-inspirational.mp3",
+    "nombre": "Soft Inspirational",
+    "mood": "Inspiradora, suave, fluida",
+    "duracion": 30.0
+  },
+  {
+    "id": "29-cyberpunk-synthwave.mp3",
+    "archivo": "29-cyberpunk-synthwave.mp3",
+    "nombre": "Cyberpunk Synthwave",
+    "mood": "Tech, cyberpunk, synthwave",
+    "duracion": 30.0
+  },
+  {
+    "id": "30-future-garage-bass.mp3",
+    "archivo": "30-future-garage-bass.mp3",
+    "nombre": "Future Garage Bass",
+    "mood": "Tech, garage, futuro",
+    "duracion": 30.0
+  },
+  {
+    "id": "31-tech-house-groove.mp3",
+    "archivo": "31-tech-house-groove.mp3",
+    "nombre": "Tech House Groove",
+    "mood": "Tech, house, electronica",
+    "duracion": 30.0
+  },
+  {
+    "id": "32-synthwave-retro-drive.mp3",
+    "archivo": "32-synthwave-retro-drive.mp3",
+    "nombre": "Synthwave Retro Drive",
+    "mood": "Tech, synthwave, retro 80s",
+    "duracion": 30.0
+  },
+  {
+    "id": "33-futuristic-ambient-pad.mp3",
+    "archivo": "33-futuristic-ambient-pad.mp3",
+    "nombre": "Futuristic Ambient Pad",
+    "mood": "Tech, sintetizador futurista",
+    "duracion": 30.0
+  },
+  {
+    "id": "34-electronic-tech-minimal.mp3",
+    "archivo": "34-electronic-tech-minimal.mp3",
+    "nombre": "Electronic Tech Minimal",
+    "mood": "Tech, electronica minimalista",
+    "duracion": 30.0
+  },
+  {
+    "id": "35-urban-trap-beat.mp3",
+    "archivo": "35-urban-trap-beat.mp3",
+    "nombre": "Urban Trap Beat",
+    "mood": "Urban, trap, moderna",
+    "duracion": 30.0
+  },
+  {
+    "id": "36-boom-bap-old-school.mp3",
+    "archivo": "36-boom-bap-old-school.mp3",
+    "nombre": "Boom Bap Old School",
+    "mood": "Urban, boom bap clasico",
+    "duracion": 30.0
+  },
+  {
+    "id": "37-drill-urban-rhythm.mp3",
+    "archivo": "37-drill-urban-rhythm.mp3",
+    "nombre": "Drill Urban Rhythm",
+    "mood": "Urban, drill ritmico",
+    "duracion": 30.0
+  },
+  {
+    "id": "38-lofi-hiphop-chill.mp3",
+    "archivo": "38-lofi-hiphop-chill.mp3",
+    "nombre": "Lo-Fi Hip-Hop Chill",
+    "mood": "Urban, hiphop relajado",
+    "duracion": 30.0
+  },
+  {
+    "id": "39-groovy-funky-hiphop.mp3",
+    "archivo": "39-groovy-funky-hiphop.mp3",
+    "nombre": "Groovy Funky Hip-Hop",
+    "mood": "Urban, funky hiphop",
+    "duracion": 30.0
+  },
+  {
+    "id": "40-energetic-trap-hype.mp3",
+    "archivo": "40-energetic-trap-hype.mp3",
+    "nombre": "Energetic Trap Hype",
+    "mood": "Urban, trap enérgica",
+    "duracion": 30.0
+  },
+  {
+    "id": "41-acoustic-indie-folk.mp3",
+    "archivo": "41-acoustic-indie-folk.mp3",
+    "nombre": "Acoustic Indie Folk",
+    "mood": "Acústica, indie folk, organica",
+    "duracion": 30.0
+  },
+  {
+    "id": "42-warm-ukulele-smile.mp3",
+    "archivo": "42-warm-ukulele-smile.mp3",
+    "nombre": "Warm Ukulele Smile",
+    "mood": "Acústica, ukulele calido",
+    "duracion": 30.0
+  },
+  {
+    "id": "43-organic-guitar-strum.mp3",
+    "archivo": "43-organic-guitar-strum.mp3",
+    "nombre": "Organic Guitar Strum",
+    "mood": "Acústica, rasgueo acustico",
+    "duracion": 30.0
+  },
+  {
+    "id": "44-folk-calm-morning.mp3",
+    "archivo": "44-folk-calm-morning.mp3",
+    "nombre": "Folk Calm Morning",
+    "mood": "Acústica, manana serena",
+    "duracion": 30.0
+  },
+  {
+    "id": "45-acoustic-gentle-breeze.mp3",
+    "archivo": "45-acoustic-gentle-breeze.mp3",
+    "nombre": "Acoustic Gentle Breeze",
+    "mood": "Acústica, brisa suave",
+    "duracion": 30.0
+  },
+  {
+    "id": "46-cinematic-suspense-drone.mp3",
+    "archivo": "46-cinematic-suspense-drone.mp3",
+    "nombre": "Cinematic Suspense Drone",
+    "mood": "Cinemática, suspenso, tension",
+    "duracion": 30.0
+  },
+  {
+    "id": "47-dark-epic-trailer.mp3",
+    "archivo": "47-dark-epic-trailer.mp3",
+    "nombre": "Dark Epic Trailer",
+    "mood": "Cinemática, epica oscura",
+    "duracion": 30.0
+  },
+  {
+    "id": "48-mystery-investigation.mp3",
+    "archivo": "48-mystery-investigation.mp3",
+    "nombre": "Mystery Investigation",
+    "mood": "Cinemática, misterio, intriga",
+    "duracion": 30.0
+  },
+  {
+    "id": "49-action-fast-percussion.mp3",
+    "archivo": "49-action-fast-percussion.mp3",
+    "nombre": "Action Fast Percussion",
+    "mood": "Cinemática, percusion rapida",
+    "duracion": 30.0
+  },
+  {
+    "id": "50-dramatic-ticking-clock.mp3",
+    "archivo": "50-dramatic-ticking-clock.mp3",
+    "nombre": "Dramatic Ticking Clock",
+    "mood": "Cinemática, reloj tick-tock, reloj",
+    "duracion": 30.0
   }
 ]

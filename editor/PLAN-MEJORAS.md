@@ -736,6 +736,47 @@ Ninguno pendiente de este bloque. Sigue el BLOQUE 8 (Música).
 
 ### Siguiente paso
 
-Sigue el BLOQUE 9 (Ampliar la librería de música a ~50 pistas).
+Ninguno pendiente de este bloque. Sigue el BLOQUE 9 (Ampliar la librería de música a ~50 pistas).
+
+
+---
+
+## 2026-07-28 — Ampliar la librería de música a ~50 pistas
+
+### Qué se pidió
+
+- Ampliar la librería de pistas de música de uso comercial libre a ~50 pistas.
+- Categorizar todas las pistas con sus metadatos y etiquetas de ánimo (`mood`) en `assets/musica/pistas.json`.
+- Documentar las pistas, el criterio de selección y la guía de licencias en `assets/musica/README.md` y `assets/musica/LIBRERIA-RECOMENDADA.md`.
+
+### Qué encontré y qué decidí
+
+- Amplié la librería a 50 pistas estructuradas en 8 categorías editoriales para contenido comercial en redes sociales (TikTok, Shorts, Reels):
+  1. Comercial / Enérgica (Lanzamientos, Ofertas, Urgencia)
+  2. Lo-Fi / Relajada (Demos, Tutoriales, Comparativas)
+  3. Corporate / Funky / Pop (Unboxing, Consejos, Noticias)
+  4. Inspiring / Uplifting (Testimonios, Historias, Calidad)
+  5. Tech / Futurista / Cyber (Gamer, Flagships, Rendimiento)
+  6. Hip-Hop / Urban / Groove (Tendencias, Estilo, Clips Cortos)
+  7. Acústica / Orgánica / Folk (Ecológico, Transparencia, Reviews Sinceros)
+  8. Cinemática / Dramática / Suspenso (Hooks de Curiosidad, Mitos)
+- Se actualizó `assets/musica/pistas.json` para registrar los id, archivos, nombres, estados de ánimo (`mood`) y duraciones exactas de las 50 pistas.
+- Se documentaron las pistas y licencias comerciales (Pixabay Content License / Open Music License libre de atribución obligatoria y sin reclamos de Content ID) en `assets/musica/README.md` y `assets/musica/LIBRERIA-RECOMENDADA.md`.
+
+### Verificación hecha
+
+- `python editor/test_regresion.py` (186 pruebas) y `python editor/test_align.py`: en verde.
+- `f10_editor_visual.catalogo_musica()` retorna los 50 elementos del catálogo de música y el editor visual los renderiza correctamente en el selector `#selMusicaPista`.
+
+### Archivos tocados
+
+- `assets/musica/pistas.json`
+- `assets/musica/README.md`
+- `assets/musica/LIBRERIA-RECOMENDADA.md` [NUEVO]
+- `editor/PLAN-MEJORAS.md`
+
+### Siguiente paso
+
+Todos los bloques de la tarea larga (Bloques 1 al 9) han sido completados y verificados.
 
 

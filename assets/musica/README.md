@@ -1,23 +1,27 @@
-# Música de fondo — DeviceShop
+# Música de fondo — Librería Comercial (~50 Pistas)
 
-## ⚠️ Nota de licencia (desviación del plan)
+## ⚠️ Licencia y Uso Comercial
 
-El plan pedía pistas **CC0**. Se probaron dos alternativas antes de esta:
+Todas las pistas de la librería (`assets/musica/`) utilizan la **Pixabay Content License / Open Music License**:
+- **Uso Comercial Gratuito**: Permitido para redes sociales (TikTok, Instagram Reels, YouTube Shorts, anuncios).
+- **Sin atribución obligatoria**.
+- **Sin reclamos de Content ID**: Selección de pistas limpias para evitar silenciamientos o copyright strikes.
 
-1. **freepd.com** (fuente CC0 recomendada originalmente) — **cerró permanentemente** en 2025 tras 17 años. Ya no existe.
-2. **Kenney.nl** (CC0 verificado, usado para los SFX) — su único pack de música son "Music Jingles": piezas de 2-8 segundos estilo videojuego (8-bit, pizzicato, sax). No sirven como cama musical continua para un video de 30-40s.
+El listado completo con enlaces, duración, etiquetas de ánimo (`mood`) y caso de uso recomendado se encuentra en:
+- `assets/musica/pistas.json` (metadatos consumidos dinámicamente por el editor visual).
+- `assets/musica/LIBRERIA-RECOMENDADA.md` (guía humana categorizada en 8 estilos).
 
-**Alternativa usada:** [Pixabay Music](https://pixabay.com/music/), bajo la **Pixabay Content License** (no es CC0 literal, pero es gratuita, sin registro para descargar, uso comercial permitido, sin atribución obligatoria, sin Content ID/copyright strike). Es el estándar de facto que reemplazó a freepd para este caso de uso. Descargado directo del CDN de Pixabay el 2026-07-26.
+## 8 Categorías de Ánimo (Moods)
 
-Si más adelante José prefiere blindaje 100% CC0, la alternativa sería producir las pistas con un modelo de generación de audio local (fuera de alcance de esta fase).
+1. **Comercial / Enérgica**: Lanzamientos, ofertas relámpago, productos estrella.
+2. **Lo-Fi / Relajada**: Demos de uso continuo, reviews tranquilos, comparativas.
+3. **Corporate / Funky / Pop**: Unboxing dinámicos, consejos de compra, noticias.
+4. **Inspiring / Uplifting**: Historias de clientes, reseñas de cámaras y fotografía.
+5. **Tech / Futurista / Cyber**: Celulares gamer, sintetizadores, flagships, pruebas de rendimiento.
+6. **Hip-Hop / Urban / Groove**: Contenido joven, tendencias rápidas, clips picados.
+7. **Acústica / Orgánica / Folk**: Reviews sinceros, opiniones honestas, empaque ecológico.
+8. **Cinemática / Dramática / Suspenso**: Ganchos de curiosidad ("El error que cometes al comprar...").
 
-## Pistas
+## Regla de Mezcla
 
-| Archivo | Duración | Mood | Uso sugerido |
-|---|---|---|---|
-| `01-comercial-upbeat.mp3` | 2:33 (recortar) | Comercial, enérgica | Recortar 30-40s más punchy para videos de lanzamiento/urgencia |
-| `02-lofi-brillante.mp3` | 1:30 | Lo-fi, acordes brillantes | Videos de demo tranquilos, ángulo "beneficios" |
-| `03-corporate-funky.mp3` | 0:38 | Funky corporate | Casi calza directo con un video de 35-40s |
-| `04-corporate-uplifting.mp3` | 0:25 | Corporate, inspiradora | Hooks cortos o videos de 25-30s |
-
-Ninguna es épica ni cansadora — todas pensadas para no competir con la voz de José (regla 4.5 del plan: el audio original de José es el que manda).
+Todas las pistas se mezclan en el pipeline mediante `f5_audio.py` con **ducking automático** (`sidechaincompress=threshold=0.05:ratio=8:attack=20:release=300`). La voz del presentador siempre atenúa la música para garantizar Inteligibilidad 100%.
