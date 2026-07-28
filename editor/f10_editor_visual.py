@@ -638,10 +638,27 @@ def recolectar(dir_trabajo: Path) -> dict:
         except Exception:
             hook_guardado = None
 
+    # Ajustes que el editor guarda pero que hasta ahora no volvía a leer: al
+    # reabrir la corrida se repoblaban desde el ÚLTIMO RENDER, así que mover una
+    # animación o estirar el CTA, guardar y volver al día siguiente enseñaba los
+    # valores viejos. Se aplicaban igual al renderizar, pero la pantalla mentía.
+    animaciones_guardadas = _lista_json(dir_trabajo / "ajustes.animaciones.json", "animaciones")
+    hook_cta_guardado = _lista_json(dir_trabajo / "ajustes.hookcta.json", "hook_cta")
+    sesion = {}
+    f_sesion = dir_trabajo / "ajustes.sesion.json"
+    if f_sesion.exists():
+        try:
+            sesion = json.loads(f_sesion.read_text(encoding="utf-8"))
+        except Exception:
+            sesion = {}
+
     return {
         "nombre": dir_trabajo.name,
         "duracion": round(duracion, 3),
         "hook_guardado": hook_guardado,
+        "animaciones_guardadas": animaciones_guardadas or None,
+        "hook_cta_guardado": hook_cta_guardado or None,
+        "sesion": sesion,
         "insertos_manuales": (dir_trabajo / "ajustes.eventos.json").exists()
                              or (dir_trabajo / "ajustes.broll.json").exists(),
         "es_renderizado": video.name != "02_cortado.mp4",

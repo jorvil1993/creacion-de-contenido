@@ -709,6 +709,44 @@ def pruebas_round_trip():
         "ini_hook" in fuente_f6 and "fin_cta" in fuente_f6,
         "el hook ya no arranca siempre en 0.0 ni el CTA acaba siempre con el video")
 
+    # --- irse a medias y volver exactamente donde estaba --------------------
+    # Las animaciones y los tiempos de hook/CTA se guardaban pero el editor no
+    # los volvia a leer: al reabrir la corrida se repoblaba todo desde el ULTIMO
+    # RENDER, asi que mover una animacion, guardar y volver al dia siguiente
+    # enseñaba los valores viejos. Se aplicaban igual al renderizar, pero la
+    # pantalla mentia sobre lo que iba a salir.
+    dir_vuelta = tmp / "corrida_vuelta"
+    dir_vuelta.mkdir(exist_ok=True)
+    (dir_vuelta / "05_overlays.eventos.json").write_text(json.dumps([
+        {"tipo": "anim-apps", "anim": "anim-apps", "medio": "video",
+         "ini": 4.7, "fin": 7.7, "archivo": str(clip)},
+        {"tipo": "hook", "medio": "video", "ini": 0.0, "fin": 3.2, "archivo": str(clip)},
+    ]), encoding="utf-8")
+    (dir_vuelta / "ajustes.animaciones.json").write_text(
+        json.dumps({"animaciones": [{"nombre": "anim-apps", "ini": 9.9}]}), encoding="utf-8")
+    (dir_vuelta / "ajustes.hookcta.json").write_text(
+        json.dumps({"hook_cta": [{"tipo": "hook", "ini": 0.0, "fin": 6.0}]}), encoding="utf-8")
+    (dir_vuelta / "ajustes.sesion.json").write_text(json.dumps({"t": 14.6}), encoding="utf-8")
+
+    vuelta = f10.recolectar(dir_vuelta)
+    chk("al volver, las animaciones movidas siguen donde se dejaron",
+        (vuelta.get("animaciones_guardadas") or [{}])[0].get("ini") == 9.9,
+        "y no en el 4.7s del ultimo render")
+    chk("al volver, el hook estirado sigue estirado",
+        (vuelta.get("hook_cta_guardado") or [{}])[0].get("fin") == 6.0,
+        "y no en los 3.2s del ultimo render")
+    chk("al volver, el reproductor arranca donde se dejo",
+        vuelta.get("sesion", {}).get("t") == 14.6)
+
+    fuente_srv_txt = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+    chk("el editor guarda solo, sin depender de que se pulse el boton",
+        "setInterval(() => guardarAhora(true)" in fuente_srv_txt
+        and "beforeunload" in fuente_srv_txt,
+        "cerrar la pestaña no cuesta el trabajo")
+    chk("pero abrir una corrida y no tocar nada no la marca como editada",
+        "ultimoGuardado = estadoSerializado()" in fuente_srv_txt,
+        "el autoguardado parte de lo que se acaba de cargar, no de cero")
+
 
 # ===========================================================================
 # 8. Preview de animaciones en el editor

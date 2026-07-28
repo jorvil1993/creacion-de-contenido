@@ -419,6 +419,9 @@ class Handler(BaseHTTPRequestHandler):
                 resultado["n_sfx"] = len(datos["sfx"])
             if "hook_cta" in datos:
                 resultado["ruta_hook_cta"] = str(_guardar_hook_cta(datos["hook_cta"]))
+            if "sesion" in datos:
+                # Dónde se dejó el reproductor, para volver al mismo segundo.
+                _escritura_atomica(DIR_TRABAJO / "ajustes.sesion.json", datos["sesion"])
             if "animaciones" in datos:
                 destino_anim = _guardar_animaciones(datos["animaciones"])
                 resultado["ruta_animaciones"] = str(destino_anim)
@@ -910,6 +913,7 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
   <div class="panel">
     <p class="hint">
       <button class="btn-primario" id="btnGuardar" type="button">Guardar cambios</button>
+      <span class="hint" id="estadoGuardado">se guarda solo</span>
       <button class="btn-primario" id="btnPreview" type="button">👁 Previsualizar</button>
       <button class="btn-primario" id="btnRender" type="button">🎬 Renderizar final</button>
       <br><span class="hint">Se guarda siempre antes de renderizar.
@@ -1019,12 +1023,19 @@ async function cargar() {
   document.getElementById("hookTexto").value =
     (DATA.hook_guardado != null && DATA.hook_guardado !== "") ? DATA.hook_guardado : (hook?.texto || "");
   document.getElementById("ctaEco").textContent = cta?.eco || "";
-  edicionHookCta = [hook, cta].filter(Boolean).map(o => ({
-    tipo: o.tipo, ini: o.ini, fin: o.fin, archivo: o.archivo,
-  }));
+  // Los tiempos guardados a mano mandan sobre los del ultimo render; el
+  // `archivo` (para el preview animado) sale igual del render, que es donde
+  // vive la tarjeta ya compuesta.
+  const hcBase = [hook, cta].filter(Boolean);
+  const hcGuardado = DATA.hook_cta_guardado;
+  edicionHookCta = hcBase.map(o => {
+    const g = (hcGuardado || []).find(x => x.tipo === o.tipo);
+    return { tipo: o.tipo, ini: g ? g.ini : o.ini, fin: g ? g.fin : o.fin, archivo: o.archivo };
+  });
+  hookCtaModificado = !!(hcGuardado && hcGuardado.length);
   pintarHookCta();
 
-  edicionAnimaciones = DATA.overlays.filter(o => o.tipo.startsWith("anim-")).map(o => ({
+  const animDelRender = DATA.overlays.filter(o => o.tipo.startsWith("anim-")).map(o => ({
     nombre: o.anim || o.tipo.replace("anim-", ""), ini: o.ini, fin: o.fin,
     // La duración real del clip, para que mover la animación no falsee su
     // barra en la línea de tiempo (el render usa la del clip, no una fija).
@@ -1032,9 +1043,38 @@ async function cargar() {
     variante: o.variante, palabra: o.palabra, miniatura_archivo: o.miniatura_archivo,
     archivo: o.archivo,
   }));
-  animacionesModificado = false;
+  // Lo ajustado a mano manda. Solo guarda nombre/ini/variante, asi que la
+  // duracion y el archivo del preview se recuperan de la animacion del mismo
+  // nombre en el render; si es una que todavia no se ha renderizado nunca, el
+  // preview cae a la plantilla por nombre y la duracion al valor por defecto.
+  const animGuardadas = DATA.animaciones_guardadas;
+  if (animGuardadas && animGuardadas.length) {
+    edicionAnimaciones = animGuardadas.map(a => {
+      const ref = animDelRender.find(o => o.nombre === a.nombre) || {};
+      const dur = ref.dur || 2.4;
+      return {
+        nombre: a.nombre, ini: a.ini, fin: a.ini + dur, dur,
+        variante: a.variante ?? ref.variante ?? null, palabra: a.palabra || "",
+        miniatura_archivo: ref.miniatura_archivo || null, archivo: ref.archivo || null,
+      };
+    });
+  } else {
+    edicionAnimaciones = animDelRender;
+  }
+  animacionesModificado = !!(animGuardadas && animGuardadas.length);
   editandoAnimIdx = null;
   renderAnimGrid();
+
+  // Volver al segundo en el que se dejo el video.
+  if (DATA.sesion && typeof DATA.sesion.t === "number") {
+    const t = Math.max(0, Math.min(DATA.duracion, DATA.sesion.t));
+    video.addEventListener("loadedmetadata", () => { video.currentTime = t; }, { once: true });
+  }
+
+  // Referencia del autoguardado: a partir de aqui, solo se guarda lo que
+  // CAMBIE respecto de lo que se acaba de cargar.
+  ultimoGuardado = estadoSerializado();
+  marcarGuardado("al día");
 
   // cargar() se vuelve a llamar después de cada render (Fase 5): el rAF loop
   // solo se arranca una vez, si no cada recarga sumaría otro loop corriendo
@@ -1981,6 +2021,64 @@ document.getElementById("btnResetEnc").addEventListener("click", () => {
 document.getElementById("pistaEnc").addEventListener("click", (ev) => {
   if (!DATA || ev.target.closest(".enc-cerrado") || ev.target.closest(".enc-punch")) return;
   video.currentTime = tiempoDesdeEvento(ev, ev.currentTarget);
+});
+
+// ---- Guardado automatico ---------------------------------------------------
+// "Estoy editando y me tengo que ir": cerrar la pestaña no puede costar el
+// trabajo. En vez de instrumentar cada sitio donde se toca algo —que es la
+// forma de olvidarse de uno— se compara el estado entero cada par de segundos
+// y se guarda solo si cambio de verdad.
+let ultimoGuardado = null;   // se fija al terminar cargar(): asi abrir una
+                             // corrida y no tocar nada NO crea ajustes.
+let guardando = false;
+
+function estadoSerializado() {
+  return JSON.stringify({ ...cuerpoAjustes(), t: Math.round(video.currentTime * 10) / 10 });
+}
+
+function marcarGuardado(txt) {
+  const el = document.getElementById("estadoGuardado");
+  if (el) el.textContent = txt;
+}
+
+async function guardarAhora(auto = true) {
+  if (guardando) return;
+  const instantanea = estadoSerializado();
+  if (auto && (ultimoGuardado === null || instantanea === ultimoGuardado)) return;
+  guardando = true;
+  try {
+    const cuerpo = { ...cuerpoAjustes(), sesion: { t: video.currentTime } };
+    const r = await fetch("/guardar", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cuerpo),
+    });
+    if ((await r.json()).ok) {
+      ultimoGuardado = instantanea;
+      const h = new Date();
+      marcarGuardado(`guardado ${h.getHours()}:${String(h.getMinutes()).padStart(2, "0")}`);
+    } else {
+      marcarGuardado("no se pudo guardar");
+    }
+  } catch (e) {
+    marcarGuardado("no se pudo guardar");
+  } finally {
+    guardando = false;
+  }
+}
+
+setInterval(() => guardarAhora(true), 2000);
+
+// Ultimo cartucho si se cierra la pestaña con algo sin guardar: sendBeacon
+// sobrevive a la descarga de la pagina, un fetch normal no.
+window.addEventListener("beforeunload", (e) => {
+  if (ultimoGuardado === null || estadoSerializado() === ultimoGuardado) return;
+  try {
+    navigator.sendBeacon("/guardar", new Blob(
+      [JSON.stringify({ ...cuerpoAjustes(), sesion: { t: video.currentTime } })],
+      { type: "application/json" }));
+  } catch (err) { /* si falla, al menos avisamos abajo */ }
+  e.preventDefault();
+  e.returnValue = "";
 });
 
 document.getElementById("btnGuardar").addEventListener("click", async () => {
