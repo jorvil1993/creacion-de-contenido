@@ -84,17 +84,34 @@ def agrupar_en_bloques(palabras: list) -> list:
     return bloques
 
 
-def generar_ass(palabras: list) -> str:
+def generar_ass(palabras: list, tamano_px: int = None, correcciones: dict = None) -> str:
+    """`correcciones` (Bloque 5, parte B): {indice_global_de_la_palabra: texto_corregido}.
+
+    Cambia SOLO lo que se ve en el subtítulo — nunca `p["texto"]` ni los
+    tiempos. Es a propósito: `palabras` es la MISMA lista que f13_guion.py usa
+    para alinear el guion contra la transcripción (`test_align.py`), y
+    Whisper suele escribir mal nombres de producto o precios ("Colorsoft",
+    "Kindle", los Bs). Corregir la ortografía ahí serviría para lo que se ve,
+    pero cambiaría también contra qué se compara cada beat del guion — dos
+    problemas distintos que no conviene resolver con el mismo dato.
+    """
+    correcciones = correcciones or {}
     cabecera = CABECERA_ASS.format(
         ancho=config.ANCHO,
         alto=config.ALTO,
         fuente=config.SUB_FUENTE,
-        tamano=config.SUB_TAMANO_PX,
+        tamano=tamano_px or config.SUB_TAMANO_PX,
         color_texto=config.SUB_COLOR_TEXTO,
         color_resaltado=config.SUB_COLOR_RESALTADO,
         color_contorno=config.SUB_COLOR_CONTORNO,
         margen_v=int((1 - config.SUB_POSICION_ALTURA_PCT) * config.ALTO) - 40,
     )
+
+    # Índice GLOBAL de cada palabra (posición en la transcripción completa,
+    # no dentro de su bloque de 2-4). Es la clave estable que usa el editor
+    # para identificar "la palabra número 14", igual antes y después de
+    # agruparlas en bloques.
+    indice_de = {id(p): i for i, p in enumerate(palabras)}
 
     bloques = agrupar_en_bloques(palabras)
     lineas = []
@@ -112,7 +129,8 @@ def generar_ass(palabras: list) -> str:
 
             partes_texto = []
             for j, p in enumerate(bloque):
-                texto = _limpiar_para_oracion(p["texto"], es_primera_palabra_video=(p is primera_palabra_global))
+                texto_crudo = correcciones.get(str(indice_de[id(p)]), p["texto"])
+                texto = _limpiar_para_oracion(texto_crudo, es_primera_palabra_video=(p is primera_palabra_global))
                 if j == idx_activa:
                     partes_texto.append(f"{{\\c{config.SUB_COLOR_RESALTADO}}}{texto}{{\\c{config.SUB_COLOR_TEXTO}}}")
                 else:
@@ -130,17 +148,28 @@ def main():
     parser = argparse.ArgumentParser(description="Genera subtitulos .ass karaoke estilo agencia")
     parser.add_argument("transcripcion", type=str)
     parser.add_argument("--salida", type=str, default=None)
+    parser.add_argument("--tamano", type=int, default=None, metavar="PX",
+                        help="Tamaño del subtítulo en píxeles (Bloque 5). Sin esto, config.SUB_TAMANO_PX")
+    parser.add_argument("--correcciones", type=str, default=None, metavar="JSON",
+                        help="{'correcciones': {'14': 'Colorsoft'}} — corrige SOLO lo que se ve, "
+                             "no toca los tiempos ni la alineación del guion")
     args = parser.parse_args()
 
     ruta_transcripcion = Path(args.transcripcion)
     datos = json.loads(ruta_transcripcion.read_text(encoding="utf-8"))
     palabras = datos["palabras"]
 
+    correcciones = {}
+    if args.correcciones and Path(args.correcciones).exists():
+        datos_correcciones = json.loads(Path(args.correcciones).read_text(encoding="utf-8"))
+        correcciones = datos_correcciones.get("correcciones", datos_correcciones)
+
     ruta_salida = Path(args.salida) if args.salida else ruta_transcripcion.with_suffix(".ass")
-    contenido = generar_ass(palabras)
+    contenido = generar_ass(palabras, tamano_px=args.tamano, correcciones=correcciones)
     ruta_salida.write_text(contenido, encoding="utf-8-sig")
     print(f"Subtitulos ASS generados: {ruta_salida}")
-    print(f"  {len(agrupar_en_bloques(palabras))} bloques de 2-4 palabras")
+    print(f"  {len(agrupar_en_bloques(palabras))} bloques de 2-4 palabras"
+          + (f" · {len(correcciones)} palabra(s) corregida(s)" if correcciones else ""))
 
 
 if __name__ == "__main__":

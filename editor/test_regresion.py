@@ -1302,6 +1302,192 @@ def pruebas_recorte_broll():
         "decision explicita del bloque: el hueco no puede ser mas largo que el pedazo")
 
 
+# ===========================================================================
+# 14. Subtitulos: tamano ajustable y corregir el texto (f3 + f10 + editor)
+# ===========================================================================
+# La clase de fallo que se caza aqui: `palabras` es la MISMA lista que
+# f13_guion usa para alinear el guion contra la transcripcion (test_align.py).
+# Si corregir "Colorsof" -> "Colorsoft" para que se LEA bien tocara `texto` o
+# los tiempos, el video saldria igual de bien pero los beats del guion se
+# alinearian contra otra cosa: los B-roll y los SFX caerian en el segundo
+# equivocado, sin un solo mensaje de error. Por eso las pruebas de abajo no
+# miran solo que el texto cambie -- miran que los tiempos NO cambien.
+def pruebas_subtitulos():
+    import json
+    import tempfile
+
+    import f3_subtitulos
+
+    seccion("14. Subtitulos: tamano ajustable y corregir el texto (f3 + f10 + editor)")
+
+    # Transcripcion sintetica: dos bloques separados por una pausa larga, con
+    # una palabra mal transcrita (la clase de error real de Whisper: nombres de
+    # producto y precios en Bs).
+    palabras = [
+        {"inicio": 0.00, "fin": 0.40, "texto": "el"},
+        {"inicio": 0.42, "fin": 0.90, "texto": "kindle"},
+        {"inicio": 0.92, "fin": 1.50, "texto": "colorsof"},
+        {"inicio": 2.20, "fin": 2.60, "texto": "cuesta"},
+        {"inicio": 2.62, "fin": 3.30, "texto": "mil"},
+        {"inicio": 3.32, "fin": 3.90, "texto": "bolivianos."},
+    ]
+    copia_textos = [p["texto"] for p in palabras]
+
+    def dialogos(ass):
+        return [l for l in ass.splitlines() if l.startswith("Dialogue:")]
+
+    def tiempos(ass):
+        # "Dialogue: 0,0:00:00.00,0:00:00.42,Default,,..." -> ("0:00:00.00", "0:00:00.42")
+        return [tuple(l.split(",")[1:3]) for l in dialogos(ass)]
+
+    base = f3_subtitulos.generar_ass(palabras)
+    grande = f3_subtitulos.generar_ass(palabras, tamano_px=120)
+
+    chk("el tamano pedido llega al Fontsize de la cabecera ASS",
+        f"Style: Default,{config.SUB_FUENTE},120," in grande
+        and f"Style: Default,{config.SUB_FUENTE},{config.SUB_TAMANO_PX}," in base,
+        "es el unico numero que el render mira para dibujar el subtitulo mas grande")
+
+    # El check que importa del tamano: cambiar el tamano NO puede cambiar nada
+    # mas. Comparacion linea a linea, no solo de los Dialogue.
+    difieren = [(a, b) for a, b in zip(base.splitlines(), grande.splitlines()) if a != b]
+    chk("cambiar el tamano cambia SOLO la linea de estilo, ni un tiempo ni un texto",
+        len(base.splitlines()) == len(grande.splitlines())
+        and len(difieren) == 1 and difieren[0][0].startswith("Style: Default"),
+        f"lineas distintas entre los dos ASS: {len(difieren)} (la de Style)")
+
+    # --- correcciones: cambia lo que se LEE, nunca lo que se ALINEA ----------
+    corregido = f3_subtitulos.generar_ass(palabras, correcciones={"2": "Colorsoft"})
+
+    chk("una correccion cambia el texto que se ve en la linea de dialogo",
+        "Colorsoft" in corregido and "Colorsoft" not in base,
+        "la palabra 2 se lee corregida en el subtitulo quemado")
+    chk("la palabra mal transcrita ya no aparece en el ASS corregido",
+        "colorsof" not in corregido.replace("Colorsoft", ""),
+        "no quedan restos de la transcripcion cruda en lo que ve el espectador")
+
+    # ESTE es el check que de verdad importa del bloque.
+    chk("corregir el texto no mueve NI UN tiempo del subtitulo",
+        tiempos(base) == tiempos(corregido) and len(dialogos(base)) == len(dialogos(corregido)),
+        f"{len(dialogos(base))} lineas Dialogue con tiempos identicos con y sin correccion -- "
+        "si un solo tiempo se moviera, el guion se alinearia contra otra cosa y los "
+        "B-roll/SFX caerian en el segundo equivocado sin dar error")
+
+    chk("corregir el texto NO muta la transcripcion en memoria",
+        [p["texto"] for p in palabras] == copia_textos,
+        "f13_guion alinea contra esta misma lista: si generar_ass la reescribiera, "
+        "la correccion ortografica cambiaria contra que se compara cada beat del guion")
+
+    chk("una correccion de un indice que no existe no rompe ni cambia nada",
+        f3_subtitulos.generar_ass(palabras, correcciones={"99": "x"}) == base,
+        "un ajustes.subtitulos.json viejo, de una corrida con mas palabras, se ignora solo")
+
+    chk("sin correcciones y sin tamano, el ASS es exactamente el de siempre",
+        f3_subtitulos.generar_ass(palabras, tamano_px=None, correcciones=None) == base,
+        "los dos parametros son opcionales: una corrida que no toca subtitulos no cambia")
+
+    # --- round-trip por ajustes.subtitulos.json -> recolectar() -------------
+    import f10_editor_visual as f10
+    tmp = Path(tempfile.mkdtemp())
+
+    dir_sin = tmp / "corrida_sin_ajustes"
+    dir_sin.mkdir(parents=True)
+    datos_sin = f10.recolectar(dir_sin)
+    chk("sin ajustes.subtitulos.json, recolectar() cae en el tamano de config",
+        datos_sin["sub_tamano_px"] == config.SUB_TAMANO_PX
+        and datos_sin["sub_correcciones"] == {},
+        f"sub_tamano_px = {datos_sin['sub_tamano_px']} (config.SUB_TAMANO_PX)")
+
+    dir_con = tmp / "corrida_con_ajustes"
+    dir_con.mkdir(parents=True)
+    (dir_con / "ajustes.subtitulos.json").write_text(
+        json.dumps({"tamano_px": 104, "correcciones": {"2": "Colorsoft"}}), encoding="utf-8")
+    datos_con = f10.recolectar(dir_con)
+    chk("recolectar() expone los 4 campos de subtitulos que el editor necesita",
+        all(k in datos_con for k in
+            ("sub_tamano_px", "sub_tamano_defecto", "sub_posicion_altura_pct", "sub_correcciones")),
+        "el editor no hardcodea ninguno: mismo patron que los picos de SFX (bloque 1) "
+        "y la zona segura (bloque 2)")
+    chk("el tamano y las correcciones guardadas mandan sobre el defecto de config",
+        datos_con["sub_tamano_px"] == 104
+        and datos_con["sub_correcciones"] == {"2": "Colorsoft"}
+        and datos_con["sub_tamano_defecto"] == config.SUB_TAMANO_PX,
+        "sin esto, abrir el editor despues de guardar mostraria el subtitulo al tamano viejo")
+    chk("la posicion del subtitulo sale de config, no de un numero suelto en el JS",
+        datos_con["sub_posicion_altura_pct"] == config.SUB_POSICION_ALTURA_PCT,
+        "la vista previa dibuja donde el ASS ancla de verdad; si config cambia, la previa la sigue")
+
+    # --- las banderas del pipeline ------------------------------------------
+    fuente_f3 = (AQUI / "f3_subtitulos.py").read_text(encoding="utf-8")
+    chk("f3_subtitulos acepta --tamano y --correcciones por linea de comandos",
+        '"--tamano"' in fuente_f3 and '"--correcciones"' in fuente_f3)
+
+    fuente_editor = (AQUI / "editor.py").read_text(encoding="utf-8")
+    chk("editor.py acepta --sub-tamano y --sub-correcciones",
+        '"--sub-tamano"' in fuente_editor and '"--sub-correcciones"' in fuente_editor)
+    chk("editor.py se los PASA a la FASE 2, no solo los acepta",
+        '"--tamano", str(args.sub_tamano)' in fuente_editor
+        and '"--correcciones", args.sub_correcciones' in fuente_editor,
+        "aceptar una bandera y no reenviarla es fallo silencioso puro: el render corre "
+        "igual y el subtitulo sale del tamano de siempre")
+
+    # --- el editor ----------------------------------------------------------
+    fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+    chk("existe el slider de tamano y la tabla de correccion de texto",
+        'id="subTamanoInput"' in fuente_srv and 'id="tablaCorreccionesSub"' in fuente_srv)
+    chk("la vista previa del subtitulo se dibuja sobre el reproductor",
+        'id="subPreview"' in fuente_srv and "function pintarSubPreview(t)" in fuente_srv)
+    chk("la vista previa se apaga sobre un video ya renderizado",
+        re.search(r"if \(DATA\.es_renderizado\) \{ el\.style\.display = \"none\"; return; \}", fuente_srv)
+        is not None,
+        "mismo caso que los SFX del bloque 1: 07_FINAL.mp4 ya trae los subtitulos "
+        "quemados, dibujar encima se veria doble")
+    chk("la vista previa agrupa las palabras con la misma regla que el render",
+        "function agruparEnBloquesSub(palabras)" in fuente_srv,
+        "si la previa mostrara bloques distintos a los del ASS, serviria para elegir "
+        "el tamano pero mentiria sobre que se lee junto")
+
+    # Coherencia real JS <-> Python: los numeros del agrupado estan escritos en
+    # los dos lados. Si alguien cambia config y no el JS, la previa deja de
+    # coincidir con el render sin que nada falle.
+    m_minmax = re.search(r"const MIN = (\d+), MAX = (\d+);", fuente_srv)
+    chk("el agrupado del JS usa los mismos MIN/MAX que config",
+        m_minmax is not None
+        and int(m_minmax.group(1)) == config.SUB_PALABRAS_POR_BLOQUE_MIN
+        and int(m_minmax.group(2)) == config.SUB_PALABRAS_POR_BLOQUE_MAX,
+        f"JS = {m_minmax.groups() if m_minmax else None}, config = "
+        f"({config.SUB_PALABRAS_POR_BLOQUE_MIN}, {config.SUB_PALABRAS_POR_BLOQUE_MAX})")
+    chk("el corte por pausa del JS usa el mismo umbral que f3_subtitulos",
+        "pausaSig > 0.35" in fuente_srv and "pausa_siguiente > 0.35" in fuente_f3,
+        "0.35s es lo que separa un bloque del siguiente en los dos lados")
+
+    chk("el aviso de zona tapada reusa cajaEnZonaTapada del bloque 2",
+        "function cajaSubActual()" in fuente_srv
+        and re.search(r"cajaEnZonaTapada\(caja\.x, caja\.y, caja\.ancho, caja\.alto\)", fuente_srv)
+        is not None,
+        "un subtitulo grande baja hasta la franja que TikTok tapa con su interfaz; "
+        "la funcion ya existia, no se duplico la geometria")
+    chk("tocar el tamano o el texto marca la edicion como manual",
+        "subModificado = true" in fuente_srv and "if (subModificado) cuerpo.subtitulos" in fuente_srv,
+        "mismo patron que encModificado/hookCtaModificado: si no se toca, no se "
+        "reescribe ajustes.subtitulos.json y la corrida queda como estaba")
+    chk("ajustes.subtitulos.json viaja con las versiones con nombre",
+        '"ajustes.subtitulos.json"' in fuente_srv
+        and re.search(r'ARCHIVOS_AJUSTES = \((?:[^)]|\n)*ajustes\.subtitulos\.json', fuente_srv)
+        is not None,
+        "sin esto, restaurar una version devolveria los PiP y los SFX de entonces "
+        "pero el subtitulo del tamano actual -- el hibrido que arreglo el bloque 'Que una "
+        "version restaure la edicion exacta'")
+    chk("el re-render pasa el tamano y las correcciones guardadas al pipeline",
+        '"--sub-tamano", str(ajustes_sub_tamano)' in fuente_srv
+        and '"--sub-correcciones", str(ajustes_sub_correcciones)' in fuente_srv,
+        "es el tramo que convierte lo elegido en el editor en pixeles del video final")
+    chk("las claves de las correcciones se guardan como texto, igual que las lee generar_ass",
+        "{str(k): str(v) for k, v in correcciones.items() if str(v).strip()}" in fuente_srv,
+        "generar_ass busca correcciones.get(str(indice)): una clave numerica guardada "
+        "en el JSON no encontraria su palabra y la correccion se perderia en silencio")
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -1318,6 +1504,7 @@ def main():
     pruebas_zona_segura()
     pruebas_densidad_sfx()
     pruebas_recorte_broll()
+    pruebas_subtitulos()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")

@@ -461,3 +461,174 @@ Ninguno pendiente de este bloque. Sigue el BLOQUE 5 (subtítulos: tamaño
 ajustable y corregir el texto). `cajaEnZonaTapada` (bloque 2) y el patrón de
 exponer constantes vía `/datos` en vez de hardcodearlas en el JS (bloques 1 y
 3) ya están listos para reusar ahí.
+
+---
+
+## BLOQUE — Subtítulos: tamaño ajustable y corregir el texto
+
+**Estado: hecho.**
+
+Retomado de una sesión anterior que se quedó sin contexto con el código ya
+escrito (slider de tamaño, tabla de corrección, vista previa, todo lo que
+describen las secciones de abajo) pero sin probar ni commitear. Esta entrada
+cubre lo que hizo ESTA sesión: correr los tests, escribir la prueba de
+regresión que faltaba, verificar de verdad en el navegador, y un hallazgo
+operativo que casi contamina una corrida real.
+
+### Qué encontré
+
+- Con el código de la sesión anterior tal cual estaba, `test_regresion.py`
+  (141 pruebas) y `test_align.py` ya pasaban en verde SIN tocar nada — el
+  trabajo de código del bloque estaba completo y no dejó nada roto a medio
+  camino.
+- **Al abrir el editor de verdad apareció un problema real, fuera del código
+  del bloque**: un proceso `python.exe` de la sesión ANTERIOR seguía vivo
+  desde hacía más de 2 horas (arrancado a las 13:47, encontrado a las
+  15:54), escuchando en el puerto 8765 con `abrir_editor.py` — el lanzador
+  que, sin argumentos, abre la corrida MÁS RECIENTE por `mtime`. Eso lo dejó
+  sirviendo `Guion-7` real, no una copia de prueba. Confirmé por `/datos`
+  que `nombre` era `"Guion-7"`. Los `ajustes.*.json` de esa corrida real
+  tenían mtime de hacía pocos minutos (autoguardado periódico disparado por
+  una pestaña de Chrome real, del 27/7 a la noche, que seguía teniendo la
+  página vieja cargada) — coincidiendo justo con la ventana en la que yo
+  estaba trabajando. Revisé el contenido de los 5 `ajustes.*.json`
+  reescritos: los datos (hook, tags de B-roll, códigos F14/F33/F31,
+  hook_cta) son consistentes con la producción real de "No es que no te
+  guste leer" documentada en `test_align.py`, sin ningún artefacto de
+  prueba — el autoguardado repitió el mismo estado en memoria, no escribió
+  basura. Maté el proceso zombie y no volvió a cambiar nada después (lo
+  reconfirmé al final de la sesión, mismo mtime). No toqué el Chrome real
+  del usuario (proceso separado, con muchas otras pestañas — cerrarlo
+  hubiera sido una acción sobre algo que no es mío).
+  **Lección para las próximas sesiones**: antes de lanzar un servidor de
+  verificación, revisar si el puerto elegido ya está ocupado
+  (`Get-NetTCPConnection`) y de quién es el proceso — no asumir que un
+  puerto "recién elegido" está libre, sobre todo si una sesión anterior se
+  quedó sin contexto a mitad de una verificación con el editor abierto.
+- Un efecto colateral del mismo hallazgo: mientras el puerto 8765 estuvo
+  disputado, `f11_servidor.py` llegó a tener dos procesos corriendo a la vez
+  contra mi copia descartable (uno con `venv312`, otro con el Python del
+  sistema, mismo commandline). Sin riesgo para ninguna corrida real — los
+  dos apuntaban a `_prueba-block5` — pero maté ambos y relancé uno solo
+  limpio para no verificar contra un estado ambiguo.
+- Comprobé con los ojos (Edge headless + CDP, mismo método que las sesiones
+  anteriores) el tamaño real de producción: `SUB_TAMANO_PX = 88` (ya subido
+  de 72 el mismo día por pedido de José). A 88px, sobre el video real de
+  `Guion-7`, el subtítulo "No es que no" se lee en una sola línea, bien
+  proporcionado, sin invadir el pie del video. El ajuste de 72→88 estaba
+  bien calibrado.
+- Verificando el aviso de zona tapada con el slider until el mínimo (50px):
+  la componente **"inferior"** del aviso SÍ reacciona al tamaño (desaparece
+  al bajar de 88 a 50, porque la caja aproximada se achica en alto), pero la
+  componente **"derecha"** queda encendida en TODO el rango del slider
+  (50-140px). No es un bug: `cajaSubActual()` calcula el ancho de la caja
+  como `DATA.ancho * 0.88` fijo, sin depender del tamaño de fuente ni del
+  texto real — y esa caja (6%-94% del ancho) siempre alcanza a la franja
+  derecha, que empieza en ~85% del ancho y cubre desde el 45% de la altura
+  hacia abajo (justo donde vive el subtítulo, al 77%). Es la misma
+  aproximación conservadora del bloque 2 ("estimación generosa", ya
+  documentada en el propio comentario del código) — avisa de más antes que
+  de menos. Lo dejo anotado porque el pedido original decía "que el aviso
+  aparece con un tamaño grande y desaparece con uno chico", y en la práctica
+  solo la mitad de esa frase es exacta para la franja derecha en este video.
+  No lo cambié: ajustar el ancho de la caja al texto real es un cálculo
+  nuevo (medir el ancho renderizado del bloque) que nadie pidió para este
+  bloque y que tocaría la misma función que usan hook/CTA/PiP.
+
+### Qué decidí y por qué (heredado del código ya escrito, confirmado al leerlo)
+
+- `generar_ass(palabras, tamano_px=None, correcciones=None)`: el tamaño solo
+  cambia el `Fontsize` de la cabecera ASS; las correcciones solo cambian el
+  texto de cada `Dialogue`, nunca `p["texto"]` ni los tiempos — a propósito,
+  porque `palabras` es la misma lista que `f13_guion.py` usa para alinear el
+  guion contra la transcripción real. Mutar el texto ahí habría corregido la
+  ortografía a costa de desalinear los B-roll y SFX contra el segundo
+  equivocado, en silencio.
+  `--sub-tamano`/`--sub-correcciones` en `editor.py` y
+  `--tamano`/`--correcciones` en `f3_subtitulos.py` cablean esto al pipeline.
+- `f10_editor_visual.recolectar()` expone `sub_tamano_px`, `sub_tamano_defecto`,
+  `sub_posicion_altura_pct` y `sub_correcciones` desde `config`/
+  `ajustes.subtitulos.json` — mismo patrón que los picos de SFX (bloque 1) y
+  la zona segura (bloque 2): nada hardcodeado en el JS.
+  `ajustes.subtitulos.json` se sumó a `ARCHIVOS_AJUSTES` para que viaje con
+  las versiones con nombre (si no, restaurar una versión vieja habría
+  devuelto los PiP/SFX de entonces con el subtítulo del tamaño actual — el
+  híbrido que el bloque "Que una versión restaure la edición exacta" existe
+  para evitar).
+  El editor: slider (50-140px) con vista previa aproximada sobre el
+  reproductor (agrupado en bloques igual que `agrupar_en_bloques`, apagada
+  si `es_renderizado` para no dibujar encima de un video que ya trae los
+  subtítulos quemados) y tabla de corrección (una fila por palabra, columna
+  "dice Whisper" de solo lectura junto a un input editable). Tocar
+  cualquiera de los dos marca `subModificado`, mismo patrón que
+  `encModificado`/`hookCtaModificado`.
+
+### Verificación hecha
+
+- `python editor/test_regresion.py` en verde con el código de la sesión
+  anterior tal cual, ANTES de escribir nada — confirmado antes de tocar
+  nada nuevo.
+- Sección nueva 14 (`pruebas_subtitulos`, 26 checks) en `test_regresion.py`.
+  El check que de verdad importa: generar el ASS de una transcripción
+  sintética con y sin corrección y comparar los `Dialogue:` línea a línea —
+  mismo conteo, mismos tiempos, la única línea que cambia es el `Style` (al
+  variar el tamaño) o el texto corregido (al variar correcciones), nunca las
+  dos cosas a la vez ni nada más. También cubre: que la transcripción en
+  memoria no se muta, que un índice de corrección inexistente no rompe nada,
+  el round-trip completo `ajustes.subtitulos.json` → `recolectar()`, que
+  `editor.py` no solo acepta las banderas sino que las REENVÍA a la FASE 2,
+  coherencia JS↔Python de las constantes de agrupado (MIN/MAX/umbral de
+  pausa) para que la vista previa no mienta sobre qué palabras van juntas, y
+  que `ajustes.subtitulos.json` esté en `ARCHIVOS_AJUSTES`.
+  `python editor/test_regresion.py` (167 pruebas) y `python editor/test_align.py`:
+  en verde.
+- Abrí el editor de verdad, dos veces, contra copias descartables de
+  `Guion-7` sin sus `ajustes.*.json` (`_prueba-block5` y `_prueba-block5b`,
+  las dos borradas al terminar) — Edge headless + CDP vía un script Node
+  chico (`Page.navigate`, `Runtime.evaluate`, `Page.captureScreenshot` con
+  recorte), igual que las sesiones anteriores. Con los archivos de render
+  (`06_video.mp4`/`07_FINAL.mp4`) movidos fuera de la carpeta para forzar
+  `es_renderizado: false` y poder ver la vista previa en acción:
+  - Mover el slider (evento `input` real disparado sobre el elemento, no la
+    variable en memoria) de 88 a 140 y a 50: el `fontSize` de la vista
+    previa escala proporcional (27.5px → 43.8px → 15.6px, misma razón que
+    88→140→50), el label de al lado se actualiza, y `subModificado` pasa a
+    `true`.
+  - Corregir una palabra en la tabla (fila real, evento `change` real):
+    `subCorrecciones` se actualiza y la vista previa la muestra al instante,
+    sin recargar — capturado en pantalla ("No es QUE-CORREGIDA no").
+  - Con `es_renderizado: true` (renders restaurados, página recargada): la
+    vista previa queda `display:none` y sin contenido — no se dibuja doble
+    sobre un video que ya trae los subtítulos quemados.
+  - Aviso de zona tapada: capturas con zoom sobre el lienzo mostrando las
+    franjas rayadas rojas del bloque 2 y el subtítulo invadiéndolas a
+    140px, y ya no invadiendo el pie a 50px (ver el hallazgo de la franja
+    derecha arriba).
+  - Tamaño real de producción (88px, sin tocar el slider): capturado sobre
+    el video real de `Guion-7`, una sola línea, legible.
+  - Detecté y resolví el problema del proceso zombie (ver "Qué encontré")
+    ANTES de sacar ninguna conclusión de estas capturas — las que quedan
+    documentadas arriba son todas contra el proceso limpio, confirmado por
+    `/datos` → `nombre` antes de cada tanda.
+  - Reconfirmé al cerrar que `Guion-7` real no cambió de mtime desde que
+    maté el proceso zombie.
+- `node --check` no hizo falta repetirlo: no toqué el `<script>`, ya estaba
+  verificado por la sesión anterior y las 26 pruebas nuevas de fuente
+  (`in fuente_srv`) cubren que las piezas siguen presentes.
+
+### Archivos tocados
+
+- `editor/editor.py`
+- `editor/f3_subtitulos.py`
+- `editor/f10_editor_visual.py`
+- `editor/f11_servidor.py`
+- `editor/test_regresion.py`
+
+### Siguiente paso
+
+Ninguno pendiente de este bloque. Para quien retome el plan: la franja
+derecha del aviso de zona tapada de subtítulos casi no reacciona al tamaño
+(ver "Qué encontré") — si en uso real se vuelve ruido, la función a tocar es
+`cajaSubActual()` en `f11_servidor.py`, no `cajaEnZonaTapada` (que es
+genérica y la reusan hook/CTA/PiP). Sigue el BLOQUE 6 (texto llamativo tipo
+CapCut) según la bitácora original de la tarea.

@@ -159,6 +159,13 @@ def main():
                         help="Punch-ins y tramos de plano cerrado elegidos a mano en el editor "
                              "visual (Fase 3d). Manda sobre lo que saque del guion y sobre los "
                              "picos de energía del audio")
+    parser.add_argument("--sub-tamano", type=int, default=None, metavar="PX",
+                        help="Tamaño del subtítulo en píxeles, elegido en el editor visual "
+                             "(Bloque 5). Sin esto, config.SUB_TAMANO_PX")
+    parser.add_argument("--sub-correcciones", type=str, default=None, metavar="JSON",
+                        help="Correcciones de texto de palabras mal transcritas (Whisper), hechas "
+                             "en el editor visual. Solo cambia lo que se VE en el subtítulo — los "
+                             "tiempos y la alineación guion↔transcripción siguen intactos")
     parser.add_argument("--sol-pip-video", action="store_true",
                         help="Usar el video de sol (sol_video_pip.mov) como PiP en vez de la animación HTML")
     parser.add_argument("--video-ambiente", action="store_true",
@@ -328,9 +335,12 @@ def main():
             *perfil, *encuadre_guion,
         ])
 
-    paso("FASE 2: Subtítulos ASS", [
-        "f3_subtitulos.py", str(json_cortado), "--salida", str(subtitulos_ass)
-    ])
+    cmd_subs = ["f3_subtitulos.py", str(json_cortado), "--salida", str(subtitulos_ass)]
+    if args.sub_tamano:
+        cmd_subs += ["--tamano", str(args.sub_tamano)]
+    if args.sub_correcciones:
+        cmd_subs += ["--correcciones", args.sub_correcciones]
+    paso("FASE 2: Subtítulos ASS", cmd_subs)
 
     cmd_overlays = [
         "f6_overlays.py", str(video_cortado), str(plan_retencion), str(json_cortado),

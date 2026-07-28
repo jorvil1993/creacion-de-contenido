@@ -75,6 +75,22 @@ def _guardar_hook(texto: str) -> Path:
     return _escritura_atomica(DIR_TRABAJO / "ajustes.hook.json", {"hook": texto})
 
 
+def _guardar_subtitulos(datos: dict) -> Path:
+    """Tamaño del subtítulo y correcciones de texto ajustados a mano (Bloque 5).
+
+    `correcciones` es {indice_global_de_la_palabra: texto} — la MISMA clave
+    que f3_subtitulos.generar_ass() usa para sustituir el texto sin tocar
+    `palabras` (la transcripción real, la que usa f13_guion para alinear).
+    """
+    limpio = {}
+    if datos.get("tamano_px"):
+        limpio["tamano_px"] = int(datos["tamano_px"])
+    correcciones = datos.get("correcciones") or {}
+    if correcciones:
+        limpio["correcciones"] = {str(k): str(v) for k, v in correcciones.items() if str(v).strip()}
+    return _escritura_atomica(DIR_TRABAJO / "ajustes.subtitulos.json", limpio)
+
+
 def _leer_corrida() -> dict:
     """Parámetros con los que se lanzó la corrida original (`00_corrida.json`,
     que escribe editor.py).
@@ -133,7 +149,7 @@ def _guardar_encuadre(encuadre: dict) -> Path:
 ARCHIVOS_AJUSTES = (
     "ajustes.eventos.json", "ajustes.broll.json", "ajustes.sfx.json",
     "ajustes.animaciones.json", "ajustes.encuadre.json", "ajustes.hookcta.json",
-    "ajustes.hook.json", "ajustes.sesion.json",
+    "ajustes.hook.json", "ajustes.sesion.json", "ajustes.subtitulos.json",
 )
 
 # El PLAN sobre el que se hicieron esos ajustes. Va en la versión junto a ellos,
@@ -513,6 +529,8 @@ class Handler(BaseHTTPRequestHandler):
             if "encuadre" in datos:
                 destino_enc = _guardar_encuadre(datos["encuadre"])
                 resultado["ruta_encuadre"] = str(destino_enc)
+            if "subtitulos" in datos:
+                resultado["ruta_subtitulos"] = str(_guardar_subtitulos(datos["subtitulos"]))
             self._json(resultado)
 
         elif partes.path == "/version/guardar":
@@ -662,6 +680,19 @@ class Handler(BaseHTTPRequestHandler):
                 if candidato_enc.exists():
                     ajustes_enc = candidato_enc
 
+            if "subtitulos" in datos:
+                _guardar_subtitulos(datos["subtitulos"])
+            ajustes_sub_tamano, ajustes_sub_correcciones = None, None
+            candidato_sub = DIR_TRABAJO / "ajustes.subtitulos.json"
+            if candidato_sub.exists():
+                try:
+                    datos_sub = json.loads(candidato_sub.read_text(encoding="utf-8"))
+                except Exception:
+                    datos_sub = {}
+                ajustes_sub_tamano = datos_sub.get("tamano_px")
+                if datos_sub.get("correcciones"):
+                    ajustes_sub_correcciones = candidato_sub
+
             # editor.py solo necesita que "entrada" exista — en --reaplicar no
             # se lee: la transcripción/corte/análisis ya están en dir_trabajo.
             dummy_entrada = DIR_TRABAJO / "02_cortado.mp4"
@@ -706,6 +737,10 @@ class Handler(BaseHTTPRequestHandler):
                 cmd += ["--animaciones-manual", str(ajustes_anim)]
             if ajustes_enc is not None:
                 cmd += ["--encuadre-manual", str(ajustes_enc)]
+            if ajustes_sub_tamano:
+                cmd += ["--sub-tamano", str(ajustes_sub_tamano)]
+            if ajustes_sub_correcciones is not None:
+                cmd += ["--sub-correcciones", str(ajustes_sub_correcciones)]
             hook = datos.get("hook")
             if hook is None:
                 f_hook = DIR_TRABAJO / "ajustes.hook.json"
@@ -804,6 +839,16 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
     135deg, rgba(244,63,94,.28) 0 10px, rgba(244,63,94,.14) 10px 20px); }
 .zona-segura .franja-inferior { left: 0; right: 0; bottom: 0; }
 .zona-segura .franja-derecha { right: 0; bottom: 0; } /* el "top" lo fija pintarZonaSegura() */
+/* Vista previa aproximada del subtítulo (BLOQUE 5). left/right/top/font-size
+   se fijan en JS a partir de DATA.sub_posicion_altura_pct y del tamaño
+   elegido — acá solo el look. transform centra el bloque verticalmente sobre
+   la línea de posición, que es donde el ASS ancla el subtítulo real. */
+.sub-preview { position: absolute; left: 6%; right: 6%; text-align: center;
+               color: #fff; font-weight: 700; line-height: 1.25;
+               text-shadow: 0 0 6px #000, 0 2px 3px #000, 0 -1px 3px #000;
+               pointer-events: none; z-index: 7; display: none;
+               transform: translateY(-50%); }
+.sub-preview .activa { color: #4FD1D9; }
 .controles { display: flex; gap: 8px; align-items: center; }
 .controles button { background: var(--panel); color: var(--fg); border: 1px solid var(--linea);
                      border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 14px; }
@@ -961,6 +1006,7 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
         <div class="franja franja-inferior" id="zonaSeguraInferior" title="Franja inferior que TikTok/Reels tapa con su interfaz"></div>
         <div class="franja franja-derecha" id="zonaSeguraDerecha" title="Franja derecha que TikTok/Reels tapa con sus botones"></div>
       </div>
+      <div id="subPreview" class="sub-preview"></div>
     </div>
     <div class="controles">
       <button id="btnPlay" type="button">▶ Reproducir</button>
@@ -1015,6 +1061,28 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       <table id="tablaSfx" style="width:100%; border-collapse:collapse; font-size:13px;">
         <thead><tr><th>t</th><th>sonido</th><th>volumen</th><th>motivo</th><th></th></tr></thead>
         <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Subtítulos</h2>
+    <p class="hint">Vista previa APROXIMADA sobre el reproductor: el tamaño y la posición reales
+      los define el render y pueden no coincidir pixel a pixel. Si el video ya está renderizado,
+      los subtítulos reales ya están quemados adentro — no se dibuja nada encima para no verlos doble.</p>
+    <div class="barra-sfx" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <label class="hint" for="subTamanoInput">Tamaño</label>
+      <input type="range" id="subTamanoInput" min="50" max="140" step="2" value="88" style="width:160px;">
+      <span class="hint" id="subTamanoValor"></span>
+      <span class="badge aviso" id="subZonaAviso" style="display:none;"></span>
+    </div>
+    <p class="hint">Corregí acá las palabras que Whisper transcribió mal (nombres de producto,
+      precios en Bs). Esto cambia SOLO lo que se lee en el subtítulo — los tiempos y la alineación
+      con el guion no se tocan.</p>
+    <div class="tabla-wrap" style="overflow-x:auto; overflow-y:auto; max-height:220px; margin-top:6px;">
+      <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead><tr><th>t</th><th>dice Whisper</th><th>se lee en el subtítulo</th></tr></thead>
+        <tbody id="tablaCorreccionesSub"></tbody>
       </table>
     </div>
   </div>
@@ -1352,6 +1420,127 @@ if (selDensidadSfx) {
   });
 }
 
+// --- Subtítulos: tamaño y correcciones de texto (BLOQUE 5) -----------------
+let subTamano = 88;
+let subCorrecciones = {};   // {indice_global_de_la_palabra: texto_corregido}
+let subModificado = false;  // si es false, ajustes.subtitulos.json no se reescribe
+let subBloques = [];        // precomputado en cargar(): [[{p, idx}, ...], ...]
+
+// Misma regla que f3_subtitulos.agrupar_en_bloques: de 2 a 4 palabras,
+// cerrando en pausas > 0.35s o en punto/interrogación/exclamación. Se
+// precalcula UNA vez al cargar, no en cada frame — solo depende de los
+// tiempos, que no cambian mientras se edita.
+function agruparEnBloquesSub(palabras) {
+  const bloques = [];
+  let actual = [];
+  const MIN = 2, MAX = 4;
+  for (let i = 0; i < palabras.length; i++) {
+    const p = palabras[i];
+    actual.push({ p, idx: i });
+    const esUltima = i === palabras.length - 1;
+    const pausaSig = esUltima ? 999 : (palabras[i + 1].t - p.fin);
+    const cierra = actual.length >= MAX || esUltima
+      || (actual.length >= MIN && pausaSig > 0.35)
+      || /[.!?]$/.test(p.texto);
+    if (cierra) { bloques.push(actual); actual = []; }
+  }
+  if (actual.length) bloques.push(actual);
+  return bloques;
+}
+
+function bloqueSubEnT(t) {
+  for (const bloque of subBloques) {
+    const ini = bloque[0].p.t, fin = bloque[bloque.length - 1].p.fin;
+    if (t >= ini - 0.02 && t < fin + 0.15) return bloque;
+  }
+  return null;
+}
+
+// Aproximación del sitio donde el ASS real dibuja el subtítulo (BorderStyle
+// centrado en config.SUB_POSICION_ALTURA_PCT, 88% del ancho). No es pixel a
+// pixel — la vista previa lo dice explícitamente en su texto de ayuda.
+function pintarSubPreview(t) {
+  const el = document.getElementById("subPreview");
+  if (!el || !DATA) return;
+  // Igual que el bloque 1 con los SFX: si es_renderizado, los subtítulos YA
+  // están quemados en el video — dibujar encima se vería doble.
+  if (DATA.es_renderizado) { el.style.display = "none"; return; }
+  const bloque = bloqueSubEnT(t);
+  if (!bloque) { el.style.display = "none"; return; }
+  const s = lienzo.clientWidth / DATA.ancho;
+  el.style.display = "block";
+  el.style.top = (DATA.sub_posicion_altura_pct * 100) + "%";
+  el.style.fontSize = Math.max(8, subTamano * s) + "px";
+  el.innerHTML = bloque.map(({ p, idx }) => {
+    const corregido = subCorrecciones[idx];
+    const texto = (corregido != null && corregido !== "") ? corregido : p.texto;
+    const escapado = texto.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    return (t >= p.t && t < p.fin) ? `<span class="activa">${escapado}</span>` : escapado;
+  }).join(" ");
+}
+
+// Caja aproximada del bloque de subtítulo al tamaño actual, en el espacio de
+// salida (1080x1920) — reusa cajaEnZonaTapada del bloque 2. Hasta 2 líneas
+// visibles a la vez es una estimación generosa (los bloques son de 2-4
+// palabras, casi siempre entran en una sola línea a este ancho).
+function cajaSubActual() {
+  const anchoBox = DATA.ancho * 0.88;
+  const altoLinea = subTamano * 1.25;
+  const altoBox = altoLinea * 2;
+  const yCentro = DATA.sub_posicion_altura_pct * DATA.alto;
+  return { x: DATA.ancho * 0.06, y: yCentro - altoBox / 2, ancho: anchoBox, alto: altoBox };
+}
+
+function actualizarSubZonaAviso() {
+  const el = document.getElementById("subZonaAviso");
+  if (!el || !DATA || !DATA.zona_segura) return;
+  const caja = cajaSubActual();
+  const zona = cajaEnZonaTapada(caja.x, caja.y, caja.ancho, caja.alto);
+  el.style.display = zona ? "" : "none";
+  el.textContent = zona ? `⚠ a este tamaño, puede caer en zona tapada (${zona})` : "";
+}
+
+function pintarTablaCorreccionesSub() {
+  const tbody = document.getElementById("tablaCorreccionesSub");
+  if (!tbody || !DATA) return;
+  tbody.innerHTML = "";
+  DATA.palabras.forEach((p, i) => {
+    const tr = document.createElement("tr");
+    const tdT = document.createElement("td");
+    tdT.textContent = p.t.toFixed(2) + "s";
+    const tdOriginal = document.createElement("td");
+    tdOriginal.textContent = p.texto;
+    tdOriginal.style.color = "var(--fg-2)";
+    const tdCorregido = document.createElement("td");
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.value = (subCorrecciones[i] != null) ? subCorrecciones[i] : p.texto;
+    inp.style.width = "140px";
+    inp.addEventListener("change", () => {
+      if (inp.value.trim() === "" || inp.value === p.texto) delete subCorrecciones[i];
+      else subCorrecciones[i] = inp.value;
+      subModificado = true;
+    });
+    tdCorregido.appendChild(inp);
+    tr.appendChild(tdT); tr.appendChild(tdOriginal); tr.appendChild(tdCorregido);
+    tbody.appendChild(tr);
+  });
+}
+
+function subtitulosParaGuardar() {
+  return { tamano_px: subTamano, correcciones: subCorrecciones };
+}
+
+const subTamanoInput = document.getElementById("subTamanoInput");
+if (subTamanoInput) {
+  subTamanoInput.addEventListener("input", () => {
+    subTamano = parseInt(subTamanoInput.value, 10) || DATA.sub_tamano_defecto;
+    subModificado = true;
+    document.getElementById("subTamanoValor").textContent = subTamano + "px";
+    actualizarSubZonaAviso();
+  });
+}
+
 async function cargar() {
   const r = await fetch("/datos");
   DATA = await r.json();
@@ -1430,6 +1619,16 @@ async function cargar() {
   hookCtaModificado = !!(hcGuardado && hcGuardado.length);
   pintarHookCta();
   pintarZonaSegura();
+
+  subTamano = DATA.sub_tamano_px || DATA.sub_tamano_defecto || 88;
+  subCorrecciones = { ...(DATA.sub_correcciones || {}) };
+  subModificado = false;
+  subBloques = agruparEnBloquesSub(DATA.palabras);
+  if (subTamanoInput) subTamanoInput.value = subTamano;
+  const subTamanoValorEl = document.getElementById("subTamanoValor");
+  if (subTamanoValorEl) subTamanoValorEl.textContent = subTamano + "px";
+  pintarTablaCorreccionesSub();
+  actualizarSubZonaAviso();
 
   const animDelRender = DATA.overlays.filter(o => o.tipo.startsWith("anim-")).map(o => ({
     nombre: o.anim || o.tipo.replace("anim-", ""), ini: o.ini, fin: o.fin,
@@ -2522,6 +2721,7 @@ function cuerpoAjustes() {
   if (animacionesModificado) cuerpo.animaciones = animacionesParaGuardar();
   if (encModificado) cuerpo.encuadre = encuadreParaGuardar();
   if (hookCtaModificado) cuerpo.hook_cta = hookCtaParaGuardar();
+  if (subModificado) cuerpo.subtitulos = subtitulosParaGuardar();
   return cuerpo;
 }
 
@@ -2954,6 +3154,7 @@ function loop() {
     aplicarEncuadre(cx, cy, zoom);
     actualizarOverlays(t);
     actualizarUI(t);
+    pintarSubPreview(t);
 
     // Disparar efectos SFX en tiempo real si el video está reproduciéndose.
     // Si es_renderizado, los SFX ya están mezclados dentro del propio archivo

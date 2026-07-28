@@ -680,6 +680,18 @@ def recolectar(dir_trabajo: Path) -> dict:
         except Exception:
             sesion = {}
 
+    # Tamaño de subtítulo y correcciones de texto (Bloque 5). `correcciones`
+    # se indexa por la posición GLOBAL de la palabra en `transcripcion.palabras`
+    # (la misma lista que se manda abajo como "palabras") — la misma clave que
+    # usa f3_subtitulos.generar_ass().
+    sub_ajustes = {}
+    f_subs = dir_trabajo / "ajustes.subtitulos.json"
+    if f_subs.exists():
+        try:
+            sub_ajustes = json.loads(f_subs.read_text(encoding="utf-8"))
+        except Exception:
+            sub_ajustes = {}
+
     return {
         "nombre": dir_trabajo.name,
         "duracion": round(duracion, 3),
@@ -724,6 +736,10 @@ def recolectar(dir_trabajo: Path) -> dict:
             "hook_aprox": config.ZONA_HOOK_APROX_PX,
             "cta_aprox": config.ZONA_CTA_APROX_PX,
         },
+        "sub_tamano_px": sub_ajustes.get("tamano_px") or config.SUB_TAMANO_PX,
+        "sub_tamano_defecto": config.SUB_TAMANO_PX,
+        "sub_posicion_altura_pct": config.SUB_POSICION_ALTURA_PCT,
+        "sub_correcciones": sub_ajustes.get("correcciones") or {},
     }
 
 
