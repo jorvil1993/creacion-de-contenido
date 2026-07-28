@@ -29,6 +29,7 @@ from pathlib import Path
 import numpy as np
 
 import config
+import f5_audio
 
 
 def _b64(ruta: Path, mime: str) -> str:
@@ -563,8 +564,6 @@ def recolectar(dir_trabajo: Path) -> dict:
             except Exception:
                 sfx = None
     if sfx is None:
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
-        import f5_audio
         sfx = f5_audio.construir_eventos_sfx(plan, eventos)
     # El desplegable de sonidos del editor se indexa por nombre de archivo;
     # guion.sfx.json los trae con ruta absoluta.
@@ -576,6 +575,15 @@ def recolectar(dir_trabajo: Path) -> dict:
     sonidos = {}
     for p in sorted(dir_sfx.glob("*.mp3")):
         sonidos[p.name] = _b64(p, "audio/mpeg")
+
+    # Picos reales de cada SFX (f5_audio._niveles_sfx, cacheados en
+    # assets/sfx/_niveles.json). Sobre el corte crudo (02_cortado.mp4) el
+    # navegador dispara los SFX el mismo, así que necesita la MISMA cuenta que
+    # hace el render para que la previa suene parecido y el número de volumen
+    # de la tabla signifique algo: ganancia_db = (pico_objetivo - pico) +
+    # 20*log10(volumen). Sobre un render (es_renderizado=true) no se usan —
+    # los SFX ya están mezclados dentro del video.
+    niveles_sfx = f5_audio._niveles_sfx()
 
     # Incluir TODOS los eventos de superposición e insertos (tanto imágenes como videos/b-rolls)
     movibles = []
@@ -682,6 +690,8 @@ def recolectar(dir_trabajo: Path) -> dict:
         "movibles": movibles,
         "sonidos": sonidos,
         "volumenes": {k: v["volumen"] for k, v in config.SFX_POR_EVENTO.items()},
+        "niveles_sfx": niveles_sfx,
+        "sfx_pico_objetivo_db": config.SFX_PICO_OBJETIVO_DB,
     }
 
 

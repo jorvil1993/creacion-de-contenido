@@ -948,6 +948,70 @@ def pruebas_orientacion():
         else "todos pasan por config.abrir_imagen()")
 
 
+# ===========================================================================
+# 10. Volumen de los SFX en la previa del editor (f10 + f11)
+# ===========================================================================
+# Bug real: el editor cargaba 07_FINAL.mp4 (que YA trae los SFX mezclados y
+# calibrados) y ademas el loop del navegador volvia a disparar cada SFX crudo
+# al 100% -- cada efecto sonaba dos veces. Y el numero de la columna "volumen"
+# de la tabla no cambiaba nada de lo audible porque escucharSfx() solo
+# aceptaba el nombre del archivo. Ninguna de las dos cosas daba error: el
+# video se veia y se abria igual.
+def pruebas_sfx_previa():
+    import tempfile
+
+    import f10_editor_visual as f10
+
+    seccion("10. Volumen de los SFX en la previa del editor (f10 + f11)")
+
+    fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+    fuente_f10 = (AQUI / "f10_editor_visual.py").read_text(encoding="utf-8")
+
+    chk("el navegador deja de disparar SFX sobre un video ya renderizado",
+        re.search(r"if\s*\(!video\.paused\s*&&\s*!DATA\.es_renderizado\)", fuente_srv)
+        is not None,
+        "07_FINAL.mp4 ya trae los SFX quemados: dispararlos de nuevo se oye doble")
+
+    chk("escucharSfx ya recibe el volumen en vez de descartarlo en silencio",
+        "function escucharSfx(nombre, volumen)" in fuente_srv,
+        "antes el segundo argumento se pasaba desde el loop y la tabla, pero la "
+        "funcion solo declaraba 'nombre': cambiar el volumen de una fila no sonaba distinto")
+
+    chk("la ganancia se calcula igual que en el render (pico comun + volumen artistico)",
+        "gananciaSfxDb" in fuente_srv and "niveles_sfx" in fuente_srv,
+        "sin la misma cuenta que f5_audio.mezclar_audio, el numero de la tabla no predice nada")
+
+    chk("la previa usa un pool de audios, no uno compartido",
+        "sfxPool" in fuente_srv and "createMediaElementSource" in fuente_srv,
+        "un unico Audio() cortaba el sonido anterior cuando dos SFX caian cerca")
+
+    chk("tocar el volumen de una fila se escucha al instante, sin re-renderizar",
+        re.search(r'e\.volumen = parseFloat\(inV\.value\)[^\n]*\n\s*escucharSfx\(e\.archivo, e\.volumen\)',
+                   fuente_srv) is not None,
+        "si no, el numero cambia en la tabla pero nada suena distinto hasta re-renderizar")
+
+    chk("f10.recolectar() expone los picos medidos y el pico objetivo",
+        "niveles_sfx" in fuente_f10 and "sfx_pico_objetivo_db" in fuente_f10,
+        "el navegador los necesita para replicar la normalizacion -6dB + volumen artistico")
+
+    # --- el dato que /datos manda de verdad, no solo el texto fuente --------
+    tmp = Path(tempfile.mkdtemp()) / "corrida_sfx"
+    tmp.mkdir(parents=True)
+    datos = f10.recolectar(tmp)
+
+    chk("recolectar() trae 'niveles_sfx' con los picos cacheados del pack",
+        isinstance(datos.get("niveles_sfx"), dict) and len(datos["niveles_sfx"]) > 0,
+        f"{len(datos.get('niveles_sfx') or {})} sonidos con pico medido")
+
+    chk("recolectar() trae 'sfx_pico_objetivo_db' igual al de config",
+        datos.get("sfx_pico_objetivo_db") == config.SFX_PICO_OBJETIVO_DB,
+        f"{datos.get('sfx_pico_objetivo_db')} vs config.SFX_PICO_OBJETIVO_DB={config.SFX_PICO_OBJETIVO_DB}")
+
+    chk("una corrida sin render (02_cortado.mp4) se marca como NO renderizada",
+        datos.get("es_renderizado") is False,
+        "es la señal que usa el navegador para decidir si dispara los SFX el mismo")
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -960,6 +1024,7 @@ def main():
     pruebas_round_trip()
     pruebas_preview_animaciones()
     pruebas_orientacion()
+    pruebas_sfx_previa()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")

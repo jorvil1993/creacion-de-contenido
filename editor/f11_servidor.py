@@ -1118,7 +1118,40 @@ let loopArrancado = false;
 let edicionSfx = [];
 let sfxModificado = false;      // si es false, no se manda --sfx-manual: sigue automático
 let sfxSeleccion = null;
-const audioPreview = new Audio();
+
+// Pool de audios para la previa de SFX: un solo Audio() compartido cortaba el
+// sonido anterior cuando dos efectos caían cerca. Cada slot lleva su propio
+// GainNode porque la ganancia real puede superar 0dB (archivos silenciosos del
+// pack necesitan +30dB para llegar al pico común) y `<audio>.volume` no pasa
+// de 1.0 — hace falta Web Audio API para eso.
+const SFX_POOL_TAM = 8;
+let sfxCtx = null;
+let sfxPool = [];
+let sfxPoolIdx = 0;
+
+function poolSfx() {
+  if (sfxPool.length) return sfxPool;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  sfxCtx = new Ctx();
+  for (let i = 0; i < SFX_POOL_TAM; i++) {
+    const el = new Audio();
+    const nodo = sfxCtx.createMediaElementSource(el);
+    const ganancia = sfxCtx.createGain();
+    nodo.connect(ganancia).connect(sfxCtx.destination);
+    sfxPool.push({ el, ganancia });
+  }
+  return sfxPool;
+}
+
+// Misma cuenta que f5_audio.mezclar_audio: llevar el archivo a un pico común
+// (DATA.sfx_pico_objetivo_db) compensa los ~20dB de dispersión del pack, y
+// recién ahí se aplica el volumen artístico de la fila. Sin esto, subir o
+// bajar el número de la tabla no cambiaba nada de lo que sonaba.
+function gananciaSfxDb(nombreArchivo, volumen) {
+  const pico = (DATA.niveles_sfx && DATA.niveles_sfx[nombreArchivo]) || 0.0;
+  const objetivo = DATA.sfx_pico_objetivo_db != null ? DATA.sfx_pico_objetivo_db : -6.0;
+  return (objetivo - pico) + 20 * Math.log10(Math.max(volumen, 0.001));
+}
 
 let edicionHookCta = [];        // [{tipo:"hook"|"cta", ini, fin, archivo}]
 let hookCtaModificado = false;  // si es false, los tiempos siguen saliendo automáticos
@@ -1133,11 +1166,17 @@ let encModificado = false;      // si es false, no se manda --encuadre-manual
 let encSeleccion = null;        // {tipo: "punch"|"cerrado", i}
 let encPendiente = null;        // timer del recálculo de la curva
 
-function escucharSfx(nombre) {
-  if (!DATA.sonidos[nombre]) return;
-  audioPreview.src = DATA.sonidos[nombre];
-  audioPreview.currentTime = 0;
-  audioPreview.play();
+function escucharSfx(nombre, volumen) {
+  if (!DATA || !DATA.sonidos[nombre]) return;
+  const pool = poolSfx();
+  if (sfxCtx.state === "suspended") sfxCtx.resume();
+  const slot = pool[sfxPoolIdx];
+  sfxPoolIdx = (sfxPoolIdx + 1) % pool.length;
+  const db = gananciaSfxDb(nombre, volumen == null ? 1.0 : volumen);
+  slot.ganancia.gain.value = Math.pow(10, db / 20);
+  slot.el.src = DATA.sonidos[nombre];
+  slot.el.currentTime = 0;
+  slot.el.play().catch(() => {});
 }
 
 async function cargar() {
@@ -1491,7 +1530,7 @@ function pintarSfx() {
       ev.preventDefault();
       try { m.setPointerCapture(ev.pointerId); } catch (err) { /* seguimos igual sin captura */ }
       sfxSeleccion = e.id;
-      escucharSfx(e.archivo);
+      escucharSfx(e.archivo, e.volumen);
       pintarSfx();
       const mover = (mv) => {
         const r = pista.getBoundingClientRect();
@@ -1689,7 +1728,7 @@ function tablaSfx() {
       selFila.appendChild(o);
     });
     selFila.addEventListener("change", () => {
-      e.archivo = selFila.value; sfxModificado = true; escucharSfx(selFila.value);
+      e.archivo = selFila.value; sfxModificado = true; escucharSfx(e.archivo, e.volumen);
     });
     tdSonido.appendChild(selFila); tr.appendChild(tdSonido);
 
@@ -1699,6 +1738,7 @@ function tablaSfx() {
     inV.value = e.volumen;
     inV.addEventListener("change", () => {
       e.volumen = parseFloat(inV.value) || 0; sfxModificado = true;
+      escucharSfx(e.archivo, e.volumen); // se oye el cambio al instante
     });
     tdVol.appendChild(inV); tr.appendChild(tdVol);
 
@@ -2592,8 +2632,11 @@ function loop() {
     actualizarOverlays(t);
     actualizarUI(t);
 
-    // Disparar efectos SFX en tiempo real si el video está reproduciéndose
-    if (!video.paused) {
+    // Disparar efectos SFX en tiempo real si el video está reproduciéndose.
+    // Si es_renderizado, los SFX ya están mezclados dentro del propio archivo
+    // (07_FINAL.mp4 / 06_video.mp4) — dispararlos de nuevo aquí se oía dos
+    // veces cada uno.
+    if (!video.paused && !DATA.es_renderizado) {
       edicionSfx.forEach(e => {
         if (!sfxDisparados.has(e.id) && Math.abs(t - e.t) < 0.22) {
           sfxDisparados.add(e.id);
