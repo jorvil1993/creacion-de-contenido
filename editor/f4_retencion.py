@@ -423,6 +423,11 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
     # su posición en la misma proporción. Sin esto saldrían al doble de tamaño
     # y fuera de sitio, y el preview no valdría para decidir nada.
     reducir = f"scale=iw*{escala:.4f}:ih*{escala:.4f}," if escala != 1.0 else ""
+    # Tamaño de la tarjeta de inserto, borde incluido: es a lo que
+    # f6_overlays.render_pip_producto lleva una foto, y un PiP de video tiene
+    # que medir lo mismo o no se lee como el mismo elemento.
+    w_tarjeta_pip = config.INSERTO_ANCHO + config.INSERTO_BORDE * 2
+    h_tarjeta_pip = config.INSERTO_ALTO + config.INSERTO_BORDE * 2
     for i, ev in enumerate(eventos_overlay):
         idx_input = 2 + i
         ev_x, ev_y = int(ev["x"] * escala), int(ev["y"] * escala)
@@ -443,10 +448,23 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
             )
         elif ev.get("medio") == "video":
             dur_fade = 0.15
+            if ev.get("tipo") == "pip-producto":
+                # Un PiP de video es una TARJETA, del mismo tamaño que la de una
+                # foto. Antes se componía a su resolución nativa: un clip de Flow
+                # de 720x1280 puesto como PiP tapaba media pantalla. Se lleva al
+                # tamaño de tarjeta cubriendo y recortando al centro, que es lo
+                # mismo que hace render_pip_producto con una foto.
+                w_c = max(2, int(w_tarjeta_pip * escala) // 2 * 2)
+                h_c = max(2, int(h_tarjeta_pip * escala) // 2 * 2)
+                ajuste = (f"scale={w_c}:{h_c}:force_original_aspect_ratio=increase,"
+                          f"crop={w_c}:{h_c},")
+            else:
+                # Animaciones, hook y CTA ocupan el cuadro entero a propósito.
+                ajuste = reducir
             # La animación ya trae su propio movimiento y ya está desplazada en
             # el tiempo por -itsoffset; solo se le suaviza la entrada y salida.
             filtro_partes.append(
-                f"[{idx_input}:v]{reducir}format=rgba,setpts=PTS-STARTPTS+{ev['ini']:.3f}/TB,"
+                f"[{idx_input}:v]{ajuste}format=rgba,setpts=PTS-STARTPTS+{ev['ini']:.3f}/TB,"
                 f"fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
                 f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
             )

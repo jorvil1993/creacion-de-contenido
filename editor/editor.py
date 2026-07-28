@@ -152,6 +152,9 @@ def main():
                         help="Lista completa de animaciones armada en el editor visual "
                              "(Fase 3c): quita, mueve y añade animaciones. Reemplaza el "
                              "disparo por palabra de config.ANIMACIONES_POR_PALABRA")
+    parser.add_argument("--hook-cta-manual", type=str, default=None, metavar="JSON",
+                        help="Tiempos del hook y del CTA movidos a mano en el editor visual. "
+                             "Mandan sobre los automáticos")
     parser.add_argument("--encuadre-manual", type=str, default=None, metavar="JSON",
                         help="Punch-ins y tramos de plano cerrado elegidos a mano en el editor "
                              "visual (Fase 3d). Manda sobre lo que saque del guion y sobre los "
@@ -348,6 +351,8 @@ def main():
         cmd_overlays += ["--broll-manual", args.broll_manual]
     if args.animaciones_manual:
         cmd_overlays += ["--animaciones-manual", args.animaciones_manual]
+    if args.hook_cta_manual:
+        cmd_overlays += ["--hook-cta-manual", args.hook_cta_manual]
     if args.sol_pip_video:
         cmd_overlays.append("--sol-pip-video")
     if args.video_ambiente:

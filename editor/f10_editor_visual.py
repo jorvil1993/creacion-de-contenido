@@ -492,6 +492,14 @@ def eventos_del_editor(dir_trabajo: Path, ids: set = None) -> list:
             return True
         return ev.get("asset") in ids
 
+    # Lo que salió del último render (o, si no hay ninguno, del guion). Trae
+    # TODO: hook, CTA, animaciones e insertos.
+    base = _lista_json(dir_trabajo / "05_overlays.eventos.json", "eventos")
+    if not base:
+        base = sorted(_lista_json(dir_trabajo / "guion.eventos.json", "eventos")
+                      + _lista_json(dir_trabajo / "guion.broll.json", "broll"),
+                      key=lambda e: float(e.get("ini", 0)))
+
     guardados = (_lista_json(dir_trabajo / "ajustes.eventos.json", "eventos")
                  + _lista_json(dir_trabajo / "ajustes.broll.json", "broll"))
     for ev in guardados:
@@ -499,24 +507,26 @@ def eventos_del_editor(dir_trabajo: Path, ids: set = None) -> list:
         if not ev.get("asset") and ev.get("asset_id"):
             ev["asset"] = ev["asset_id"]
 
-    if guardados and all(reconstruible(ev) for ev in guardados):
-        return sorted(guardados, key=lambda e: float(e.get("ini", 0)))
-    if guardados:
+    if not guardados:
+        return base
+    if not all(reconstruible(ev) for ev in guardados):
         # Ajustes de una versión anterior: traen `asset_id` sueltos como
         # `broll-manual:scroll` y ninguna ruta, o sea que no se puede saber qué
         # archivo era. Cargarlos igual dejaría insertos fantasma que el render
         # descarta sin más aviso que una línea en el log.
         print(f"AVISO: los ajustes guardados en {dir_trabajo.name} son de un formato "
               "anterior y no se pueden reconstruir — se parte de los del último render.")
+        return base
 
-    del_render = _lista_json(dir_trabajo / "05_overlays.eventos.json", "eventos")
-    if del_render:
-        return del_render
-    # Antes de que exista un render: lo que pidió el guion, que también viene
-    # repartido en dos archivos.
-    return sorted(_lista_json(dir_trabajo / "guion.eventos.json", "eventos")
-                  + _lista_json(dir_trabajo / "guion.broll.json", "broll"),
-                  key=lambda e: float(e.get("ini", 0)))
+    # Lo guardado a mano sustituye SOLO los insertos y B-rolls: es lo único que
+    # esos archivos contienen. El hook, el CTA y las animaciones se conservan
+    # del render — si no, guardar un cambio de PiP los hacía desaparecer del
+    # editor, con el panel de Hook y CTA en blanco y sus miniaturas rotas.
+    def es_inserto(ev: dict) -> bool:
+        return bool(ev.get("broll_fullscreen")) or ev.get("tipo") in ("pip-producto", "broll")
+
+    conservados = [ev for ev in base if not es_inserto(ev)]
+    return sorted(conservados + guardados, key=lambda e: float(e.get("ini", 0)))
 
 
 def recolectar(dir_trabajo: Path) -> dict:

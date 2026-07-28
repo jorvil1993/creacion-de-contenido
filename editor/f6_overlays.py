@@ -273,7 +273,10 @@ def render_pip_producto(ruta_foto: Path, ruta_salida: Path, ancho=520, alto=680,
     mascara = Image.new("L", (ancho, alto), 0)
     ImageDraw.Draw(mascara).rounded_rectangle([0, 0, ancho - 1, alto - 1], radius=radio, fill=255)
 
-    borde = 10
+    # Desde config: f4_retencion necesita el mismo número para llevar un PiP de
+    # VIDEO al tamaño de esta tarjeta. Con el 10 escrito aquí a mano, los dos
+    # tamaños podían separarse sin que nada avisara.
+    borde = config.INSERTO_BORDE
     w_tarjeta, h_tarjeta = ancho + borde * 2, alto + borde * 2
     marco = Image.new("RGBA", (w_tarjeta, h_tarjeta), (0, 0, 0, 0))
     draw_marco = ImageDraw.Draw(marco)
@@ -827,7 +830,8 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
                          eventos_manual: list = None,
                          animaciones_manual: list = None,
                          video_ambiente: bool = None,
-                         broll_manual: list = None) -> list:
+                         broll_manual: list = None,
+                         hook_cta_manual: list = None) -> list:
     import f8_hyperframes
     eventos = []
     # None = "lo que diga config"; True/False = decisión explícita de quien
@@ -846,7 +850,13 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
     texto_hook = (hook_manual or "").strip() or _texto_hook_desde_transcripcion(
         palabras, intervalos_conservados)
     texto_hook = texto_hook or "Mira esto"
-    fin_hook = min(config.HOOK_DURACION_S, duracion_total)
+    # Tiempos ajustados a mano en el editor. Mandan sobre el automático: si José
+    # movió o estiró el hook es porque el de por defecto no le servía.
+    hc = {b.get("tipo"): b for b in (hook_cta_manual or [])}
+    ini_hook = float(hc["hook"]["ini"]) if "hook" in hc else 0.0
+    fin_hook = (float(hc["hook"]["fin"]) if "hook" in hc
+                else min(config.HOOK_DURACION_S, duracion_total))
+    fin_hook = min(fin_hook, duracion_total)
 
     clip_hook = f8_hyperframes.render("banner-hook", {"texto": texto_hook}) if hf else None
     if clip_hook:
@@ -855,7 +865,7 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
         # 80% metraje / 20% marca de la sección 5.3 y se ve más limpio.
         import f7_animaciones
         eventos.append({"tipo": "hook", "archivo": clip_hook, "medio": "video",
-                        "x": 0, "y": 0, "ini": 0.0, "fin": fin_hook,
+                        "x": 0, "y": 0, "ini": ini_hook, "fin": fin_hook,
                         # texto/miniatura: solo para que el editor visual (§3c)
                         # pueda mostrar y editar el hook sin volver a derivarlo
                         "texto": texto_hook,
@@ -864,10 +874,12 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
         ruta_hook = dir_tmp / "ov_hook.png"
         x, y, w, h = render_hook_banner(texto_hook, ruta_hook)
         eventos.append({"tipo": "hook", "archivo": ruta_hook, "x": x, "y": y,
-                        "ini": 0.0, "fin": fin_hook, "texto": texto_hook})
+                        "ini": ini_hook, "fin": fin_hook, "texto": texto_hook})
 
     # ---- CTA DE CIERRE (con el eco que cierra el loop) ---------------------
-    ini_cta = max(duracion_total - 6.5, 3.5)
+    ini_cta = (float(hc["cta"]["ini"]) if "cta" in hc
+               else max(duracion_total - 6.5, 3.5))
+    fin_cta = min(float(hc["cta"]["fin"]), duracion_total) if "cta" in hc else duracion_total
     eco = _texto_eco_loop(texto_hook) if config.LOOP_ACTIVO else ""
     clip_cta = f8_hyperframes.render("tarjeta-cta", {
         "mensaje": "¡Pide el tuyo ya!",
@@ -878,7 +890,7 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
     if clip_cta:
         import f7_animaciones
         eventos.append({"tipo": "cta", "archivo": clip_cta, "medio": "video",
-                        "x": 0, "y": 0, "ini": ini_cta, "fin": duracion_total,
+                        "x": 0, "y": 0, "ini": ini_cta, "fin": fin_cta,
                         "eco": eco, "miniatura": str(f7_animaciones.miniatura(clip_cta) or "")})
         if eco:
             print(f"  loop: el CTA cierra con el eco del hook -> \"{eco}\"")
@@ -886,9 +898,9 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
         ruta_cta = dir_tmp / "ov_cta.png"
         x, y, w, h = render_cta_cierre(ruta_cta, eco=eco)
         eventos.append({"tipo": "cta", "archivo": ruta_cta, "x": x, "y": y,
-                        "ini": ini_cta, "fin": duracion_total, "eco": eco})
+                        "ini": ini_cta, "fin": fin_cta, "eco": eco})
 
-    ventanas_ocupadas = [(0.0, fin_hook), (ini_cta, duracion_total)]
+    ventanas_ocupadas = [(ini_hook, fin_hook), (ini_cta, fin_cta)]
 
     def _libre(t0, t1):
         return all(t1 <= a or t0 >= b for a, b in ventanas_ocupadas)
@@ -1713,6 +1725,10 @@ def main():
     parser.add_argument("--posiciones-manual", type=str, default=None, metavar="JSON",
                         help="Posiciones de insertos elegidas a mano (las exporta el editor "
                              "visual, f10_editor_visual.py). Reemplazan a las automáticas.")
+    parser.add_argument("--hook-cta-manual", type=str, default=None, metavar="JSON",
+                        help="Tiempos del hook y del CTA ajustados a mano en el editor visual: "
+                             "[{tipo:'hook',ini,fin},{tipo:'cta',ini,fin}]. Mandan sobre los "
+                             "automáticos (HOOK_DURACION_S y los 6.5s finales)")
     parser.add_argument("--eventos-manual", type=str, default=None, metavar="JSON",
                         help="Lista completa de insertos pip-producto armada en el editor visual "
                              "(Fase 2): sustituye QUÉ asset se muestra, no solo dónde. Distinto de "
@@ -1752,6 +1768,12 @@ def main():
     if args.eventos_manual:
         eventos_manual = cargar_eventos_manual(Path(args.eventos_manual), dir_tmp)
 
+    hook_cta_manual = None
+    if args.hook_cta_manual and Path(args.hook_cta_manual).exists():
+        datos_hc = json.loads(Path(args.hook_cta_manual).read_text(encoding="utf-8"))
+        hook_cta_manual = datos_hc.get("hook_cta", datos_hc) if isinstance(datos_hc, dict) else datos_hc
+        print(f"Hook/CTA manuales cargados desde {args.hook_cta_manual}")
+
     broll_manual = None
     if args.broll_manual:
         broll_manual = cargar_broll_manual(Path(args.broll_manual))
@@ -1771,7 +1793,8 @@ def main():
                                    animaciones_manual=animaciones_manual,
                                    video_ambiente=(True if args.video_ambiente else
                                                    False if args.sin_video_ambiente else None),
-                                   broll_manual=broll_manual)
+                                   broll_manual=broll_manual,
+                                   hook_cta_manual=hook_cta_manual)
 
     if args.posiciones_manual:
         aplicar_posiciones_manual(eventos, Path(args.posiciones_manual))

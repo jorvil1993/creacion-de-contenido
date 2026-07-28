@@ -451,6 +451,10 @@ INSERTO_SEPARACION_MIN_S = 4.0
 # la cabeza ocupa la franja media y la parte superior queda libre. Se probó
 # colocarlo entre el rostro y los subtítulos y siempre rozaba la cara.
 INSERTO_Y_PCT = 0.07
+# Borde blanco con filo cian de la tarjeta de inserto. Vive aquí y no dentro
+# de render_pip_producto porque el render de video necesita el MISMO número
+# para que un PiP de video mida igual que uno de foto.
+INSERTO_BORDE = 10
 INSERTO_ANCHO = 400
 INSERTO_ALTO = 520
 

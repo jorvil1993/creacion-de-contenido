@@ -671,6 +671,44 @@ def pruebas_round_trip():
         "se vuelve a los del ultimo render en vez de cargar un evento sin archivo "
         "que el render descartaria")
 
+    # --- guardar un PiP no puede borrar el hook, el CTA ni las animaciones ---
+    # Los ajustes a mano solo contienen insertos y B-roll: son lo unico que esos
+    # archivos guardan. Si sustituyeran la lista ENTERA, tocar un PiP dejaba el
+    # panel de Hook y CTA en blanco, sus miniaturas rotas y las animaciones
+    # fuera de la vista.
+    dir_mix = tmp / "corrida_mixta"
+    dir_mix.mkdir(exist_ok=True)
+    (dir_mix / "05_overlays.eventos.json").write_text(json.dumps([
+        {"tipo": "hook", "medio": "video", "ini": 0.0, "fin": 3.2, "archivo": str(clip)},
+        {"tipo": "anim-sol", "medio": "video", "ini": 5.0, "fin": 7.6, "archivo": str(clip)},
+        {"tipo": "pip-producto", "ini": 10.0, "fin": 13.0, "archivo": str(clip)},
+        {"tipo": "cta", "medio": "video", "ini": 21.0, "fin": 27.5, "archivo": str(clip)},
+    ]), encoding="utf-8")
+    (dir_mix / "ajustes.eventos.json").write_text(json.dumps({"eventos": [
+        {"tipo": "pip-producto", "ini": 15.0, "fin": 18.0, "archivo": str(clip)}]}),
+        encoding="utf-8")
+
+    mezcla = f10.eventos_del_editor(dir_mix, ids_catalogo)
+    tipos = [e["tipo"] for e in mezcla]
+    inserto = [e for e in mezcla if e["tipo"] == "pip-producto"]
+    chk("guardar un inserto no se lleva por delante el hook, el CTA ni las animaciones",
+        "hook" in tipos and "cta" in tipos and "anim-sol" in tipos
+        and len(inserto) == 1 and inserto[0]["ini"] == 15.0,
+        f"quedan {tipos}, y el inserto es el ajustado a mano (15.0s), no el del render")
+
+    # --- los tiempos de hook/CTA movidos a mano tienen que llegar al render ---
+    fuente_f6 = (AQUI / "f6_overlays.py").read_text(encoding="utf-8")
+    cadena = [("f11_servidor.py", fuente_srv), ("editor.py", fuente_editor),
+              ("f6_overlays.py", fuente_f6)]
+    rotos = [n for n, f in cadena if "hook_cta" not in f and "hook-cta-manual" not in f]
+    chk("mover el hook o el CTA en la linea de tiempo llega hasta el render",
+        not rotos,
+        f"se corta en: {', '.join(rotos)}" if rotos
+        else "editor -> servidor -> editor.py -> f6_overlays, la cadena completa")
+    chk("y f6 usa esos tiempos en vez de los automaticos",
+        "ini_hook" in fuente_f6 and "fin_cta" in fuente_f6,
+        "el hook ya no arranca siempre en 0.0 ni el CTA acaba siempre con el video")
+
 
 # ===========================================================================
 # 8. Preview de animaciones en el editor

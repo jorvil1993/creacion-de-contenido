@@ -64,6 +64,11 @@ def _guardar_animaciones(animaciones: list) -> Path:
     return _escritura_atomica(DIR_TRABAJO / "ajustes.animaciones.json", {"animaciones": animaciones})
 
 
+def _guardar_hook_cta(bloques: list) -> Path:
+    """Tiempos del hook y del CTA movidos a mano en la línea de tiempo."""
+    return _escritura_atomica(DIR_TRABAJO / "ajustes.hookcta.json", {"hook_cta": bloques})
+
+
 def _guardar_hook(texto: str) -> Path:
     return _escritura_atomica(DIR_TRABAJO / "ajustes.hook.json", {"hook": texto})
 
@@ -412,6 +417,8 @@ class Handler(BaseHTTPRequestHandler):
                 destino_sfx = _guardar_sfx(datos["sfx"])
                 resultado["ruta_sfx"] = str(destino_sfx)
                 resultado["n_sfx"] = len(datos["sfx"])
+            if "hook_cta" in datos:
+                resultado["ruta_hook_cta"] = str(_guardar_hook_cta(datos["hook_cta"]))
             if "animaciones" in datos:
                 destino_anim = _guardar_animaciones(datos["animaciones"])
                 resultado["ruta_animaciones"] = str(destino_anim)
@@ -468,6 +475,14 @@ class Handler(BaseHTTPRequestHandler):
                 candidato_broll = DIR_TRABAJO / "ajustes.broll.json"
                 if candidato_broll.exists():
                     ajustes_broll = candidato_broll
+
+            ajustes_hc = None
+            if "hook_cta" in datos:
+                ajustes_hc = _guardar_hook_cta(datos["hook_cta"])
+            else:
+                cand_hc = DIR_TRABAJO / "ajustes.hookcta.json"
+                if cand_hc.exists():
+                    ajustes_hc = cand_hc
 
             ajustes_sfx = None
             if "sfx" in datos:
@@ -529,6 +544,8 @@ class Handler(BaseHTTPRequestHandler):
                 cmd += ["--eventos-manual", str(ajustes)]
             if ajustes_broll is not None:
                 cmd += ["--broll-manual", str(ajustes_broll)]
+            if ajustes_hc is not None:
+                cmd += ["--hook-cta-manual", str(ajustes_hc)]
             if ajustes_sfx is not None:
                 cmd += ["--sfx-manual", str(ajustes_sfx)]
             if ajustes_anim is not None:
@@ -830,7 +847,7 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
   </div>
 
   <div class="panel">
-    <h2>Hook y CTA</h2>
+    <h2>Hook y CTA <span class="hint" id="infoHookCta"></span></h2>
     <p class="hint">El hook (primeros segundos) y el CTA (cierre) son tarjetas de Hyperframes —
       no se ven animadas acá (ningún navegador reproduce ProRes 4444), solo un fotograma
       representativo. El CTA repite un eco corto del hook para cerrar el loop; cambia solo.</p>
@@ -838,9 +855,12 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       <label class="hint" for="hookTexto">Texto del hook</label>
       <textarea id="hookTexto" maxlength="140"></textarea>
       <div class="hook-preview">
-        <div><img id="hookMiniatura" alt="hook"><p class="hint">hook · 0-<span id="hookFin"></span>s</p></div>
-        <div><img id="ctaMiniatura" alt="cta"><p class="hint">cta · eco: "<span id="ctaEco"></span>"</p></div>
+        <div id="hookMedio"><p class="hint">hook · <span id="hookRango">?</span></p></div>
+        <div id="ctaMedio"><p class="hint">cta · <span id="ctaRango">?</span> · eco: "<span id="ctaEco"></span>"</p></div>
       </div>
+    </div>
+    <div class="pista-enc" id="pistaHookCta" style="margin-top:12px;">
+      <div class="franjas-enc" id="franjasHookCta"></div>
     </div>
   </div>
 
@@ -921,6 +941,9 @@ let sfxModificado = false;      // si es false, no se manda --sfx-manual: sigue 
 let sfxSeleccion = null;
 const audioPreview = new Audio();
 
+let edicionHookCta = [];        // [{tipo:"hook"|"cta", ini, fin, archivo}]
+let hookCtaModificado = false;  // si es false, los tiempos siguen saliendo automáticos
+
 let edicionAnimaciones = [];
 let animacionesModificado = false;  // si es false, no se manda --animaciones-manual: sigue automático
 let editandoAnimIdx = null;         // índice en edicionAnimaciones, o -1 para "nueva antes de agregar"
@@ -995,12 +1018,11 @@ async function cargar() {
   // El texto guardado a mano manda sobre el del último render.
   document.getElementById("hookTexto").value =
     (DATA.hook_guardado != null && DATA.hook_guardado !== "") ? DATA.hook_guardado : (hook?.texto || "");
-  document.getElementById("hookFin").textContent = hook ? hook.fin.toFixed(1) : "?";
-  const hookImg = hook?.miniatura_archivo || hook?.archivo;
-  document.getElementById("hookMiniatura").src = hookImg ? `/archivo?ruta=${encodeURIComponent(hookImg)}` : "";
-  const ctaImg = cta?.miniatura_archivo || cta?.archivo;
-  document.getElementById("ctaMiniatura").src = ctaImg ? `/archivo?ruta=${encodeURIComponent(ctaImg)}` : "";
   document.getElementById("ctaEco").textContent = cta?.eco || "";
+  edicionHookCta = [hook, cta].filter(Boolean).map(o => ({
+    tipo: o.tipo, ini: o.ini, fin: o.fin, archivo: o.archivo,
+  }));
+  pintarHookCta();
 
   edicionAnimaciones = DATA.overlays.filter(o => o.tipo.startsWith("anim-")).map(o => ({
     nombre: o.anim || o.tipo.replace("anim-", ""), ini: o.ini, fin: o.fin,
@@ -1526,6 +1548,87 @@ function medioAnimacion(a) {
   return v;
 }
 
+// El hook y el CTA son tarjetas de Hyperframes: ProRes 4444 en .mov, que un
+// <img> no puede pintar — de ahi los dos iconos rotos que se veian. Se enseñan
+// con el mismo preview animado que las animaciones, y en su propia pista para
+// ver donde entran y poder moverlos o estirarlos.
+function pintarHookCta() {
+  const cont = document.getElementById("franjasHookCta");
+  const pista = document.getElementById("pistaHookCta");
+  if (!cont || !pista || !DATA) return;
+  cont.innerHTML = "";
+
+  for (const bloque of edicionHookCta) {
+    const caja = document.getElementById(bloque.tipo === "hook" ? "hookMedio" : "ctaMedio");
+    if (caja && !caja.querySelector("video, .anim-sin-preview")) {
+      caja.insertBefore(medioAnimacion({ nombre: bloque.tipo, archivo: bloque.archivo }),
+                        caja.firstChild);
+    }
+    const et = document.getElementById(bloque.tipo === "hook" ? "hookRango" : "ctaRango");
+    if (et) et.textContent = `${bloque.ini.toFixed(1)}-${bloque.fin.toFixed(1)}s`;
+
+    const barra = document.createElement("div");
+    barra.className = "enc-cerrado";
+    barra.style.left = (bloque.ini / DATA.duracion * 100) + "%";
+    barra.style.width = Math.max(0.6, (bloque.fin - bloque.ini) / DATA.duracion * 100) + "%";
+    barra.style.background = bloque.tipo === "hook"
+      ? "rgba(16,185,129,.28)" : "rgba(244,114,182,.28)";
+    barra.style.borderColor = bloque.tipo === "hook" ? "#10b981" : "#f472b6";
+    barra.textContent = bloque.tipo === "hook" ? "HOOK" : "CTA";
+    barra.title = `${bloque.tipo} · ${bloque.ini.toFixed(1)}-${bloque.fin.toFixed(1)}s`;
+
+    for (const lado of ["izq", "der"]) {
+      const tir = document.createElement("div");
+      tir.className = "enc-tirador " + lado;
+      tir.addEventListener("pointerdown", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        arrastrar((mv) => {
+          const t = tiempoDesdeEvento(mv, pista);
+          if (lado === "izq") bloque.ini = Math.min(t, bloque.fin - 0.5);
+          else bloque.fin = Math.max(t, bloque.ini + 0.5);
+          hookCtaModificado = true;
+          pintarHookCta();
+        });
+      });
+      barra.appendChild(tir);
+    }
+
+    barra.addEventListener("pointerdown", (e) => {
+      if (e.target.classList.contains("enc-tirador")) return;
+      e.preventDefault();
+      irAlInicio(bloque);
+      const t0 = tiempoDesdeEvento(e, pista);
+      const ini0 = bloque.ini, largo = bloque.fin - bloque.ini;
+      arrastrar((mv) => {
+        bloque.ini = Math.max(0, Math.min(DATA.duracion - largo,
+                                          ini0 + (tiempoDesdeEvento(mv, pista) - t0)));
+        bloque.fin = bloque.ini + largo;
+        hookCtaModificado = true;
+        pintarHookCta();
+      });
+    });
+    cont.appendChild(barra);
+  }
+
+  const ph = document.createElement("div");
+  ph.className = "playhead"; ph.id = "playheadHookCta";
+  cont.appendChild(ph);
+
+  const info = document.getElementById("infoHookCta");
+  if (info) info.textContent = hookCtaModificado ? "· ajustado a mano" : "· automático";
+}
+
+document.getElementById("pistaHookCta").addEventListener("click", (ev) => {
+  if (!DATA || ev.target.closest(".enc-cerrado")) return;
+  video.currentTime = tiempoDesdeEvento(ev, ev.currentTarget);
+});
+
+function hookCtaParaGuardar() {
+  return edicionHookCta.map(b => ({
+    tipo: b.tipo, ini: Math.round(b.ini * 100) / 100, fin: Math.round(b.fin * 100) / 100,
+  }));
+}
+
 function renderAnimGrid() {
   const cont = document.getElementById("animGrid");
   cont.innerHTML = "";
@@ -1840,6 +1943,7 @@ function cuerpoAjustes() {
   if (sfxModificado) cuerpo.sfx = sfxParaGuardar();
   if (animacionesModificado) cuerpo.animaciones = animacionesParaGuardar();
   if (encModificado) cuerpo.encuadre = encuadreParaGuardar();
+  if (hookCtaModificado) cuerpo.hook_cta = hookCtaParaGuardar();
   return cuerpo;
 }
 
