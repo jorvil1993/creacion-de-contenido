@@ -473,6 +473,42 @@ def _lista_json(f: Path, clave: str) -> list:
     return lista if isinstance(lista, list) else []
 
 
+def _dict_json(f: Path) -> dict:
+    if not f.exists():
+        return {}
+    try:
+        raw = json.loads(f.read_text(encoding="utf-8"))
+        return raw if isinstance(raw, dict) else {}
+    except Exception:
+        return {}
+
+
+def catalogo_musica() -> list:
+    """Retorna la lista de pistas de música disponibles en assets/musica/."""
+    pistas_json = config.DIR_ASSETS / "musica" / "pistas.json"
+    if pistas_json.exists():
+        try:
+            return json.loads(pistas_json.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    dir_musica = config.DIR_ASSETS / "musica"
+    if not dir_musica.is_dir():
+        return []
+
+    res = []
+    for f in sorted(dir_musica.glob("*.*")):
+        if f.suffix.lower() in (".mp3", ".wav", ".m4a", ".ogg"):
+            res.append({
+                "id": f.name,
+                "archivo": f.name,
+                "nombre": f.stem.replace("-", " ").title(),
+                "mood": "Música de fondo",
+                "duracion": _duracion(f)
+            })
+    return res
+
+
 def eventos_del_editor(dir_trabajo: Path, ids: set = None) -> list:
     """Insertos y B-rolls con los que arranca el editor, en una sola colección.
 
@@ -693,6 +729,15 @@ def recolectar(dir_trabajo: Path) -> dict:
         except Exception:
             sub_ajustes = {}
 
+    # Música de fondo (Bloque 8)
+    mus_ajustes = _dict_json(dir_trabajo / "ajustes.musica.json")
+    corrida = _dict_json(dir_trabajo / "00_corrida.json")
+    pista_defecto = corrida.get("musica") or config.MUSICA_ARCHIVO_DEFAULT
+    musica_pista = mus_ajustes.get("pista") or pista_defecto
+    musica_volumen = mus_ajustes.get("volumen") if "volumen" in mus_ajustes else config.MUSICA_VOLUMEN
+    musica_inicio_s = mus_ajustes.get("inicio_s", 0.0)
+    sin_musica = mus_ajustes.get("sin_musica") if "sin_musica" in mus_ajustes else bool(corrida.get("sin_musica", False))
+
     return {
         "nombre": dir_trabajo.name,
         "duracion": round(duracion, 3),
@@ -741,6 +786,12 @@ def recolectar(dir_trabajo: Path) -> dict:
         "sub_tamano_defecto": config.SUB_TAMANO_PX,
         "sub_posicion_altura_pct": config.SUB_POSICION_ALTURA_PCT,
         "sub_correcciones": sub_ajustes.get("correcciones") or {},
+        "musica_catalogo": catalogo_musica(),
+        "musica_pista": musica_pista,
+        "musica_volumen": musica_volumen,
+        "musica_volumen_defecto": config.MUSICA_VOLUMEN,
+        "musica_inicio_s": musica_inicio_s,
+        "sin_musica": sin_musica,
     }
 
 

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "01-comercial-upbeat.mp3",
+    "archivo": "01-comercial-upbeat.mp3",
+    "nombre": "Comercial enérgica",
+    "mood": "Comercial, enérgica",
+    "duracion": 153.0
+  },
+  {
+    "id": "02-lofi-brillante.mp3",
+    "archivo": "02-lofi-brillante.mp3",
+    "nombre": "Lo-fi brillante",
+    "mood": "Lo-fi, acordes brillantes",
+    "duracion": 90.0
+  },
+  {
+    "id": "03-corporate-funky.mp3",
+    "archivo": "03-corporate-funky.mp3",
+    "nombre": "Funky corporate",
+    "mood": "Funky corporate",
+    "duracion": 38.0
+  },
+  {
+    "id": "04-corporate-uplifting.mp3",
+    "archivo": "04-corporate-uplifting.mp3",
+    "nombre": "Corporate inspiradora",
+    "mood": "Corporate, inspiradora",
+    "duracion": 25.0
+  }
+]

@@ -127,6 +127,8 @@ def main():
                              "modo dirigido por guion: extrae hook, SFX, animaciones, PIP y B-roll "
                              "alineándolos con la transcripción.")
     parser.add_argument("--musica", type=str, default=None, help="Nombre de archivo de música en assets/musica/")
+    parser.add_argument("--musica-volumen", type=float, default=None, help="Volumen de la música de fondo (0.0 a 1.5)")
+    parser.add_argument("--musica-inicio", type=float, default=None, help="Segundo de inicio dentro de la pista de música")
     parser.add_argument("--broll-manual", type=str, default=None, metavar="JSON",
                         help="Lista completa de B-rolls a pantalla completa")
     parser.add_argument("--hook", type=str, default=None, metavar="TEXTO",
@@ -214,6 +216,8 @@ def main():
         "guion": args.guion,
         "presentador": args.presentador,
         "musica": args.musica,
+        "musica_volumen": args.musica_volumen,
+        "musica_inicio": args.musica_inicio,
         "sin_musica": bool(args.sin_musica),
         "sol_pip_video": bool(args.sol_pip_video),
     }, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -392,6 +396,10 @@ def main():
         cmd_audio.append("--sin-musica")
     if args.musica:
         cmd_audio += ["--musica", args.musica]
+    if args.musica_volumen is not None:
+        cmd_audio += ["--musica-volumen", str(args.musica_volumen)]
+    if args.musica_inicio is not None:
+        cmd_audio += ["--musica-inicio", str(args.musica_inicio)]
     if args.sfx_manual:
         cmd_audio += ["--sfx-manual", args.sfx_manual]
     paso("FASE 4: Audio (música + ducking + SFX + loudnorm; el video se copia sin recomprimir)", cmd_audio)

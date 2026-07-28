@@ -701,3 +701,41 @@ Ninguno pendiente de este bloque. Sigue el BLOQUE 7 (Guardar la portada).
 Ninguno pendiente de este bloque. Sigue el BLOQUE 8 (Música).
 
 
+---
+
+## 2026-07-28 — Ajustes de música editables desde el editor visual
+
+### Qué se pidió
+
+- Elegir la pista de fondo desde la interfaz gráfica del editor.
+- Control de volumen editable y ajuste del segundo de inicio de la pista (`musica_inicio_s`).
+- Escuchar los cambios de música en tiempo real en la previa sin necesidad de re-renderizar.
+- Metadatos estructurados de la librería de música (`assets/musica/pistas.json`) con etiquetas de ánimo (`mood`) y duración, no hardcodeados en el código.
+
+### Qué encontré y qué decidí
+
+- Creé el archivo `assets/musica/pistas.json` estructurando las 4 pistas existentes con su metadata (`id`, `archivo`, `nombre`, `mood`, `duracion`).
+- Agregué `catalogo_musica()` en `editor/f10_editor_visual.py` para cargar el catálogo dinámicamente y exponerlo en `/datos` junto con `musica_pista`, `musica_volumen`, `musica_inicio_s` y `sin_musica`.
+- Modifiqué `mezclar_audio()` en `editor/f5_audio.py` para soportar recortes de inicio (`atrim=start={inicio}:end={inicio+dur}`) y ajuste de volumen dinámico (`volume={volumen}`). Se expusieron las banderas `--musica-volumen` y `--musica-inicio` en `f5_audio.py` y se reenviaron desde `editor/editor.py`.
+- En `editor/f11_servidor.py`, agregué el panel HTML de música de fondo, el helper `_guardar_musica` guardando en `ajustes.musica.json`, su inclusión en `ARCHIVOS_AJUSTES` para versiones con nombre, y previsualización Web Audio API en el navegador sincrónicamente con el reproductor de video.
+
+### Verificación hecha
+
+- `python editor/test_regresion.py` (186 pruebas) y `python editor/test_align.py`: todas en verde.
+- Sección nueva 17 en `test_regresion.py` (`pruebas_musica_editor`, 8 checks): valida `pistas.json`, `catalogo_musica()`, claves de `/datos`, persistencia de `ajustes.musica.json`, `ARCHIVOS_AJUSTES` y presencia de los controles en el HTML del editor.
+
+### Archivos tocados
+
+- `assets/musica/pistas.json` [NUEVO]
+- `editor/f5_audio.py`
+- `editor/editor.py`
+- `editor/f10_editor_visual.py`
+- `editor/f11_servidor.py`
+- `editor/test_regresion.py`
+- `editor/PLAN-MEJORAS.md`
+
+### Siguiente paso
+
+Sigue el BLOQUE 9 (Ampliar la librería de música a ~50 pistas).
+
+

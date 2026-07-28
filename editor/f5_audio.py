@@ -473,9 +473,12 @@ def escribir_hoja_sonido(eventos: list, palabras: list, ruta: Path, duracion: fl
 
 
 def mezclar_audio(ruta_video: Path, eventos_sfx: list, ruta_salida: Path,
-                   usar_musica: bool = True, musica_archivo: str = None):
+                  usar_musica: bool = True, musica_archivo: str = None,
+                  musica_volumen: float = None, musica_inicio_s: float = None):
     duracion = _duracion_video(ruta_video)
     musica_archivo = musica_archivo or config.MUSICA_ARCHIVO_DEFAULT
+    vol_musica = config.MUSICA_VOLUMEN if musica_volumen is None else float(musica_volumen)
+    inicio_musica = 0.0 if musica_inicio_s is None else max(0.0, float(musica_inicio_s))
 
     inputs = ["-i", str(ruta_video)]
     ruta_musica = _ruta_musica(musica_archivo) if usar_musica else None
@@ -517,8 +520,8 @@ def mezclar_audio(ruta_video: Path, eventos_sfx: list, ruta_salida: Path,
 
     if idx_musica is not None:
         filtro_partes.append(
-            f"[{idx_musica}:a]atrim=0:{duracion},asetpts=PTS-STARTPTS,"
-            f"aformat=sample_rates={config.AUDIO_SAMPLE_RATE}:channel_layouts=stereo,volume={config.MUSICA_VOLUMEN}[mus_raw]"
+            f"[{idx_musica}:a]atrim=start={inicio_musica:.2f}:end={inicio_musica + duracion:.2f},asetpts=PTS-STARTPTS,"
+            f"aformat=sample_rates={config.AUDIO_SAMPLE_RATE}:channel_layouts=stereo,volume={vol_musica:.2f}[mus_raw]"
         )
         filtro_partes.append(
             "[mus_raw][voz]sidechaincompress=threshold=0.05:ratio=8:attack=20:release=300[mus_duck]"
@@ -583,6 +586,8 @@ def main():
     parser.add_argument("--salida", type=str, default=None)
     parser.add_argument("--sin-musica", action="store_true")
     parser.add_argument("--musica", type=str, default=None, help="Nombre de archivo en assets/musica/")
+    parser.add_argument("--musica-volumen", type=float, default=None, help="Volumen de la música (0.0 a 1.5)")
+    parser.add_argument("--musica-inicio", type=float, default=None, help="Segundo de inicio dentro de la pista de música")
     parser.add_argument("--overlays", type=str, default=None, metavar="EVENTOS_JSON",
                         help="Eventos de overlay de f6_overlays.py --solo-planificar. Sin esto los SFX "
                              "solo pueden atarse a cortes y punch-ins, no a la aparición de overlays.")
@@ -646,7 +651,9 @@ def main():
     for aviso in avisos_sfx(eventos, duracion_video):
         _log(f"  AVISO [{aviso['tipo']}] {aviso['t']:.2f}s: {aviso['texto']}")
 
-    mezclar_audio(ruta_video, eventos, ruta_salida, usar_musica=not args.sin_musica, musica_archivo=args.musica)
+    mezclar_audio(ruta_video, eventos, ruta_salida, usar_musica=not args.sin_musica,
+                  musica_archivo=args.musica, musica_volumen=args.musica_volumen,
+                  musica_inicio_s=args.musica_inicio)
     _log(f"\nAudio mezclado: {ruta_salida}")
 
 

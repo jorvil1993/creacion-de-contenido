@@ -1565,6 +1565,69 @@ def pruebas_guardar_portada():
         "el usuario debe tener el boton visible en los controles del reproductor")
 
 
+def pruebas_musica_editor():
+    seccion("17. Música de fondo editable en el editor (f5 + f10 + f11)")
+    import json
+    import importlib
+    import f10_editor_visual as f10
+    pistas_json = config.DIR_ASSETS / "musica" / "pistas.json"
+    chk("existe assets/musica/pistas.json con metadatos estructurados",
+        pistas_json.exists(),
+        "el catalogo de musica debe estar documentado con mood y duracion")
+
+    if pistas_json.exists():
+        datos_pistas = json.loads(pistas_json.read_text(encoding="utf-8"))
+        chk("pistas.json contiene una lista de pistas con mood y duracion",
+            isinstance(datos_pistas, list) and len(datos_pistas) >= 4 and all("mood" in p and "duracion" in p for p in datos_pistas),
+            "cada pista debe tener id, archivo, nombre, mood y duracion")
+
+    cat = f10.catalogo_musica()
+    chk("f10_editor_visual.catalogo_musica() retorna elementos validos",
+        isinstance(cat, list) and len(cat) >= 1,
+        "el editor debe poder consultar el catalogo de musica")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        (tmp_path / "02_cortado.mp4").touch()
+        (tmp_path / "02_cortado.json").write_text(json.dumps({"palabras": []}), encoding="utf-8")
+        (tmp_path / "03_retencion.plan.json").write_text(json.dumps({}), encoding="utf-8")
+        (tmp_path / "05_overlays.eventos.json").write_text(json.dumps([]), encoding="utf-8")
+        (tmp_path / "00_corrida.json").write_text(json.dumps({"musica": "01-corporativo-suave.mp3"}), encoding="utf-8")
+
+        datos_rec = f10.recolectar(tmp_path)
+        chk("recolectar() expone las claves de musica necesarias",
+            "musica_catalogo" in datos_rec and "musica_pista" in datos_rec and "musica_volumen" in datos_rec
+            and "musica_inicio_s" in datos_rec and "sin_musica" in datos_rec,
+            "el endpoint /datos del editor debe enviar el catalogo y los valores actuales de musica")
+
+        # Probar que _guardar_musica en f11_servidor escribe correctamente
+        import f11_servidor
+        old_dir = f11_servidor.DIR_TRABAJO
+        try:
+            f11_servidor.DIR_TRABAJO = tmp_path
+            f11_servidor._guardar_musica({"pista": "03-tech-futurista.mp3", "volumen": 0.35, "inicio_s": 12.5, "sin_musica": False})
+            f_mus = tmp_path / "ajustes.musica.json"
+            chk("ajustes.musica.json se crea correctamente con _guardar_musica",
+                f_mus.exists(),
+                "_guardar_musica debe guardar el archivo de ajustes de musica")
+            if f_mus.exists():
+                saved_mus = json.loads(f_mus.read_text(encoding="utf-8"))
+                chk("ajustes.musica.json contiene los valores esperados",
+                    saved_mus.get("pista") == "03-tech-futurista.mp3" and saved_mus.get("volumen") == 0.35 and saved_mus.get("inicio_s") == 12.5,
+                    "los valores de pista, volumen e inicio_s deben coincidir")
+        finally:
+            f11_servidor.DIR_TRABAJO = old_dir
+
+    fuente_srv = (config.RAIZ_PROYECTO / "editor" / "f11_servidor.py").read_text(encoding="utf-8")
+    chk("f11_servidor.py incluye ajustes.musica.json en ARCHIVOS_AJUSTES",
+        '"ajustes.musica.json"' in fuente_srv,
+        "el gestor de versiones del editor debe persistir los ajustes de musica")
+
+    chk("el editor HTML posee selector de pista, slider de volumen e inicio",
+        'id="selMusicaPista"' in fuente_srv and 'id="musicaVolumenInput"' in fuente_srv and 'id="musicaInicioInput"' in fuente_srv,
+        "el usuario debe disponer de los controles de musica en la interfaz")
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -1584,6 +1647,7 @@ def main():
     pruebas_subtitulos()
     pruebas_texto_destacado()
     pruebas_guardar_portada()
+    pruebas_musica_editor()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")

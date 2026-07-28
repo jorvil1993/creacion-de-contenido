@@ -91,6 +91,20 @@ def _guardar_subtitulos(datos: dict) -> Path:
     return _escritura_atomica(DIR_TRABAJO / "ajustes.subtitulos.json", limpio)
 
 
+def _guardar_musica(datos: dict) -> Path:
+    """Ajustes de música de fondo (pista, volumen, inicio_s, sin_musica) (Bloque 8)."""
+    limpio = {}
+    if "pista" in datos:
+        limpio["pista"] = str(datos["pista"])
+    if "volumen" in datos:
+        limpio["volumen"] = float(datos["volumen"])
+    if "inicio_s" in datos:
+        limpio["inicio_s"] = float(datos["inicio_s"])
+    if "sin_musica" in datos:
+        limpio["sin_musica"] = bool(datos["sin_musica"])
+    return _escritura_atomica(DIR_TRABAJO / "ajustes.musica.json", limpio)
+
+
 def _leer_corrida() -> dict:
     """Parámetros con los que se lanzó la corrida original (`00_corrida.json`,
     que escribe editor.py).
@@ -150,6 +164,7 @@ ARCHIVOS_AJUSTES = (
     "ajustes.eventos.json", "ajustes.broll.json", "ajustes.sfx.json",
     "ajustes.animaciones.json", "ajustes.encuadre.json", "ajustes.hookcta.json",
     "ajustes.hook.json", "ajustes.sesion.json", "ajustes.subtitulos.json",
+    "ajustes.musica.json",
 )
 
 # El PLAN sobre el que se hicieron esos ajustes. Va en la versión junto a ellos,
@@ -531,6 +546,8 @@ class Handler(BaseHTTPRequestHandler):
                 resultado["ruta_encuadre"] = str(destino_enc)
             if "subtitulos" in datos:
                 resultado["ruta_subtitulos"] = str(_guardar_subtitulos(datos["subtitulos"]))
+            if "musica" in datos:
+                resultado["ruta_musica"] = str(_guardar_musica(datos["musica"]))
             self._json(resultado)
 
         elif partes.path == "/guardar-portada":
@@ -723,10 +740,26 @@ class Handler(BaseHTTPRequestHandler):
                 cmd += ["--guion", str(corrida["guion"])]
             if corrida.get("presentador"):
                 cmd += ["--presentador", corrida["presentador"]]
-            if corrida.get("musica"):
-                cmd += ["--musica", corrida["musica"]]
-            if corrida.get("sin_musica"):
-                cmd.append("--sin-musica")
+            f_mus = DIR_TRABAJO / "ajustes.musica.json"
+            if f_mus.exists():
+                try:
+                    mus_aj = json.loads(f_mus.read_text(encoding="utf-8"))
+                    if mus_aj.get("sin_musica"):
+                        cmd.append("--sin-musica")
+                    else:
+                        if mus_aj.get("pista"):
+                            cmd += ["--musica", str(mus_aj["pista"])]
+                        if "volumen" in mus_aj:
+                            cmd += ["--musica-volumen", str(mus_aj["volumen"])]
+                        if "inicio_s" in mus_aj:
+                            cmd += ["--musica-inicio", str(mus_aj["inicio_s"])]
+                except Exception:
+                    pass
+            else:
+                if corrida.get("musica"):
+                    cmd += ["--musica", corrida["musica"]]
+                if corrida.get("sin_musica"):
+                    cmd.append("--sin-musica")
             if corrida.get("sol_pip_video"):
                 cmd.append("--sol-pip-video")
 
@@ -1068,6 +1101,32 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
         <thead><tr><th>t</th><th>sonido</th><th>volumen</th><th>motivo</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Música de fondo</h2>
+    <p class="hint">Elegí la pista de fondo, ajustá su volumen y el segundo desde el que arranca.
+      Podés escucharla en tiempo real sobre la previa del video sin re-renderizar.</p>
+    <div class="barra-sfx" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+      <label style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; cursor:pointer;">
+        <input type="checkbox" id="chkSinMusica"> Omitir música de fondo
+      </label>
+    </div>
+    <div id="panelMusicaOpciones" style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+      <div>
+        <label class="hint" for="selMusicaPista" style="display:block; margin-bottom:4px;">Pista</label>
+        <select id="selMusicaPista" style="min-width:240px;"></select>
+      </div>
+      <div>
+        <label class="hint" for="musicaVolumenInput" style="display:block; margin-bottom:4px;">Volumen: <span id="musicaVolumenValor">50%</span></label>
+        <input type="range" id="musicaVolumenInput" min="0" max="1" step="0.05" value="0.5" style="width:140px;">
+      </div>
+      <div>
+        <label class="hint" for="musicaInicioInput" style="display:block; margin-bottom:4px;">Inicio pista: <span id="musicaInicioValor">0.0s</span></label>
+        <input type="range" id="musicaInicioInput" min="0" max="60" step="0.5" value="0" style="width:140px;">
+      </div>
+      <span class="hint" id="infoMusica" style="align-self:flex-end; padding-bottom:4px;"></span>
     </div>
   </div>
 
@@ -1574,6 +1633,120 @@ if (subTamanoInput) {
   });
 }
 
+// --- Música de fondo (BLOQUE 8) --------------------------------------------
+let edicionMusicaPista = "";
+let edicionMusicaVolumen = 0.5;
+let edicionMusicaInicio = 0.0;
+let edicionSinMusica = false;
+let musicaModificada = false;
+
+let musicaAudio = null;
+let musicaGainNode = null;
+let musicaCtx = null;
+
+function poolMusica() {
+  if (musicaAudio) return musicaAudio;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  musicaCtx = new Ctx();
+  musicaAudio = new Audio();
+  musicaAudio.loop = true;
+  const nodo = musicaCtx.createMediaElementSource(musicaAudio);
+  musicaGainNode = musicaCtx.createGain();
+  nodo.connect(musicaGainNode).connect(musicaCtx.destination);
+  return musicaAudio;
+}
+
+function inicializarPanelMusica() {
+  if (!DATA || !DATA.musica_catalogo) return;
+  const selPista = document.getElementById("selMusicaPista");
+  const inVol = document.getElementById("musicaVolumenInput");
+  const inIni = document.getElementById("musicaInicioInput");
+  const chkSin = document.getElementById("chkSinMusica");
+  if (!selPista) return;
+
+  selPista.innerHTML = "";
+  (DATA.musica_catalogo || []).forEach(item => {
+    const o = document.createElement("option");
+    o.value = item.archivo || item.id;
+    o.textContent = `${item.nombre || item.id} (${item.mood || "fondo"})`;
+    selPista.appendChild(o);
+  });
+
+  edicionMusicaPista = DATA.musica_pista || (DATA.musica_catalogo[0] ? DATA.musica_catalogo[0].archivo : "");
+  edicionMusicaVolumen = DATA.musica_volumen != null ? DATA.musica_volumen : (DATA.musica_volumen_defecto || 0.5);
+  edicionMusicaInicio = DATA.musica_inicio_s || 0.0;
+  edicionSinMusica = !!DATA.sin_musica;
+  musicaModificada = false;
+
+  selPista.value = edicionMusicaPista;
+  inVol.value = edicionMusicaVolumen;
+  inIni.value = edicionMusicaInicio;
+  chkSin.checked = edicionSinMusica;
+
+  pintarEstadoMusica();
+}
+
+function pintarEstadoMusica() {
+  const chkSin = document.getElementById("chkSinMusica");
+  const selPista = document.getElementById("selMusicaPista");
+  const inVol = document.getElementById("musicaVolumenInput");
+  const inIni = document.getElementById("musicaInicioInput");
+  const lblVol = document.getElementById("musicaVolumenValor");
+  const lblIni = document.getElementById("musicaInicioValor");
+  const info = document.getElementById("infoMusica");
+  const panelOps = document.getElementById("panelMusicaOpciones");
+
+  if (!selPista) return;
+  edicionSinMusica = chkSin.checked;
+  edicionMusicaPista = selPista.value;
+  edicionMusicaVolumen = parseFloat(inVol.value) || 0.5;
+  edicionMusicaInicio = parseFloat(inIni.value) || 0.0;
+
+  if (lblVol) lblVol.textContent = Math.round(edicionMusicaVolumen * 100) + "%";
+  if (lblIni) lblIni.textContent = edicionMusicaInicio.toFixed(1) + "s";
+  if (panelOps) panelOps.style.opacity = edicionSinMusica ? "0.4" : "1";
+  if (info) info.textContent = musicaModificada ? "· editado a mano" : "· automático";
+}
+
+function sincronizarMusicaPrevia() {
+  if (!DATA || !DATA.musica_catalogo) return;
+  if (edicionSinMusica || DATA.es_renderizado || video.paused) {
+    if (musicaAudio && !musicaAudio.paused) musicaAudio.pause();
+    return;
+  }
+
+  poolMusica();
+  if (musicaCtx.state === "suspended") musicaCtx.resume();
+
+  const src = `/archivo?ruta=${encodeURIComponent("assets/musica/" + edicionMusicaPista)}`;
+  if (!musicaAudio.src.includes(encodeURIComponent(edicionMusicaPista))) {
+    musicaAudio.src = src;
+  }
+
+  musicaGainNode.gain.value = edicionMusicaVolumen;
+  const tObjetivo = edicionMusicaInicio + video.currentTime;
+  if (Math.abs(musicaAudio.currentTime - tObjetivo) > 0.3) {
+    musicaAudio.currentTime = tObjetivo;
+  }
+  if (musicaAudio.paused) {
+    musicaAudio.play().catch(() => {});
+  }
+}
+
+document.getElementById("chkSinMusica")?.addEventListener("change", () => {
+  musicaModificada = true; pintarEstadoMusica(); sincronizarMusicaPrevia();
+});
+document.getElementById("selMusicaPista")?.addEventListener("change", () => {
+  musicaModificada = true; pintarEstadoMusica(); sincronizarMusicaPrevia();
+});
+document.getElementById("musicaVolumenInput")?.addEventListener("input", () => {
+  musicaModificada = true; pintarEstadoMusica(); sincronizarMusicaPrevia();
+});
+document.getElementById("musicaInicioInput")?.addEventListener("input", () => {
+  musicaModificada = true; pintarEstadoMusica(); sincronizarMusicaPrevia();
+});
+
+
 async function cargar() {
   const r = await fetch("/datos");
   DATA = await r.json();
@@ -1618,6 +1791,7 @@ async function cargar() {
   construirSelectorSonidos();
   pintarSfx();
   tablaSfx();
+  inicializarPanelMusica();
 
   const pe = DATA.plan_encuadre || { punch_ins: [], planos_cerrados: [], origen: "audio" };
   encPunch = (pe.punch_ins || []).map(p => ({ t: p.t, razon: p.razon || "" }));
@@ -2755,6 +2929,14 @@ function cuerpoAjustes() {
   if (encModificado) cuerpo.encuadre = encuadreParaGuardar();
   if (hookCtaModificado) cuerpo.hook_cta = hookCtaParaGuardar();
   if (subModificado) cuerpo.subtitulos = subtitulosParaGuardar();
+  if (musicaModificada || edicionSinMusica) {
+    cuerpo.musica = {
+      pista: edicionMusicaPista,
+      volumen: edicionMusicaVolumen,
+      inicio_s: edicionMusicaInicio,
+      sin_musica: edicionSinMusica
+    };
+  }
   return cuerpo;
 }
 
@@ -3188,6 +3370,7 @@ function loop() {
     actualizarOverlays(t);
     actualizarUI(t);
     pintarSubPreview(t);
+    sincronizarMusicaPrevia();
 
     // Disparar efectos SFX en tiempo real si el video está reproduciéndose.
     // Si es_renderizado, los SFX ya están mezclados dentro del propio archivo
