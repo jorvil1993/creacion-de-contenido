@@ -62,6 +62,9 @@ def muestras_encuadre(dir_trabajo: Path, duracion: float) -> list:
     track_rostro = plan["track_rostro"]
     planos = plan["planos"]
     picos = plan["picos_energia"]
+    # Los tramos de plano cerrado también forman parte del encuadre: sin
+    # pasarlos, el preview del editor mostraría un zoom distinto al del render.
+    cerrados = plan.get("planos_cerrados", [])
     tiempos_track = np.array([p["t"] for p in track_rostro]) if track_rostro else np.array([0.0])
     cx_track = np.array([p["cx"] for p in track_rostro]) if track_rostro else np.array([0.5])
     cy_track = np.array([p["cy"] for p in track_rostro]) if track_rostro else np.array([0.4])
@@ -69,7 +72,8 @@ def muestras_encuadre(dir_trabajo: Path, duracion: float) -> list:
     hacer_loop = config.LOOP_ACTIVO and duracion > config.LOOP_DURACION_S * 3
     t_loop = cx_ini = cy_ini = zoom_ini = None
     if hacer_loop:
-        cx_ini, cy_ini, zoom_ini = f4.encuadre_en_t(0.0, tiempos_track, cx_track, cy_track, planos, picos)
+        cx_ini, cy_ini, zoom_ini = f4.encuadre_en_t(0.0, tiempos_track, cx_track, cy_track,
+                                                    planos, picos, cerrados=cerrados)
         t_loop = duracion - config.LOOP_DURACION_S
 
     fps = config.FPS
@@ -78,7 +82,8 @@ def muestras_encuadre(dir_trabajo: Path, duracion: float) -> list:
     for idx in range(n):
         t = idx / fps
         cx, cy, zoom = f4.encuadre_en_t(t, tiempos_track, cx_track, cy_track, planos, picos,
-                                         hacer_loop, t_loop, cx_ini, cy_ini, zoom_ini)
+                                         hacer_loop, t_loop, cx_ini, cy_ini, zoom_ini,
+                                         cerrados=cerrados)
         muestras.append([round(t, 3), round(cx, 4), round(cy, 4), round(zoom, 4)])
     return muestras
 

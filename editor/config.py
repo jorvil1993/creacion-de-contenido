@@ -170,6 +170,24 @@ WHISPER_BATCH_SIZE = 16
 SILENCIO_UMBRAL_MS = 600       # huecos mayores a esto se recortan
 SILENCIO_MARGEN_MS = 150       # margen que se deja a cada lado del corte
 
+# Segundos de silencio que se conservan JUSTO ANTES de la primera palabra.
+#
+# Existe porque el corte de silencios se comía el hook físico: en la grabación
+# del guion 7 había 7.9s entre el arranque del archivo y la primera palabra
+# (José entra al cuadro y se sienta de golpe), el umbral de 600ms se los llevó
+# enteros y el video arrancaba con él ya hablando — justo el gesto que hace de
+# gancho. Medido en 02_cortado.json: quedaban 0.15s.
+#
+# Se cuentan HACIA ATRÁS desde la primera palabra, no desde el segundo 0: lo que
+# hay que salvar es la entrada y el sentarse, no los segundos de silla vacía de
+# antes. Con 3.0s el video empieza 3 segundos antes de que hable, y todo lo
+# anterior se corta igual que siempre.
+#
+# El valor real sale del panel (`hooksegs` de cada guion en
+# PANEL-PRODUCCION.html), para poder calibrarlo por guion sin tocar código.
+# Este es solo el default cuando se corre sin --guion.
+HOOK_CONSERVAR_INICIO_S = 0.0
+
 # Punto de partida — calibrado una primera vez con grabación real de José (2026-07-26)
 MULETILLAS = [
     "eh", "ehh", "mmm", "o sea", "digamos",
@@ -237,9 +255,27 @@ FACE_TRACK_MODELO_MEDIAPIPE = DIR_MODELOS / "mediapipe" / "blaze_face_short_rang
 # salen normalizadas, así que no cambia el resultado — solo el costo).
 FACE_TRACK_ANCHO_ANALISIS = 540
 PUNCH_IN_ZOOM = 1.15
-PUNCH_IN_DURACION_S = 0.3
+# Recalibrado 2026-07-27. Estaba en 0.3s: un salto del 15% que entraba y salía
+# en menos de un tercio de segundo, o sea un tirón, no un acercamiento. Y como
+# se disparaban por percentil de energía RMS cada 1.5s, en el guion 7 salieron
+# 10 punch-ins en 24.8s — uno cada 2.4 segundos. Eso es lo que José describió
+# como "cambia los zooms de manera desproporcionada a cada rato".
+PUNCH_IN_DURACION_S = 1.2
+PUNCH_IN_SEPARACION_MIN_S = 4.0      # antes 1.5s, y era el espaciado real
+PUNCH_IN_MAX_POR_MINUTO = 8          # tope duro: en 25s no pueden salir más de 3
+
 ZOOM_PROGRESIVO_INICIO = 1.00
 ZOOM_PROGRESIVO_FIN = 1.08
+
+# Zoom sostenido de "plano cerrado": cuando el guion pide acercarse (columna
+# "Qué se ve" del panel), el encuadre entra y SE QUEDA hasta el final del tramo,
+# en vez de rebotar. Es la versión digital del "acercá la cámara" que la tabla
+# de tomas pide como cambio de distancia real.
+ZOOM_PLANO_CERRADO = 1.22
+# Cuánto tarda el encuadre en entrar y salir de un tramo cerrado. Menos que esto
+# se ve como un salto; más, y el movimiento se nota como movimiento.
+ZOOM_TRANSICION_S = 0.6
+
 REGLA_5S_MAX_BLOQUE_S = 5.0          # ningún bloque sin cambio visual mayor a esto
 
 # ---------------------------------------------------------------------------
@@ -450,7 +486,11 @@ ANIMACION_DURACION = {
 # Cuántas variantes distintas tiene cada animación. La variante la elige una
 # semilla determinista (nombre del video + índice de aparición), nunca `random`:
 # el mismo video renderizado dos veces tiene que dar exactamente lo mismo.
-ANIMACION_VARIANTES = {"bateria": 3, "splash": 3, "moto": 3, "sol": 3}
+# anim-apps tiene 2 y no 3: son dos juegos de apps (TikTok/WhatsApp/Facebook a
+# la derecha, Instagram/YouTube/X a la izquierda). Declararlo importa — con el
+# default de 3 el sorteo podía dar dos veces el mismo índice y las dos
+# apariciones del guion 7 habrían salido idénticas.
+ANIMACION_VARIANTES = {"bateria": 3, "splash": 3, "moto": 3, "sol": 3, "anim-apps": 2}
 
 # Cuántas veces puede salir la MISMA animación en un video.
 # Antes era 1 (un `set` de animaciones ya usadas vetaba la segunda aparición) y
@@ -779,10 +819,22 @@ BROLL_FADE_S = 0.20            # un pelo más largo que el 0.15 de PiP, más cin
 
 # En el modo dirigido por guion (f13_guion.py), el B-roll y el PIP duran
 # exactamente lo que dura la frase que los dispara — a veces ~1s, un flashazo.
-# Se extiende el `fin` hasta este factor de la duración original (tope: el
-# inicio del próximo beat alineado, para no comerse el siguiente evento).
-BROLL_PIP_DURACION_FACTOR = 2.0
+#
+# Decisión de José (2026-07-27): el inserto se queda TODO lo que pueda, hasta
+# que el próximo beat ponga algo en pantalla. El factor sobre la duración de la
+# frase quedó obsoleto — con él los B-rolls del guion 7 salieron de 2.12s y
+# 2.41s (medido en 05_overlays.eventos.json) y se leían como flashazos.
+BROLL_PIP_DURACION_MIN_S = 3.0  # piso: menos que esto no alcanza a leerse
+BROLL_PIP_DURACION_MAX_S = 6.0  # techo: más que esto se vuelve el video, no un apoyo
 BROLL_PIP_GAP_MIN_S = 0.10     # aire mínimo antes de que arranque el próximo evento
+
+# Qué tipo de beat CORTA a un inserto que ya está en pantalla. Un B-roll ocupa
+# el cuadro entero y un PIP una esquina, así que no compiten por el mismo sitio:
+# una animación de esquina puede convivir encima de un B-roll a pantalla completa
+# (el orden del filter_complex ya la compone por arriba), pero dos cosas en la
+# misma esquina no.
+BROLL_TIPOS_QUE_CORTAN = ("B-ROLL", "PIP")
+PIP_TIPOS_QUE_CORTAN = ("B-ROLL", "PIP", "ANIM")
 
 # Animaciones que, CON LA GENERACIÓN DE VIDEO ENCENDIDA, le ceden su lugar a un
 # clip real. Se declara por NOMBRE DE ANIMACIÓN, no por etiqueta, y la diferencia

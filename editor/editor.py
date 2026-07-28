@@ -25,6 +25,7 @@ Uso:
     python editor.py "entrada/video_crudo.mp4"
 """
 import argparse
+import json
 import shutil
 import subprocess
 import sys
@@ -43,9 +44,68 @@ def paso(descripcion, cmd):
         sys.exit(resultado.returncode)
 
 
+def _duracion(ruta: Path) -> float:
+    salida = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=nw=1:nk=1", str(ruta)],
+        capture_output=True, text=True, check=True).stdout.strip()
+    return float(salida)
+
+
+def unir_tomas(rutas: list, destino: Path) -> tuple:
+    """Une varias grabaciones en un solo archivo y devuelve (ruta, empalmes).
+
+    Para cuando José graba el mismo guion en DOS PLANOS REALES — uno abierto y
+    uno cerrado, como pide la columna "Tomas" del panel ("Plano cerrado, acercá
+    la cámara. Cambio de distancia real, no zoom digital"). El pipeline entero
+    trabaja sobre un archivo, así que se unen antes de transcribir y se anotan
+    los segundos donde empalman: esos son los ÚNICOS cambios de plano de verdad
+    del video, y f4_retencion los usa para reiniciar ahí la rampa de zoom (y solo
+    ahí — un corte de silencio no es un cambio de plano).
+
+    Primero se intenta el demuxer `concat` con `-c copy`: son tomas de la misma
+    cámara con los mismos ajustes, así que copiar es instantáneo y no añade una
+    generación de compresión. Si ffmpeg se queja (parámetros distintos entre
+    archivos), se recodifica con el filtro concat, que sí normaliza.
+    """
+    empalmes, acumulado = [], 0.0
+    for r in rutas[:-1]:
+        acumulado += _duracion(r)
+        empalmes.append(round(acumulado, 3))
+
+    lista = destino.with_suffix(".txt")
+    lista.write_text(
+        "".join(f"file '{Path(r).as_posix()}'\n" for r in rutas), encoding="utf-8")
+    cmd_copia = ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
+                 "-i", str(lista), "-c", "copy", str(destino)]
+    if subprocess.run(cmd_copia, capture_output=True).returncode != 0:
+        print("  (las tomas no son copiables tal cual — se recodifican para unirlas)")
+        entradas, partes = [], []
+        for i, r in enumerate(rutas):
+            entradas += ["-i", str(r)]
+            partes.append(f"[{i}:v][{i}:a]")
+        filtro = f"{''.join(partes)}concat=n={len(rutas)}:v=1:a=1[v][a]"
+        cmd_recod = ["ffmpeg", "-y", "-loglevel", "error", *entradas,
+                     "-filter_complex", filtro, "-map", "[v]", "-map", "[a]",
+                     *config.args_video(), "-c:a", "aac", "-b:a", "192k", str(destino)]
+        r = subprocess.run(cmd_recod, capture_output=True, text=True)
+        if r.returncode != 0:
+            print(r.stderr[-2000:], file=sys.stderr)
+            sys.exit("ERROR: no se pudieron unir las tomas")
+    lista.unlink(missing_ok=True)
+
+    print(f"  {len(rutas)} tomas unidas en {destino.name}; "
+          f"empalmes en {', '.join(f'{t:.2f}s' for t in empalmes)}")
+    return destino, empalmes
+
+
 def main():
     parser = argparse.ArgumentParser(description="Pipeline completo: crudo -> video publicable")
-    parser.add_argument("entrada", type=str)
+    parser.add_argument("entrada", type=str, nargs="+",
+                        help="Grabación cruda. Se pueden pasar VARIOS archivos en el orden en "
+                             "que van: cada uno es un plano real (abierto, cerrado…) y el "
+                             "pipeline los une antes de transcribir, marcando los empalmes "
+                             "como los únicos cambios de plano del video")
     parser.add_argument("--nombre", type=str, default=None, help="Nombre base para los archivos de salida")
     parser.add_argument("--sin-musica", action="store_true", help="Omitir música de fondo en la Fase 4")
     parser.add_argument("--guion", type=int, default=None, metavar="N",
@@ -97,14 +157,25 @@ def main():
                              "desde el editor visual sobre ajustes de SFX/posiciones/eventos.")
     args = parser.parse_args()
 
-    ruta_entrada = Path(args.entrada).resolve()
-    if not ruta_entrada.exists():
-        print(f"ERROR: no existe {ruta_entrada}", file=sys.stderr)
+    rutas_entrada = [Path(e).resolve() for e in args.entrada]
+    faltan = [r for r in rutas_entrada if not r.exists()]
+    if faltan:
+        for r in faltan:
+            print(f"ERROR: no existe {r}", file=sys.stderr)
         sys.exit(1)
 
-    nombre = args.nombre or ruta_entrada.stem
+    nombre = args.nombre or rutas_entrada[0].stem
     dir_trabajo = config.DIR_SALIDA / nombre
     dir_trabajo.mkdir(parents=True, exist_ok=True)
+
+    tomas_json = dir_trabajo / "00_tomas.json"
+    if len(rutas_entrada) > 1:
+        print(f"\n{'='*70}\nFASE 0: Unir {len(rutas_entrada)} planos reales\n{'='*70}")
+        ruta_entrada, empalmes = unir_tomas(rutas_entrada, dir_trabajo / "00_tomas.mp4")
+        tomas_json.write_text(json.dumps(empalmes), encoding="utf-8")
+    else:
+        ruta_entrada = rutas_entrada[0]
+        tomas_json.unlink(missing_ok=True)   # una sola toma: sin empalmes que marcar
 
     transcripcion = dir_trabajo / "01_transcripcion.json"
     video_cortado = dir_trabajo / "02_cortado.mp4"
@@ -134,25 +205,43 @@ def main():
             print("Corré primero sin --reaplicar para generarlos.", file=sys.stderr)
             sys.exit(1)
         print(f"\n--reaplicar: reutilizando transcripción, corte y plan de retención de {dir_trabajo}")
+        if args.guion is not None:
+            # Trampa fácil de pisar: `hooksegs` lo aplica f2_cortar, que con
+            # --reaplicar no se vuelve a ejecutar. Sin este aviso, cambiar el
+            # valor en el panel y volver a correr parece "no hacer nada".
+            print("  OJO: `hooksegs` se aplica al cortar. Si lo cambiaste en el panel, "
+                  "corré SIN --reaplicar para que tenga efecto.")
     else:
+        # El hook físico (entrar al cuadro, sentarse) es silencio puro, así que
+        # el corte de silencios se lo llevaba entero. Cuánto conservar sale del
+        # campo `hooksegs` del guion en PANEL-PRODUCCION.html, y hay que leerlo
+        # ANTES de cortar — por eso este parseo suelto en vez de esperar a
+        # f13_guion, que necesita la transcripción ya recortada.
+        cortar_extra = []
+        if args.guion is not None:
+            import f13_guion
+            params = f13_guion.leer_parametros_guion(args.guion)
+            if params["hooksegs"] > 0:
+                cortar_extra += ["--conservar-inicio", str(params["hooksegs"])]
+                print(f"\nGuion {args.guion} ({params['tipo_hook']}): se conservarán "
+                      f"{params['hooksegs']}s de hook físico al inicio.")
+        if tomas_json.exists():
+            cortar_extra += ["--tomas", str(tomas_json)]
+
         paso("FASE 1a: Transcripción (WhisperX)", [
             "f1_transcribir.py", str(ruta_entrada), "--salida", str(transcripcion)
         ])
 
         paso("FASE 1b: Corte inteligente", [
             "f2_cortar.py", str(transcripcion), str(ruta_entrada), "--salida", str(video_cortado),
-            *perfil,
-        ])
-
-        # El nombre 03_retencion.mp4 no se renderiza: --sin-render solo escribe el
-        # plan JSON (03_retencion.plan.json); el render real ocurre en la fase de
-        # composición de abajo, con overlays y subtítulos en la misma pasada.
-        paso("FASE 3a: Análisis de retención (face tracking, punch-ins, regla de 5s)", [
-            "f4_retencion.py", str(video_cortado), str(json_cortado),
-            "--salida", str(dir_trabajo / "03_retencion.mp4"), "--sin-render", *perfil,
+            *perfil, *cortar_extra,
         ])
 
     # ---- MODO DIRIGIDO POR GUION (--guion N) ------------------------------
+    # Va ANTES del análisis de retención: de aquí sale guion.encuadre.json, que
+    # es lo que le dice a f4 dónde acercarse. Necesita 02_cortado.json, así que
+    # este es el primer punto del pipeline en que puede correr.
+    encuadre_guion = []
     if args.guion is not None:
         import f13_guion
         res_g = f13_guion.procesar_guion(args.guion, json_cortado, dir_trabajo)
@@ -164,10 +253,22 @@ def main():
             args.eventos_manual = str(res_g["eventos"])
         if not args.broll_manual and res_g["broll"].exists():
             args.broll_manual = str(res_g["broll"])
+        if res_g.get("encuadre") and res_g["encuadre"].exists():
+            encuadre_guion = ["--encuadre", str(res_g["encuadre"])]
         if not args.hook and res_g.get("hook"):
             args.hook = res_g["hook"]
         if not args.musica and res_g.get("musica"):
             args.musica = res_g["musica"]
+
+    if not args.reaplicar:
+        # El nombre 03_retencion.mp4 no se renderiza: --sin-render solo escribe el
+        # plan JSON (03_retencion.plan.json); el render real ocurre en la fase de
+        # composición de abajo, con overlays y subtítulos en la misma pasada.
+        paso("FASE 3a: Análisis de retención (face tracking, punch-ins, regla de 5s)", [
+            "f4_retencion.py", str(video_cortado), str(json_cortado),
+            "--salida", str(dir_trabajo / "03_retencion.mp4"), "--sin-render",
+            *perfil, *encuadre_guion,
+        ])
 
     paso("FASE 2: Subtítulos ASS", [
         "f3_subtitulos.py", str(json_cortado), "--salida", str(subtitulos_ass)
@@ -206,7 +307,10 @@ def main():
         "--solo-render", str(plan_retencion),
         "--overlays", str(eventos_overlays),
         "--subs", str(subtitulos_ass),
-        "--final", *perfil,
+        # También aquí: con --reaplicar el plan de retención es el de la corrida
+        # anterior y puede no traer los planos cerrados. Pasando el encuadre
+        # recién calculado, iterar sobre el guion no obliga a re-analizar.
+        "--final", *perfil, *encuadre_guion,
     ])
 
     cmd_audio = ["f5_audio.py", str(video_compuesto), str(plan_retencion), "--salida", str(video_final),

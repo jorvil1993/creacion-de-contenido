@@ -73,6 +73,23 @@ DURACIONES = {
 }
 
 
+def plantilla_de(nombre: str) -> str:
+    """Nombre de animación -> nombre de la plantilla.
+
+    Conviven dos vocabularios y hasta ahora solo se contemplaba uno. El disparo
+    por palabra usa nombres cortos ("bateria", "sol") y su plantilla es
+    "anim-<nombre>". Pero el guion del panel nombra la plantilla ENTERA por su
+    código: H08 es "anim-apps", H07 es "stickers", H01 es "tarjeta-specs".
+
+    Anteponiendo "anim-" a ciegas se pedía "anim-anim-apps", que no existe:
+    render() devolvía None, el respaldo PIL tampoco tiene esa animación y el
+    beat ANIM del guion desaparecía sin error visible. Es exactamente lo que
+    pasó en la corrida `Guion-7` del 2026-07-27: `guion.animaciones.json` pedía
+    anim-apps en 2.0s y en `05_overlays.eventos.json` no había ni rastro.
+    """
+    return nombre if nombre in PLANTILLAS else f"anim-{nombre}"
+
+
 def disponible() -> bool:
     """¿Se puede renderizar? Necesita el proyecto y npx en el PATH."""
     return (DIR_PLANTILLAS / "package.json").exists() and shutil.which("npx") is not None
@@ -145,7 +162,7 @@ def inventario_animaciones() -> list:
     hf = disponible()
     inv = []
     for nombre in sorted(config.ANIMACION_DURACION):
-        plantilla = f"anim-{nombre}"
+        plantilla = plantilla_de(nombre)
         tiene_html = (DIR_PLANTILLAS / "compositions" / f"{plantilla}.html").exists()
         inv.append({
             "nombre": nombre,
@@ -173,7 +190,14 @@ def render(plantilla: str, variables: dict = None, timeout: int = 300) -> Path |
               file=sys.stderr)
         return None
 
-    variables = {k: v for k, v in (variables or {}).items() if v not in (None, "")}
+    # Solo las variables que la plantilla declara. Sin este filtro, una llamada
+    # genérica (por ejemplo la de las animaciones del guion, que siempre manda
+    # `variante`/`lado`/`etiqueta`) metía claves que la composición ignora pero
+    # que SÍ entran en la clave del caché: dos peticiones equivalentes se
+    # renderizaban dos veces y quedaban dos MOV idénticos en disco.
+    aceptadas = set(PLANTILLAS[plantilla])
+    variables = {k: v for k, v in (variables or {}).items()
+                 if k in aceptadas and v not in (None, "")}
     DIR_CACHE.mkdir(parents=True, exist_ok=True)
     destino = DIR_CACHE / f"{plantilla}_{_clave(plantilla, variables)}.mov"
     if destino.exists() and destino.stat().st_size > 1024:

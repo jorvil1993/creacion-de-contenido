@@ -758,7 +758,10 @@ def _construir_animacion(nombre: str, t0: float, var: int, dir_tmp: Path,
             ruta_rel = f8_hyperframes.preparar_imagen(foto_dispositivo)
             if ruta_rel:
                 variables["imagen"] = ruta_rel
-        ruta = f8_hyperframes.render(f"anim-{nombre}", variables)
+        # render() se queda solo con las variables que la plantilla declara: a
+        # `stickers` se le pasa `tipo`, no `lado`, y sobra sin ensuciar la clave
+        # del caché.
+        ruta = f8_hyperframes.render(f8_hyperframes.plantilla_de(nombre), variables)
         if ruta is not None:
             return ruta, 0, 0, "Hyperframes"
 
@@ -894,6 +897,30 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
     if broll_manual is not None:
         print(f"  B-roll manual cargado ({len(broll_manual)} eventos) — se ignora la búsqueda automática de B-roll.")
         for ev in broll_manual:
+            # Un B-roll ocupa el cuadro ENTERO y en la lista de eventos va
+            # después del CTA, así que se compone por encima: si su ventana se
+            # mete en el cierre, tapa la tarjeta. Pasaba de verdad — en la
+            # corrida `Guion-7` el B-roll de kindle-primer-plano iba de 17.99s a
+            # 22.99s sobre un CTA que empezaba en 18.33s, o sea 4.7 de los 6.5
+            # segundos de la llamada a la acción estaban debajo de un clip.
+            # f13_guion no puede evitarlo por su cuenta: `ini_cta` depende de la
+            # duración total del video y se calcula acá.
+            if ev.get("broll_fullscreen") and ev["fin"] > ini_cta:
+                recorte = ev["fin"] - ini_cta
+                nombre_clip = Path(ev.get("archivo", "")).name
+                ev = dict(ev, fin=round(ini_cta, 3))
+                # Si de recortarlo no queda ni un B-roll, no se muestra. Un clip
+                # a pantalla completa que aparece y se va en tres décimas se lee
+                # como un parpadeo o un error de render, no como una imagen de
+                # apoyo — es la misma regla que ya aplica el B-roll automático
+                # con BROLL_DURACION_MIN_S.
+                if ev["fin"] - ev["ini"] < config.BROLL_DURACION_MIN_S:
+                    print(f"    {nombre_clip}: OMITIDO — el CTA arranca en {ini_cta:.2f}s y solo "
+                          f"le quedarían {ev['fin'] - ev['ini']:.2f}s (mínimo "
+                          f"{config.BROLL_DURACION_MIN_S}s)")
+                    continue
+                print(f"    {nombre_clip}: recortado {recorte:.2f}s "
+                      f"para no tapar la tarjeta de CTA (empieza en {ini_cta:.2f}s)")
             eventos.append(ev)
             ventanas_ocupadas.append((ev["ini"], ev["fin"]))
             if ev.get("tag"):

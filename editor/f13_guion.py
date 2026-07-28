@@ -75,6 +75,32 @@ def cargar_datos_html(ruta_html: Path = None) -> dict:
     return {"CLIPS": clips_dict, "G": g_list}
 
 
+def leer_parametros_guion(numero_guion: int, ruta_html: Path = None) -> dict:
+    """Parámetros del guion que hacen falta ANTES de cortar el video.
+
+    El resto de `procesar_guion` corre después de f2_cortar, porque necesita la
+    transcripción ya recortada para alinear los beats. Pero el corte de silencios
+    tiene que saber de antemano cuánto hook físico conservar, así que ese dato se
+    lee aparte y temprano. Es barato: solo parsea el HTML del panel.
+
+    `hooksegs` es el campo que José edita en PANEL-PRODUCCION.html para calibrar
+    cada guion sin tocar código.
+    """
+    datos_html = cargar_datos_html(ruta_html)
+    g = obtener_guion(numero_guion, datos_html)
+    try:
+        hooksegs = float(g.get("hooksegs") or 0.0)
+    except (TypeError, ValueError):
+        print(f"AVISO: `hooksegs` del guion {numero_guion} no es un número "
+              f"({g.get('hooksegs')!r}) — se ignora.", file=sys.stderr)
+        hooksegs = 0.0
+    return {
+        "hooksegs": max(0.0, hooksegs),
+        "titulo": g.get("t", ""),
+        "tipo_hook": g.get("hook", ""),
+    }
+
+
 def obtener_guion(numero_guion: int, datos_html: dict) -> dict:
     """Obtiene el objeto del guion por su número `n`."""
     guiones = datos_html.get("G", [])
@@ -184,26 +210,6 @@ def alinear_guion_con_transcripcion(script_tl: list, palabras: list,
     return aligned_beats
 
 
-def extender_fin_evento(t_ini: float, t_fin: float, idx: int, beats_alineados: list, min_dur: float = 3.0) -> float:
-    """Garantiza que B-Rolls y PIPs duren al menos `min_dur` segundos (ej. 3.0s).
-
-    Si la frase del audio es muy corta, extiende el fin sobre el silencio o pausa
-    hasta alcanzar `min_dur` segundos (o hasta el inicio del siguiente beat),
-    evitando que los B-Rolls se corten de forma brusca o demasiado rápida.
-    """
-    dur_actual = t_fin - t_ini
-    if dur_actual < min_dur:
-        t_limite = t_ini + min_dur
-        for sig in beats_alineados[idx + 1:]:
-            if sig.get("matched"):
-                sig_ini = sig["ini"]
-                t_limite = min(t_limite, max(t_fin, sig_ini))
-                break
-        t_fin = max(t_fin, t_limite)
-    return round(t_fin, 3)
-
-
-
 # Cuánto se puede correr un SFX para despegarlo del anterior antes de que deje
 # de leerse como "el sonido de ESE momento". Más que esto, mejor omitirlo.
 SFX_CORRIMIENTO_MAX_S = 0.35
@@ -237,26 +243,144 @@ def espaciar_sfx(ordenes: list) -> list:
     return salida
 
 
-def extender_fin_evento(t_ini: float, t_fin: float, idx: int, beats_alineados: list) -> float:
-    """PIP y B-roll duran solo lo que dura la frase que los dispara — a veces
-    ~1s, un flashazo. Se extiende el `fin` a config.BROLL_PIP_DURACION_FACTOR
-    veces esa duración, topado por el `ini` del próximo beat que TAMBIÉN
-    ponga algo en pantalla (PIP/B-ROLL/ANIM) — no por un `YO` intermedio: el
-    B-roll puede seguir tapando la pantalla mientras la persona sigue hablando
-    la frase siguiente sin overlay propio, que es justo la técnica de B-roll
-    (beats_alineados[i]["index"] == i siempre, así que basta indexar hacia
-    adelante).
+_CACHE_DURACION = {}
+
+
+def duracion_clip(ruta: Path) -> float | None:
+    """Duración real del clip, cacheada. None si ffprobe no puede leerlo.
+
+    Hace falta para no pedirle a un clip más metraje del que tiene: `rendicion.mp4`
+    dura 4.84s y una ventana de 6s dejaba 1.16s sin imagen y el fade de salida
+    calculado más allá del final del archivo.
     """
-    duracion = t_fin - t_ini
-    fin_deseado = t_ini + duracion * config.BROLL_PIP_DURACION_FACTOR
+    ruta = Path(ruta)
+    clave = str(ruta)
+    if clave in _CACHE_DURACION:
+        return _CACHE_DURACION[clave]
+    try:
+        salida = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=nw=1:nk=1", str(ruta)],
+            capture_output=True, text=True, check=True).stdout.strip()
+        dur = float(salida)
+    except Exception:
+        dur = None
+    _CACHE_DURACION[clave] = dur
+    return dur
+
+
+def extender_fin_evento(t_ini: float, t_fin: float, idx: int, beats_alineados: list,
+                        tipos_que_cortan: tuple = None, ruta_clip: Path = None) -> float:
+    """Cuánto se queda en pantalla un B-roll o un PIP.
+
+    Antes esta función estaba definida DOS VECES en este archivo y la segunda
+    pisaba a la primera, así que el mínimo de 3s no se aplicaba nunca: mandaba
+    `duracion * BROLL_PIP_DURACION_FACTOR` y los B-rolls del guion 7 salieron de
+    2.12s y 2.41s. Ahora hay una sola.
+
+    Criterio (decisión de José, 2026-07-27): el inserto se queda TODO lo que
+    pueda. El tope es el `ini` del próximo beat que le dispute el sitio, no el
+    fin de la frase que lo disparó — que la persona siga hablando debajo del
+    B-roll es justamente la técnica.
+
+    Quién le disputa el sitio depende de dónde vive cada cosa (ver
+    config.BROLL_TIPOS_QUE_CORTAN): un B-roll ocupa el cuadro entero y una
+    animación de esquina puede convivir encima de él, así que un ANIM no lo
+    corta; a un PIP, que también es de esquina, sí.
+
+    Los tres topes, en orden: el próximo beat que compite, el techo estético
+    (BROLL_PIP_DURACION_MAX_S) y el metraje que realmente tiene el clip.
+    """
+    tipos_que_cortan = tipos_que_cortan or config.BROLL_TIPOS_QUE_CORTAN
+
+    fin_tope = t_ini + config.BROLL_PIP_DURACION_MAX_S
     for r_sig in beats_alineados[idx + 1:]:
-        if not r_sig["matched"]:
+        if not r_sig["matched"] or r_sig["beat"][2] not in tipos_que_cortan:
             continue
-        if r_sig["beat"][2] == "YO":
-            continue
-        fin_deseado = min(fin_deseado, r_sig["ini"] - config.BROLL_PIP_GAP_MIN_S)
+        fin_tope = min(fin_tope, r_sig["ini"] - config.BROLL_PIP_GAP_MIN_S)
         break
-    return round(max(fin_deseado, t_fin), 3)
+
+    if ruta_clip is not None:
+        dur_real = duracion_clip(ruta_clip)
+        if dur_real:
+            fin_tope = min(fin_tope, t_ini + dur_real)
+
+    # Nunca menos que la frase que lo disparó: si el próximo evento cae antes,
+    # el solapamiento lo resuelve quien compone, no acortamos por debajo del
+    # motivo por el que el inserto existe.
+    return round(max(t_fin, fin_tope), 3)
+
+
+# Cómo se nombra un acercamiento en la columna "Qué se ve" y en la descripción
+# de cada toma del panel. Se buscan sobre el texto normalizado (sin tildes).
+_MARCAS_PUNCH_IN = ("punch in", "punchin", "punch-in")
+_MARCAS_PLANO_CERRADO = ("plano cerrado", "primer plano", "plano corto", "mas cerca")
+_MARCAS_PLANO_ABIERTO = ("plano medio", "plano abierto", "plano general")
+
+
+def _tiene(texto: str, marcas: tuple) -> bool:
+    plano = " ".join(normalize_text(texto or ""))
+    return any(m.replace("-", " ") in plano for m in marcas)
+
+
+def plan_encuadre(guion_dict: dict, palabras: list, beats_alineados: list) -> dict:
+    """Traduce las indicaciones de cámara del panel a órdenes de zoom para f4.
+
+    Existen dos columnas con información de encuadre y hasta ahora el pipeline
+    ignoraba las dos: decidía los acercamientos por percentil de energía RMS del
+    audio, o sea por cuándo José subió la voz. Ese criterio es mecánico, no
+    editorial — el mismo error que ya se corrigió con los SFX.
+
+      · `tl[i][3]` ("Qué se ve") marca los énfasis puntuales: "Punch-in sobre tu
+        cara", 'Punch-in en "algoritmo"'.
+      · `tomas[i][1]` marca la distancia de cámara de tramos enteros: "Plano
+        cerrado (acercá la cámara)". Como `tomas[i][3]` trae el texto que se
+        dice en esa toma, se alinea contra la transcripción igual que los beats
+        y sale un rango real, no los segundos aproximados del HTML.
+
+    Esto es la mitad digital de lo que José pidió: grabar un solo plano abierto
+    y que el pipeline acerque donde el guion dice "plano cerrado". La otra mitad
+    (grabar dos planos de verdad y unirlos) la hace editor.py.
+    """
+    punch_ins = []
+    for r in beats_alineados:
+        if not r.get("matched") or not _tiene(r["beat"][3], _MARCAS_PUNCH_IN):
+            continue
+        t = r["ini"]
+        # Si la indicación entrecomilla una palabra ('Punch-in en "algoritmo"'),
+        # el acercamiento va SOBRE esa palabra, no al principio de la frase.
+        cita = re.search(r'"([^"]+)"|“([^”]+)”', r["beat"][3])
+        if cita:
+            objetivo = normalize_text(cita.group(1) or cita.group(2))
+            j0, j1 = r.get("range_words", (0, 0))
+            for k in range(j0, min(j1, len(palabras))):
+                if normalize_text(palabras[k]["texto"]) == objetivo:
+                    t = palabras[k]["inicio"]
+                    break
+        punch_ins.append({"t": round(float(t), 3), "razon": r["beat"][3][:60]})
+
+    # --- tramos de plano cerrado ------------------------------------------
+    tomas = guion_dict.get("tomas", [])
+    pseudo_beats = [(t[0], t[3], "TOMA", t[1], "", "") for t in tomas]
+    tomas_alineadas = alinear_guion_con_transcripcion(pseudo_beats, palabras)
+
+    cerrados = []
+    for r in tomas_alineadas:
+        if not r.get("matched"):
+            continue
+        descripcion = r["beat"][3]
+        if not _tiene(descripcion, _MARCAS_PLANO_CERRADO):
+            continue
+        if _tiene(descripcion, _MARCAS_PLANO_ABIERTO):
+            continue          # "vuelves al plano medio" no es un acercamiento
+        cerrados.append({
+            "ini": round(r["ini"], 3),
+            "fin": round(r["fin"], 3),
+            "zoom": config.ZOOM_PLANO_CERRADO,
+            "razon": descripcion[:60],
+        })
+
+    return {"punch_ins": punch_ins, "planos_cerrados": cerrados}
 
 
 def resolver_codigo_asset(texto_ve: str, clips_map: dict) -> tuple[str | None, Path | None, str]:
@@ -354,6 +478,9 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
 
     trans_data = json.loads(Path(json_cortado_path).read_text(encoding="utf-8"))
     palabras = trans_data.get("palabras", [])
+    # Segundos de hook físico que f2_cortar dejó sin cortar al principio (0 si
+    # el guion no lo pide en su campo `hooksegs`).
+    hook_conservado_s = float(trans_data.get("hook_conservado_s") or 0.0)
 
     print(f"\n======================================================================")
     print(f"  PROCESANDO GUION {numero_guion}: \"{guion_dict.get('t')}\"")
@@ -398,6 +525,30 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
         idx = r["index"]
 
         if not r["matched"]:
+            # Excepción: el PRIMER beat de un guion con hook físico no puede
+            # alinear contra nada, porque mientras entras al cuadro y te sientas
+            # todavía no se dice una palabra. Sus sonidos ("whoosh_rapido al
+            # entrar + impacto_grave al sentarte") se colocan en la ventana de
+            # silencio que f2_cortar dejó a propósito al principio.
+            if idx == 0 and hook_conservado_s > 0:
+                archivos_hook = extraer_sfx_de_texto(sonido)
+                for i_sfx, sfx_file in enumerate(archivos_hook):
+                    # El primero al aparecer, el resto repartidos hasta justo
+                    # antes de la primera palabra.
+                    n = max(1, len(archivos_hook))
+                    t_sfx = 0.10 + (hook_conservado_s - 0.25) * i_sfx / n
+                    ordenes_sfx.append({
+                        "t": round(max(0.05, t_sfx), 3),
+                        "archivo": str(sfx_file),
+                        "volumen": 0.9,
+                        "razon": "hook_fisico",
+                    })
+                print(f"  [Beat  0 - {tipo}]: hook físico sin habla -> {len(archivos_hook)} sonido(s) "
+                      f"en los primeros {hook_conservado_s:.2f}s")
+                reporte_filas.append(
+                    f"| Beat {idx} | `{tipo}` | \"{dice}\" | **HOOK** | 0.00s | "
+                    f"{hook_conservado_s:.2f}s | Sin habla: entras al cuadro |")
+                continue
             print(f"  AVISO [Beat {idx:2d} - {tipo}]: \"{dice[:40]}\" NO encontrado en el audio -> OMITIDO")
             reporte_filas.append(f"| Beat {idx} | `{tipo}` | \"{dice}\" | **OMITIDO** | - | - | Frase no encontrada en audio |")
             continue
@@ -430,10 +581,26 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
         # 2. ANIMACIONES
         if tipo == "ANIM":
             nombre_anim = extraer_plantilla_animacion(ve, clips_map)
+            if nombre_anim == "tarjeta-cta":
+                # La tarjeta de cierre NO se pide desde el guion: el pipeline ya
+                # coloca la suya (con el mensaje, el WhatsApp y el eco del hook)
+                # al final del video. Emitirla otra vez desde aquí ponía dos
+                # tarjetas encimadas — en la corrida `Guion-7` el beat 11 caía en
+                # 23.09s, dentro del CTA automático que iba de 18.33s a 24.83s.
+                print(f"  [Beat {idx:2d} - ANIM]: 'tarjeta-cta' la pone el pipeline al cerrar "
+                      f"-> no se duplica")
+                reporte_filas[-1] = reporte_filas[-1].replace(
+                    "| conf ", "| CTA automático · conf ")
+                continue
             ordenes_animaciones.append({
                 "nombre": nombre_anim,
                 "ini": t_ini,
-                "dur": dur,
+                # A propósito SIN "dur": la animación dura lo que dura su
+                # composición (data-duration del HTML, replicado en
+                # config.ANIMACION_DURACION), no lo que dura la frase que la
+                # dispara. Pasando la duración del beat, anim-apps (3.0s de
+                # clip) se cortaba a los 1.08s que dura "Es que compites contra
+                # una app…" y el gesto no llegaba a completarse.
             })
 
         # 3. PIP
@@ -446,7 +613,12 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
                 # Posición por defecto: si el texto menciona izquierda, a la izquierda
                 pos_x = 60 if "izquierda" in ve.lower() else (config.ANCHO - 480)
                 pos_y = int(config.ALTO * config.INSERTO_Y_PCT)
-                t_fin = extender_fin_evento(t_ini, t_fin, idx, beats_alineados)
+                # El PIP vive en una esquina: cualquier otro inserto de esquina
+                # (otro PIP, una animación) le disputa el sitio y lo corta.
+                t_fin = extender_fin_evento(
+                    t_ini, t_fin, idx, beats_alineados,
+                    tipos_que_cortan=config.PIP_TIPOS_QUE_CORTAN,
+                    ruta_clip=asset_path if ext in (".mp4", ".mov", ".webm") else None)
 
                 if ext in (".mp4", ".mov", ".webm"):
                     destino_mov = dir_tmp / f"pip_guion_{idx}_{slug}.mov"
@@ -498,25 +670,34 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
                     "x": 0,
                     "y": 0,
                     "ini": t_ini,
-                    "fin": extender_fin_evento(t_ini, t_fin, idx, beats_alineados),
+                    # A pantalla completa: solo otro B-roll o un PIP le quitan
+                    # el cuadro. Una animación de esquina se compone encima.
+                    "fin": extender_fin_evento(
+                        t_ini, t_fin, idx, beats_alineados,
+                        tipos_que_cortan=config.BROLL_TIPOS_QUE_CORTAN,
+                        ruta_clip=asset_path),
                     "palabra": dice[:30],
                     "tag": slug,
                     "asset": f"broll-manual:{slug}",
                     "codigo": codigo,
                 })
 
-    # Guardar los 4 JSONs de órdenes
+    # Guardar los JSONs de órdenes
     ruta_sfx = dir_trabajo / "guion.sfx.json"
     ruta_anim = dir_trabajo / "guion.animaciones.json"
     ruta_eventos = dir_trabajo / "guion.eventos.json"
     ruta_broll = dir_trabajo / "guion.broll.json"
+    ruta_encuadre = dir_trabajo / "guion.encuadre.json"
     ruta_reporte = dir_trabajo / "10_guion-alineado.md"
+
+    encuadre = plan_encuadre(guion_dict, palabras, beats_alineados)
 
     ordenes_sfx = espaciar_sfx(ordenes_sfx)
     ruta_sfx.write_text(json.dumps({"sfx": ordenes_sfx}, ensure_ascii=False, indent=2), encoding="utf-8")
     ruta_anim.write_text(json.dumps({"animaciones": ordenes_animaciones}, ensure_ascii=False, indent=2), encoding="utf-8")
     ruta_eventos.write_text(json.dumps({"eventos": ordenes_eventos}, ensure_ascii=False, indent=2), encoding="utf-8")
     ruta_broll.write_text(json.dumps({"broll": ordenes_broll}, ensure_ascii=False, indent=2), encoding="utf-8")
+    ruta_encuadre.write_text(json.dumps(encuadre, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # Guardar reporte en Markdown
     lineas_reporte = [
@@ -528,6 +709,14 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
         f"- **Animaciones ordenadas:** {len(ordenes_animaciones)}",
         f"- **Insertos PIP ordenados:** {len(ordenes_eventos)}",
         f"- **B-Rolls fullscreen ordenados:** {len(ordenes_broll)}",
+        f"- **Punch-ins del guion:** {len(encuadre['punch_ins'])}"
+        + (f" ({', '.join(str(round(p['t'], 1)) + 's' for p in encuadre['punch_ins'])})"
+           if encuadre["punch_ins"] else ""),
+        f"- **Tramos de plano cerrado:** {len(encuadre['planos_cerrados'])}"
+        + (f" ({', '.join('{:.1f}-{:.1f}s'.format(c['ini'], c['fin']) for c in encuadre['planos_cerrados'])})"
+           if encuadre["planos_cerrados"] else ""),
+        f"- **Hook físico conservado:** {hook_conservado_s:.2f}s"
+        if hook_conservado_s else "- **Hook físico conservado:** no (hooksegs = 0)",
         "",
         "| Beat | Tipo | Texto Guion | Estado | Inicio | Fin | Detalles |",
         "|---|---|---|---|---|---|---|",
@@ -547,13 +736,16 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
 
     print(f"  Reporte de alineación guardado: {ruta_reporte}")
     print(f"  Órdenes generadas: SFX ({len(ordenes_sfx)}), Animaciones ({len(ordenes_animaciones)}), "
-          f"PIP ({len(ordenes_eventos)}), B-roll ({len(ordenes_broll)})")
+          f"PIP ({len(ordenes_eventos)}), B-roll ({len(ordenes_broll)}), "
+          f"Encuadre ({len(encuadre['punch_ins'])} punch-ins, "
+          f"{len(encuadre['planos_cerrados'])} planos cerrados)")
 
     return {
         "sfx": ruta_sfx,
         "animaciones": ruta_anim,
         "eventos": ruta_eventos,
         "broll": ruta_broll,
+        "encuadre": ruta_encuadre,
         "reporte": ruta_reporte,
         # OJO: el banner de hook sale de `t` (el titular del guion), NO de
         # `hooktxt`. En el panel, `hooktxt` es la acotación de dirección sobre

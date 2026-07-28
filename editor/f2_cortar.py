@@ -47,26 +47,67 @@ def _es_conector_ambiguo(palabra_texto: str) -> bool:
     return _normalizar(palabra_texto) in PERFIL["conectores_ambiguos"]
 
 
-def detectar_cortes_silencio(silencios: list) -> list:
-    """Silencios > umbral -> se recorta el centro, dejando margen a cada lado."""
+def detectar_cortes_silencio(silencios: list, conservar_inicio_s: float = 0.0) -> tuple:
+    """Silencios > umbral -> se recorta el centro, dejando margen a cada lado.
+
+    `conservar_inicio_s` protege el HOOK FÍSICO: los segundos de silencio que
+    quedan JUSTO ANTES de la primera palabra no se cortan. Es el gesto de entrar
+    al cuadro y sentarse, que sin esto desaparecía — en la grabación del guion 7
+    había 7.9s de silencio inicial y el corte dejaba 0.15s: el video arrancaba
+    con José ya hablando.
+
+    Se protege el FINAL de ese silencio, no el principio: lo que hay que salvar
+    es la entrada, no los segundos de silla vacía de antes, que se siguen
+    cortando igual que siempre.
+
+    Devuelve (cortes, segundos_realmente_conservados). Lo segundo lo necesita
+    f13_guion para saber que hay una ventana de hook donde colocar sus sonidos.
+    """
     umbral_s = PERFIL["silencio_umbral_ms"] / 1000
     margen_s = config.SILENCIO_MARGEN_MS / 1000
     cortes = []
+
+    # El silencio inicial es el que arranca pegado al segundo 0; solo ese es el
+    # hook. Un silencio a mitad del video no lleva protección por más largo que
+    # sea. (f1_transcribir emite los silencios ordenados y el primero, si existe,
+    # empieza en 0.0.)
+    inicio_protegido = None
+    if conservar_inicio_s > 0 and silencios and silencios[0]["inicio"] <= 0.05:
+        inicio_protegido = silencios[0]
+
+    conservado = 0.0
     for s in silencios:
         duracion = s["duracion"]
         if duracion <= umbral_s:
             continue
         if duracion <= 2 * margen_s:
             continue  # muy corto para dejar margen en ambos lados, no se toca
-        inicio_corte = s["inicio"] + margen_s
-        fin_corte = s["fin"] - margen_s
+
+        if s is inicio_protegido:
+            # Se corta desde el arranque del archivo hasta dejar exactamente
+            # `conservar_inicio_s` de aire antes de la primera palabra. Si el
+            # silencio es más corto que eso, no se corta nada.
+            inicio_corte = 0.0
+            fin_corte = s["fin"] - conservar_inicio_s
+            conservado = min(conservar_inicio_s, duracion)
+            if fin_corte <= inicio_corte:
+                print(f"  hook físico: el silencio inicial dura {duracion:.2f}s y se pidieron "
+                      f"{conservar_inicio_s:.2f}s — se conserva entero, sin corte.")
+                continue
+            razon = (f"silencio inicial de {duracion:.2f}s "
+                     f"(se conservan {conservado:.2f}s de hook físico)")
+        else:
+            inicio_corte = s["inicio"] + margen_s
+            fin_corte = s["fin"] - margen_s
+            razon = f"silencio de {duracion:.2f}s"
+
         if fin_corte > inicio_corte:
             cortes.append({
                 "inicio": round(inicio_corte, 3),
                 "fin": round(fin_corte, 3),
-                "razon": f"silencio de {duracion:.2f}s",
+                "razon": razon,
             })
-    return cortes
+    return cortes, round(conservado, 3)
 
 
 def detectar_cortes_muletillas(palabras: list, segmentos: list) -> list:
@@ -172,6 +213,28 @@ def recalcular_timestamps_palabras(palabras: list, intervalos_conservados: list)
     return nuevas_palabras
 
 
+def mapear_a_nueva_linea(t: float, intervalos_conservados: list) -> float:
+    """Un instante de la grabación original -> su posición tras el corte.
+
+    Es la misma aritmética que `recalcular_timestamps_palabras`, pero para un
+    tiempo suelto en vez de una palabra. La usan los límites entre tomas reales
+    (cuando se graban dos planos y se unen antes de transcribir): si no se
+    remapearan, el render creería que el cambio de plano sigue en el segundo del
+    archivo crudo y el zoom se reiniciaría en el sitio equivocado.
+
+    Un instante que cayó DENTRO de un tramo cortado se pega al corte, que es
+    donde de verdad quedó en el video resultante.
+    """
+    offset = 0.0
+    for iv in intervalos_conservados:
+        if t < iv["inicio"]:
+            return round(offset, 3)          # cayó en un tramo cortado
+        if t <= iv["fin"]:
+            return round(offset + (t - iv["inicio"]), 3)
+        offset += iv["fin"] - iv["inicio"]
+    return round(offset, 3)
+
+
 def cortar_video_ffmpeg(ruta_entrada: Path, ruta_salida: Path, intervalos: list):
     n = len(intervalos)
     if n == 0:
@@ -224,6 +287,14 @@ def main():
     parser.add_argument("--presentador", type=str, default=None,
                         choices=sorted(config.PRESENTADORES),
                         help="Perfil de corte a usar (muletillas y umbral de silencio propios)")
+    parser.add_argument("--conservar-inicio", type=float, default=None, metavar="SEGS",
+                        help="Segundos de silencio a conservar justo antes de la primera "
+                             "palabra: el hook físico (entrar al cuadro, sentarse). Con "
+                             "--guion N el valor sale del campo `hooksegs` del panel")
+    parser.add_argument("--tomas", type=str, default=None, metavar="JSON",
+                        help="Lista de segundos donde empieza cada toma real, en la línea de "
+                             "tiempo del archivo de entrada (la escribe editor.py al unir "
+                             "varias grabaciones). Se remapean al video ya cortado")
     args = parser.parse_args()
 
     global PERFIL
@@ -243,8 +314,15 @@ def main():
 
     duracion_total = _duracion_video(ruta_video)
 
+    conservar_inicio = (args.conservar_inicio if args.conservar_inicio is not None
+                        else config.HOOK_CONSERVAR_INICIO_S)
+    if conservar_inicio > 0:
+        print(f"Hook físico: se conservan {conservar_inicio:.2f}s de silencio antes de la "
+              f"primera palabra.")
+
     cortes = []
-    cortes += detectar_cortes_silencio(silencios)
+    cortes_silencio, hook_conservado_s = detectar_cortes_silencio(silencios, conservar_inicio)
+    cortes += cortes_silencio
     cortes += detectar_cortes_muletillas(palabras, segmentos)
     cortes += detectar_tomas_repetidas(segmentos)
 
@@ -268,6 +346,19 @@ def main():
     salida_datos["cortes_aplicados"] = cortes
     salida_datos["intervalos_conservados_original"] = intervalos_conservados
     salida_datos["duracion_resultante_s"] = round(duracion_resultante, 2)
+    # Ventana de hook físico en la NUEVA línea de tiempo: va de 0 a este valor y
+    # no tiene ni una palabra. f13_guion la usa para colocar ahí los sonidos del
+    # primer beat, que por definición no puede alinear contra la transcripción
+    # (no se dice nada mientras se entra al cuadro).
+    salida_datos["hook_conservado_s"] = hook_conservado_s
+
+    if args.tomas:
+        tomas_orig = json.loads(Path(args.tomas).read_text(encoding="utf-8"))
+        tomas_nuevas = sorted({mapear_a_nueva_linea(float(t), intervalos_conservados)
+                               for t in tomas_orig})
+        salida_datos["tomas_s"] = tomas_nuevas
+        print(f"\nTomas reales remapeadas al video cortado: "
+              f"{', '.join(f'{t:.2f}s' for t in tomas_nuevas)}")
     salida_json.write_text(json.dumps(salida_datos, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"\nVideo cortado: {ruta_salida}")

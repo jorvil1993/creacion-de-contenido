@@ -615,7 +615,7 @@ document.addEventListener('mouseout',e=>{
 
 /* ═══════════ LOS 10 GUIONES ═══════════ */
 const G=[
-{n:7,t:'No es que no te guste leer',rum:90,bloque:'Atención',hook:'fisico',
+{n:7,t:'No es que no te guste leer',rum:90,bloque:'Atención',hook:'fisico',hooksegs:3.0,
  hooktxt:'Entras al plano y te sientas de golpe',
  utileria:['Kindle Paperwhite — lo levantas en la toma 4','Silla que se vea al sentarte'],
  set:['Ventana a 45° a tu izquierda','2 m de separación de la pared','Cámara ya grabando antes de que entres al plano'],
@@ -633,14 +633,14 @@ const G=[
   ['7–9s','…para que no puedas soltarla.','B-ROLL','F14 a pantalla completa','whoosh_swoosh_2','—'],
   ['9–12s','No es falta de disciplina.','YO','Vuelves al plano medio','reverso_1','baja a −24 dB'],
   ['12–14s','Es una pelea injusta:','B-ROLL','F33 a pantalla completa: suelta el libro y agarra el celular','subdrop_1','—'],
-  ['14–17s','tú, con tu fuerza de voluntad, contra un algoritmo.','YO','Punch-in en "algoritmo"','impacto_hit','—'],
-  ['17–20s','La única forma de ganarla es no pelearla.','YO','Levantas el Kindle al cuadro','whoosh_simple','sube a −20 dB'],
+  ['14–17s','tú, con tu fuerza de voluntad, contra un algoritmo.','ANIM','H08 arriba a la izquierda + punch-in en "algoritmo"','impacto_hit','—'],
+  ['17–20s','La única forma de ganarla es no pelearla.','ANIM','H07 destello mientras levantas el Kindle al cuadro','whoosh_simple','sube a −20 dB'],
   ['20–23s','Leer en algo que no tenga apps,','PIP','P02 arriba a la derecha','camara_click_2','—'],
   ['23–26s','ni notificaciones, ni nada más que la página.','B-ROLL','F31 a pantalla completa: kindle-primer-plano','ui_apagar','—'],
   ['26–29s','Si te pasa, mándale esto a alguien','YO','Vuelves a la postura del segundo 3','transicion_corte_2','—'],
   ['29–32s','que también dejó un libro a medias.','ANIM','tarjeta-cta con el hook repetido','tada_cierre','fade out']]},
 
-{n:1,t:'El celular te está robando el sueño',rum:89,bloque:'Sueño y vista',hook:'fisico',
+{n:1,t:'El celular te está robando el sueño',rum:89,bloque:'Sueño y vista',hook:'fisico',hooksegs:3.0,
  hooktxt:'Arrancas mirando el celular en la cara y lo bajas de golpe',
  utileria:['Tu celular — tomas 1 y 2','Kindle Paperwhite — tomas 4 y 5'],
  set:['De noche, o con la persiana baja','Lámpara cálida detrás tuyo','La cama o un sillón oscuro de fondo'],
@@ -666,7 +666,7 @@ const G=[
   ['32–35s','Si quieres que te explique cuál te conviene, escríbeme.','YO','Vuelves a la postura inicial, con el Kindle','—','—'],
   ['35–38s','Y deja de dormir con el celular en la cara.','ANIM','tarjeta-cta + WhatsApp','tada_cierre','fade out']]},
 
-{n:18,t:'Tu hijo no lee por esta razón',rum:88,bloque:'Hijos',hook:'talking',
+{n:18,t:'Tu hijo no lee por esta razón',rum:88,bloque:'Hijos',hook:'talking',hooksegs:0,
  hooktxt:'Directo a cámara, sin preámbulo. La frase sola es el gancho',
  utileria:['Kindle Kids o Paperwhite — toma 4'],
  set:['Living o comedor, no dormitorio','Luz natural de día','Arrancas con las manos vacías'],
@@ -692,7 +692,7 @@ const G=[
   ['31–34s','Mándale esto a la mamá o al papá','YO','Vuelves a la postura del arranque','—','—'],
   ['34–37s','que dice que su hijo no lee.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
 
-{n:13,t:'El error al regalar libros a quien ama leer',rum:86,bloque:'Regalo',hook:'objeto',
+{n:13,t:'El error al regalar libros a quien ama leer',rum:86,bloque:'Regalo',hook:'objeto',hooksegs:2.0,
  hooktxt:'Arrancas sosteniendo un libro envuelto para regalo',
  utileria:['Un libro envuelto o con moño — toma 1','Kindle con moño — tomas 4 y 5'],
  set:['Mesa despejada','Luz cálida lateral'],
@@ -717,7 +717,7 @@ const G=[
   ['26–29s','Mándale esto a quien','YO','Sostienes el Kindle como el libro del inicio','—','—'],
   ['29–32s','te va a regalar algo.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
 
-{n:28,t:'Lo metí al agua a propósito',rum:86,bloque:'Comparación',hook:'accion',
+{n:28,t:'Lo metí al agua a propósito',rum:86,bloque:'Comparación',hook:'accion',hooksegs:2.0,
  hooktxt:'Muestras el aparato y lo hundes en el agua mientras hablas',
  utileria:['Kindle resistente al agua — Paperwhite o superior, NUNCA el Basic','Fuente, balde transparente o lavaplatos lleno','Toalla a mano — toma 3'],
  set:['Luz fuerte para que se vean las gotas','La toma del agua grabala 3 veces: es LA toma del video'],
@@ -742,7 +742,7 @@ const G=[
   ['26–29s','Sin cuidarlo como un huevo.','YO','Plano medio, aparato seco','—','baja a −21 dB'],
   ['29–32s','Etiqueta a quien lee en la tina.','ANIM','tarjeta-cta + repetición del hook','tada_cierre','fade out']]},
 
-{n:19,t:'Esta pantalla sí se la doy',rum:84,bloque:'Hijos',hook:'objeto',
+{n:19,t:'Esta pantalla sí se la doy',rum:84,bloque:'Hijos',hook:'objeto',hooksegs:2.0,
  hooktxt:'Sostienes el Kindle Kids y lo giras hacia cámara',
  utileria:['Kindle Kids o Paperwhite — tomas 1, 3 y 5','Un celular para el contraste — toma 2'],
  set:['Living con luz de día','Sofá o mesa de comedor'],
@@ -767,7 +767,7 @@ const G=[
   ['26–29s','Y no le tira luz a los ojos antes de dormir.','B-ROLL','F05 a pantalla completa','reverso_whoosh','—'],
   ['29–32s','Si peleas por las pantallas en tu casa, escríbeme.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
 
-{n:14,t:'Ese regalo va a quedar guardado',rum:83,bloque:'Regalo',hook:'fisico',
+{n:14,t:'Ese regalo va a quedar guardado',rum:83,bloque:'Regalo',hook:'fisico',hooksegs:3.0,
  hooktxt:'Abres un cajón lleno de regalos sin usar y lo cierras',
  utileria:['Un cajón o caja con cosas sin usar — toma 1','Perfume, taza y un adorno — toma 2','Kindle con moño — tomas 4 y 5'],
  set:['Mesa o cómoda','Luz cálida lateral'],
@@ -792,7 +792,7 @@ const G=[
   ['25–28s','Escríbeme y te ayudo','YO','Vuelves a la postura del cajón cerrado','—','—'],
   ['28–31s','a elegir según la persona.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
 
-{n:8,t:'¿Cuántos libros dejaste a medias?',rum:82,bloque:'Atención',hook:'objeto',
+{n:8,t:'¿Cuántos libros dejaste a medias?',rum:82,bloque:'Atención',hook:'objeto',hooksegs:2.0,
  hooktxt:'Levantas un libro con el separador clavado en la página 30',
  utileria:['Un libro con separador clavado a un tercio — tomas 1, 2 y 5','Kindle — toma 4'],
  set:['Mesa de luz o repisa','Luz suave de tarde'],
@@ -817,7 +817,7 @@ const G=[
   ['28–30s','Ahí sí se termina.','B-ROLL','F09 a pantalla completa','riser_reveal','—'],
   ['30–33s','Comenta en qué página quedó el tuyo.','ANIM','tarjeta-cta + "comenta 👇"','tada_cierre','fade out']]},
 
-{n:27,t:'Los saqué al sol. Mira.',rum:82,bloque:'Comparación',hook:'accion',
+{n:27,t:'Los saqué al sol. Mira.',rum:82,bloque:'Comparación',hook:'accion',hooksegs:2.0,
  hooktxt:'Exterior, sol fuerte: muestras celular y e-reader lado a lado',
  utileria:['Tu celular con el brillo al máximo','Kindle','Trípode o alguien que sostenga la cámara'],
  set:['Al mediodía, sol directo, sin sombra','La comparación grabala 3 veces: es LA toma del video'],
@@ -841,7 +841,7 @@ const G=[
   ['24–26s','como a una hoja.','YO','Primer plano: sostienes el aparato plano, como una hoja','whoosh_metal','—'],
   ['26–29s','Escríbeme si lees afuera.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
 
-{n:32,t:'Vendo estos y no te vendo el caro',rum:81,bloque:'Rompe-creencias',hook:'talking',
+{n:32,t:'Vendo estos y no te vendo el caro',rum:81,bloque:'Rompe-creencias',hook:'talking',hooksegs:0,
  hooktxt:'Directo a cámara. La frase contradice lo que se espera de un vendedor',
  utileria:['Dos modelos sobre la mesa: uno de gama alta y uno medio — toma 3'],
  set:['Fondo limpio, tu setup habitual','Luz a 45°','Arrancas con las manos vacías'],
@@ -923,6 +923,14 @@ function renderGuiones(){
         <div class="tnum">${t[0]}</div>
         <div class="tdesc"><b>${t[1]}</b><p>${t[2]}</p><p class="dice">"${t[3]}"</p></div>
       </div>`).join('')}
+
+     ${g.hooksegs>0?`<h4>⏱️ Hook físico · lo único que el corte NO se lleva</h4>
+     <p class="notaflow" style="margin:0 0 8px">El pipeline corta todos los silencios, así que
+     el gesto de entrada se perdía y el video arrancaba contigo ya hablando. Ahora conserva
+     <b>${g.hooksegs}s</b> de silencio justo antes de tu primera palabra — lo justo para que se
+     vea "${g.hooktxt.toLowerCase()}". Lo anterior (la silla vacía, acomodarte) se corta igual.
+     Si el gesto sale mocho o sobra silencio, cambia <code>hooksegs:${g.hooksegs}</code> en este
+     mismo archivo, en la línea del guion ${g.n}, y vuelve a correr.</p>`:''}
 
      <h4>Línea de tiempo · esto es 100% automático</h4>
      <p class="notaflow" style="margin:0 0 8px">Nada de esta tabla lo haces tú: son las

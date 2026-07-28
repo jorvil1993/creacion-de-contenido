@@ -177,38 +177,75 @@ def detectar_picos_energia(ruta_video: Path) -> list:
         return []
 
     umbral = np.percentile(rms, PERFIL["punch_in_percentil"])
-    espaciado_min_s = 1.5
-    picos = []
+    espaciado_min_s = config.PUNCH_IN_SEPARACION_MIN_S
+    candidatos = []
     ultimo_t = -999
     for t, valor in zip(tiempos, rms):
         if valor >= umbral and (t - ultimo_t) >= espaciado_min_s:
-            picos.append({"t": round(float(t), 3), "energia": round(float(valor), 4)})
+            candidatos.append({"t": round(float(t), 3), "energia": round(float(valor), 4)})
             ultimo_t = t
 
-    _log(f"Picos de énfasis detectados: {len(picos)}")
+    # Tope duro por duración. El espaciado mínimo solo pone un piso; en un video
+    # con la voz pareja el percentil sigue disparando en cuanto pasa ese piso.
+    # Se conservan los de MÁS energía, que son los énfasis de verdad, y se
+    # devuelven en orden de tiempo.
+    duracion_s = float(tiempos[-1]) if len(tiempos) else 0.0
+    tope = max(1, int(round(duracion_s / 60 * config.PUNCH_IN_MAX_POR_MINUTO)))
+    picos = sorted(candidatos, key=lambda p: -p["energia"])[:tope]
+    picos.sort(key=lambda p: p["t"])
+
+    if len(candidatos) > len(picos):
+        _log(f"Picos de énfasis: {len(candidatos)} candidatos -> {len(picos)} punch-ins "
+             f"(tope {config.PUNCH_IN_MAX_POR_MINUTO}/min sobre {duracion_s:.1f}s)")
+    else:
+        _log(f"Picos de énfasis detectados: {len(picos)}")
     return picos
 
 
 # ---------------------------------------------------------------------------
 # 3+4. Construir línea de tiempo de zoom + detectar huecos (regla de 5s)
 # ---------------------------------------------------------------------------
-def construir_planos(duracion_total: float, cortes_previos: list) -> list:
-    """Un 'plano' = tramo continuo entre jump-cuts aplicados en f2_cortar.
-    Si no hay info de cortes, se trata todo el video como un solo plano."""
-    if not cortes_previos:
-        return [{"inicio": 0.0, "fin": duracion_total}]
-    # cortes_previos aquí representa duraciones de intervalos conservados (ver f2); se
-    # reconstruyen límites acumulados
-    planos = []
-    cursor = 0.0
-    for c in cortes_previos:
-        dur = c["fin"] - c["inicio"]
-        planos.append({"inicio": round(cursor, 3), "fin": round(cursor + dur, 3)})
-        cursor += dur
-    return planos
+def construir_planos(duracion_total: float, tomas_s: list = None) -> list:
+    """Un 'plano' = un tramo con encuadre propio, sobre el que corre la rampa de
+    zoom progresivo.
+
+    Antes se construía uno por cada intervalo conservado de f2_cortar, es decir
+    **uno por cada corte de silencio**. Eso hacía que el zoom volviera a 1.00 y
+    empezara a subir otra vez en cada corte: en el guion 7 salieron 8 planos en
+    24.8s, uno de ellos de 0.15s (una rampa de 1.00 a 1.08 en seis fotogramas,
+    o sea un tirón). Sumado a los punch-ins, ese era el "cambia los zooms de
+    manera desproporcionada a cada rato".
+
+    Un jump cut de silencio NO es un cambio de plano: la cámara no se movió, se
+    quitó una pausa. Que el encuadre siga su curso a través del corte es
+    justamente lo que hace que el jump cut se lea como ritmo y no como error.
+
+    Ahora un plano solo empieza donde hay un cambio de encuadre DE VERDAD: los
+    tiempos de `tomas_s`, que son los empalmes entre grabaciones distintas
+    (José graba el plano abierto y el cerrado por separado). Sin eso, todo el
+    video es un solo plano y el zoom hace un único recorrido lento.
+    """
+    limites = [0.0]
+    for t in sorted(tomas_s or []):
+        if 0.2 < t < duracion_total - 0.2 and t - limites[-1] > 0.2:
+            limites.append(round(float(t), 3))
+    limites.append(round(duracion_total, 3))
+    return [{"inicio": a, "fin": b} for a, b in zip(limites, limites[1:]) if b > a]
 
 
-def calcular_zoom_en_t(t: float, planos: list, picos: list) -> float:
+def _suave(u: float) -> float:
+    """Smoothstep. Un movimiento de cámara lineal se ve mecánico: arranca y
+    frena de golpe. Es la misma curva que usa f7_animaciones."""
+    u = min(1.0, max(0.0, u))
+    return u * u * (3 - 2 * u)
+
+
+def calcular_zoom_en_t(t: float, planos: list, picos: list, cerrados: list = None) -> float:
+    """Zoom en el segundo `t`: rampa del plano + tramos cerrados + punch-ins.
+
+    Las tres capas se combinan tomando el máximo, no sumando: dos efectos que
+    coinciden dan el más fuerte de los dos, nunca un acercamiento del 40%.
+    """
     zoom = config.ZOOM_PROGRESIVO_INICIO
     for plano in planos:
         if plano["inicio"] <= t <= plano["fin"]:
@@ -219,18 +256,44 @@ def calcular_zoom_en_t(t: float, planos: list, picos: list) -> float:
             )
             break
 
+    # Plano cerrado pedido por el guion: entra, SE QUEDA y sale. La diferencia
+    # con un punch-in no es de tamaño sino de intención — el punch-in subraya
+    # una palabra, esto sostiene un tramo entero más íntimo.
+    trans = config.ZOOM_TRANSICION_S
+    for c in (cerrados or []):
+        ini, fin = c["ini"], c["fin"]
+        if not (ini - trans <= t <= fin + trans):
+            continue
+        if t < ini:
+            factor = _suave((t - (ini - trans)) / trans)
+        elif t > fin:
+            factor = 1 - _suave((t - fin) / trans)
+        else:
+            factor = 1.0
+        objetivo = c.get("zoom", config.ZOOM_PLANO_CERRADO)
+        zoom = max(zoom, config.ZOOM_PROGRESIVO_INICIO
+                   + factor * (objetivo - config.ZOOM_PROGRESIVO_INICIO))
+
+    # Punch-in: acercamiento breve con entrada y salida suavizadas. Antes era
+    # una rampa triangular LINEAL de 0.3s, que a 30 fps son 9 fotogramas de ida
+    # y 9 de vuelta — se percibe como un golpe de imagen, no como cámara.
+    dur_punch = config.PUNCH_IN_DURACION_S
     for pico in picos:
         dt = t - pico["t"]
-        if 0 <= dt <= config.PUNCH_IN_DURACION_S:
-            factor_pico = 1 - abs(dt - config.PUNCH_IN_DURACION_S / 2) / (config.PUNCH_IN_DURACION_S / 2)
-            zoom = max(zoom, config.ZOOM_PROGRESIVO_INICIO + factor_pico * (config.PUNCH_IN_ZOOM - config.ZOOM_PROGRESIVO_INICIO))
+        if not (0 <= dt <= dur_punch):
+            continue
+        mitad = dur_punch / 2
+        factor = _suave(dt / mitad) if dt <= mitad else _suave((dur_punch - dt) / mitad)
+        zoom = max(zoom, config.ZOOM_PROGRESIVO_INICIO
+                   + factor * (config.PUNCH_IN_ZOOM - config.ZOOM_PROGRESIVO_INICIO))
 
     return round(zoom, 4)
 
 
 def encuadre_en_t(t: float, tiempos_track: np.ndarray, cx_track: np.ndarray, cy_track: np.ndarray,
                    planos: list, picos: list, hacer_loop: bool = False, t_loop: float = None,
-                   cx_ini: float = None, cy_ini: float = None, zoom_ini: float = None):
+                   cx_ini: float = None, cy_ini: float = None, zoom_ini: float = None,
+                   cerrados: list = None):
     """(cx, cy, zoom) del encuadre en el segundo t: interpolación del track de
     rostro + calcular_zoom_en_t(), con el blend de loop de los últimos
     LOOP_DURACION_S si aplica. La usa tanto el render real
@@ -238,7 +301,7 @@ def encuadre_en_t(t: float, tiempos_track: np.ndarray, cx_track: np.ndarray, cy_
     una sola implementación para que no puedan divergir."""
     cx = float(np.interp(t, tiempos_track, cx_track))
     cy = float(np.interp(t, tiempos_track, cy_track))
-    zoom = calcular_zoom_en_t(t, planos, picos)
+    zoom = calcular_zoom_en_t(t, planos, picos, cerrados)
 
     if hacer_loop and t_loop is not None and t >= t_loop:
         u = min(1.0, (t - t_loop) / config.LOOP_DURACION_S)
@@ -250,13 +313,21 @@ def encuadre_en_t(t: float, tiempos_track: np.ndarray, cx_track: np.ndarray, cy_
     return cx, cy, zoom
 
 
-def detectar_huecos_regla_5s(duracion_total: float, planos: list, picos: list) -> list:
-    """Eventos de 'cambio visual' = límites de plano (jump cuts) + punch-ins.
-    Cualquier tramo >= REGLA_5S_MAX_BLOQUE_S sin evento queda marcado como hueco."""
+def detectar_huecos_regla_5s(duracion_total: float, planos: list, picos: list,
+                             jump_cuts: list = None) -> list:
+    """Eventos de 'cambio visual' = límites de plano + jump cuts + punch-ins.
+    Cualquier tramo >= REGLA_5S_MAX_BLOQUE_S sin evento queda marcado como hueco.
+
+    Los jump cuts van aparte desde que los planos dejaron de construirse a partir
+    de ellos (ver `construir_planos`): el zoom ya no se reinicia en cada corte de
+    silencio, pero la pantalla SÍ cambia ahí, así que para esta regla siguen
+    contando igual que antes."""
     eventos = {0.0, duracion_total}
     for p in planos:
         eventos.add(p["inicio"])
         eventos.add(p["fin"])
+    for t in (jump_cuts or []):
+        eventos.add(t)
     for pico in picos:
         eventos.add(pico["t"])
 
@@ -272,7 +343,8 @@ def detectar_huecos_regla_5s(duracion_total: float, planos: list, picos: list) -
 # 5. Render: aplica zoom + pan centrado en rostro, frame a frame
 # ---------------------------------------------------------------------------
 def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list, planos: list, picos: list,
-                        eventos_overlay: list = None, ruta_subs: Path = None, final: bool = False):
+                        eventos_overlay: list = None, ruta_subs: Path = None, final: bool = False,
+                        cerrados: list = None):
     """Aplica zoom/pan frame a frame y codifica en UNA sola pasada.
 
     Los frames procesados se mandan crudos por tubería a ffmpeg, que codifica
@@ -415,7 +487,7 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
     if hacer_loop:
         cx_ini = float(np.interp(0.0, tiempos_track, cx_track))
         cy_ini = float(np.interp(0.0, tiempos_track, cy_track))
-        zoom_ini = calcular_zoom_en_t(0.0, planos, picos)
+        zoom_ini = calcular_zoom_en_t(0.0, planos, picos, cerrados)
         t_loop = duracion_total - config.LOOP_DURACION_S
         _log(f"  loop: el encuadre vuelve al del primer frame desde {t_loop:.1f}s "
              f"(zoom {zoom_ini:.3f}, centro {cx_ini:.3f}/{cy_ini:.3f})")
@@ -435,6 +507,7 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
                     hacer_loop, t_loop if hacer_loop else None,
                     cx_ini if hacer_loop else None, cy_ini if hacer_loop else None,
                     zoom_ini if hacer_loop else None,
+                    cerrados=cerrados,
                 )
 
                 # recorte centrado en rostro, con relación de aspecto de salida (9:16)
@@ -488,6 +561,10 @@ def main():
     parser.add_argument("--presentador", type=str, default=None,
                         choices=sorted(config.PRESENTADORES),
                         help="Perfil de retención (suavizado de rostro y umbral de punch-ins)")
+    parser.add_argument("--encuadre", type=str, default=None, metavar="JSON",
+                        help="Plan de encuadre del guion (guion.encuadre.json de f13_guion): "
+                             "punch-ins y tramos de plano cerrado marcados en el panel. "
+                             "Cuando está, manda sobre los picos de energía del audio")
     args = parser.parse_args()
 
     global PERFIL
@@ -496,9 +573,20 @@ def main():
     ruta_video = Path(args.video)
     ruta_salida = Path(args.salida) if args.salida else ruta_video.with_name(ruta_video.stem + "_retencion.mp4")
 
+    encuadre_guion = {}
+    if args.encuadre:
+        encuadre_guion = json.loads(Path(args.encuadre).read_text(encoding="utf-8"))
+
     if args.solo_render:
         plan = json.loads(Path(args.solo_render).read_text(encoding="utf-8"))
         planos, picos, track_rostro = plan["planos"], plan["picos_energia"], plan["track_rostro"]
+        # El --encuadre recién calculado manda sobre el que quedó guardado en el
+        # plan: con --reaplicar el plan es de una corrida anterior y puede ser
+        # de antes de tocar el guion.
+        cerrados = encuadre_guion.get("planos_cerrados") or plan.get("planos_cerrados", [])
+        if encuadre_guion.get("punch_ins"):
+            picos = [{"t": float(p["t"]), "energia": 1.0, "razon": p.get("razon", "guion")}
+                     for p in encuadre_guion["punch_ins"]]
     else:
         ruta_transcripcion = Path(args.transcripcion)
         datos = json.loads(ruta_transcripcion.read_text(encoding="utf-8"))
@@ -507,16 +595,45 @@ def main():
                "-of", "default=noprint_wrappers=1:nokey=1", str(ruta_video)]
         duracion_total = float(subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip())
 
-        intervalos_originales = datos.get("intervalos_conservados_original", [])
-        planos = construir_planos(duracion_total, intervalos_originales)
+        # `tomas_s` solo existe si se grabaron varios planos reales y editor.py
+        # los unió. Sin él, todo el video es un plano y el zoom hace un solo
+        # recorrido — que es justo lo que hay que hacer con una toma continua.
+        tomas_s = datos.get("tomas_s", [])
+        planos = construir_planos(duracion_total, tomas_s)
+        if tomas_s:
+            detalle = ", ".join("{:.1f}-{:.1f}s".format(p["inicio"], p["fin"]) for p in planos)
+            _log(f"Planos reales (empalmes entre grabaciones): {len(planos)} -> {detalle}")
 
-        _log("Analizando picos de energía de audio...")
-        picos = detectar_picos_energia(ruta_video)
+        # Los jump cuts siguen contando como cambio visual para la regla de 5s,
+        # aunque ya no reinicien el zoom: la pantalla SÍ cambia en ellos.
+        intervalos_originales = datos.get("intervalos_conservados_original", [])
+        jump_cuts, cursor = [], 0.0
+        for iv in intervalos_originales:
+            cursor += iv["fin"] - iv["inicio"]
+            jump_cuts.append(round(cursor, 3))
+
+        cerrados = encuadre_guion.get("planos_cerrados", [])
+        if cerrados:
+            detalle = ", ".join("{:.1f}-{:.1f}s".format(c["ini"], c["fin"]) for c in cerrados)
+            _log(f"Planos cerrados pedidos por el guion: {detalle}")
+
+        picos_guion = encuadre_guion.get("punch_ins")
+        if picos_guion:
+            # El guion marca los énfasis en la columna "Qué se ve" del panel.
+            # Es un criterio editorial; el percentil de RMS solo mide cuándo
+            # subió la voz, que no es lo mismo.
+            picos = [{"t": float(p["t"]), "energia": 1.0, "razon": p.get("razon", "guion")}
+                     for p in picos_guion]
+            _log(f"Punch-ins tomados del guion: {len(picos)} "
+                 f"(se ignoran los picos de energía del audio)")
+        else:
+            _log("Analizando picos de energía de audio...")
+            picos = detectar_picos_energia(ruta_video)
 
         _log("Rastreando rostro...")
         track_rostro = rastrear_rostro(ruta_video)
 
-        huecos = detectar_huecos_regla_5s(duracion_total, planos, picos)
+        huecos = detectar_huecos_regla_5s(duracion_total, planos, picos, jump_cuts)
         if huecos:
             _log(f"\nADVERTENCIA regla de 5s: {len(huecos)} hueco(s) sin cambio visual, quedan para Fase 5:")
             for h in huecos:
@@ -541,6 +658,8 @@ def main():
             "planos": planos,
             "picos_energia": picos,
             "track_rostro": track_rostro,
+            "planos_cerrados": cerrados,
+            "jump_cuts": jump_cuts,
             "huecos_regla_5s": huecos,
             "nota_loop": nota_loop,
         }, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -554,7 +673,8 @@ def main():
 
         _log("\nRenderizando video con zoom/face-tracking (puede tardar varios minutos)...")
         renderizar_con_zoom(ruta_video, ruta_salida, track_rostro, planos, picos,
-                            eventos_overlay=eventos_overlay, ruta_subs=ruta_subs, final=args.final)
+                            eventos_overlay=eventos_overlay, ruta_subs=ruta_subs, final=args.final,
+                            cerrados=cerrados)
         _log(f"Video con retención: {ruta_salida}")
 
 
