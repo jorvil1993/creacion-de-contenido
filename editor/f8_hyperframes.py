@@ -90,6 +90,32 @@ def plantilla_de(nombre: str) -> str:
     return nombre if nombre in PLANTILLAS else f"anim-{nombre}"
 
 
+def nombre_canonico(nombre: str) -> str:
+    """Inversa de plantilla_de: el nombre con el que config conoce la animacion.
+
+    Hace falta porque los dos vocabularios se cruzan en las dos direcciones y
+    cada una rompe algo distinto:
+
+      · hacia la plantilla, "sol" tiene que volverse "anim-sol" (eso es
+        plantilla_de);
+      · hacia config, "anim-sol" tiene que volverse "sol", porque
+        ANIMACION_DURACION, ANIMACION_VARIANTES y ANIMACION_ETIQUETAS estan
+        indexadas por el nombre corto.
+
+    Sin esta segunda direccion, un beat del panel que pide H03 llegaba a
+    f6_overlays como "anim-sol", no aparecia en ANIMACION_DURACION y se
+    descartaba con un "animacion desconocida" — la misma clase de fallo mudo que
+    el doble prefijo, solo que del otro lado.
+
+    Las plantillas sin nombre corto propio (anim-apps, stickers, tarjeta-cta)
+    estan en config con su nombre entero, asi que se devuelven tal cual.
+    """
+    if nombre in config.ANIMACION_DURACION:
+        return nombre
+    corto = nombre[len("anim-"):] if nombre.startswith("anim-") else nombre
+    return corto if corto in config.ANIMACION_DURACION else nombre
+
+
 def disponible() -> bool:
     """¿Se puede renderizar? Necesita el proyecto y npx en el PATH."""
     return (DIR_PLANTILLAS / "package.json").exists() and shutil.which("npx") is not None

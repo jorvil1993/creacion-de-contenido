@@ -730,7 +730,8 @@ def _construir_animacion(nombre: str, t0: float, var: int, dir_tmp: Path,
                           track_rostro: list, hf: bool, semilla: int,
                           foto_dispositivo: Path = None,
                           usar_video_sol: bool = False,
-                          indice: int = 0) -> tuple:
+                          indice: int = 0,
+                          variables_extra: dict = None) -> tuple:
     """Renderiza UNA animación y devuelve (ruta, x, y, motor).
 
     Compartido por el disparo automático y por la lista que arma el editor
@@ -758,6 +759,11 @@ def _construir_animacion(nombre: str, t0: float, var: int, dir_tmp: Path,
             ruta_rel = f8_hyperframes.preparar_imagen(foto_dispositivo)
             if ruta_rel:
                 variables["imagen"] = ruta_rel
+        # Lo que pida el guion manda sobre lo calculado: es como el panel elige
+        # el sticker ("H07 bandera" -> tipo=bandera). Sin esto, `stickers` salía
+        # siempre con su default (destello), porque este camino solo sabía pasar
+        # variante/lado/etiqueta y `tipo` no se rellenaba nunca.
+        variables.update(variables_extra or {})
         # render() se queda solo con las variables que la plantilla declara: a
         # `stickers` se le pasa `tipo`, no `lado`, y sobra sin ensuciar la clave
         # del caché.
@@ -1133,7 +1139,7 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
             ruta_anim, x, y, motor = _construir_animacion(
                 nombre, t0, var, dir_tmp, track_rostro, hf, semilla,
                 foto_dispositivo=foto_dispositivo, usar_video_sol=usar_video_sol,
-                indice=len(previas))
+                indice=len(previas), variables_extra=entrada.get("variables"))
             if ruta_anim is None:
                 print(f"AVISO: no se pudo construir la animación '{nombre}' para {t0:.1f}s.")
                 colocadas.add(i)

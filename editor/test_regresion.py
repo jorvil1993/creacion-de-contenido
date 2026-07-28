@@ -339,6 +339,35 @@ def pruebas_coherencia():
         and f8_hyperframes.plantilla_de("stickers") == "stickers",
         "nombre corto -> anim-<nombre>; nombre de plantilla -> tal cual")
 
+    ida_vuelta = [n for n in config.ANIMACION_DURACION
+                  if f8_hyperframes.nombre_canonico(f8_hyperframes.plantilla_de(n)) != n]
+    chk("plantilla_de y nombre_canonico son inversas",
+        not ida_vuelta, ", ".join(ida_vuelta) if ida_vuelta
+        else "las dos direcciones del vocabulario cierran")
+
+    # La invariante que de verdad importa: TODO lo que el panel puede pedir
+    # tiene que llegar a f6_overlays con un nombre que config reconozca. Si no,
+    # la animacion se descarta con un "animacion desconocida" que nadie mira.
+    datos = f13_guion.cargar_datos_html()
+    sin_soporte = []
+    for g in datos["G"]:
+        for i, fila in enumerate(g["tl"]):
+            if fila[2] != "ANIM":
+                continue
+            nombre = f13_guion.extraer_plantilla_animacion(fila[3], datos["CLIPS"])
+            if (nombre not in config.ANIMACION_DURACION
+                    and nombre not in config.PLANTILLAS_CON_DATOS_PROPIOS):
+                sin_soporte.append(f"guion {g['n']} beat {i}: '{nombre}'")
+    n_anim = sum(1 for g in datos["G"] for f in g["tl"] if f[2] == "ANIM")
+    chk("toda animacion pedida por el panel la sabe construir el pipeline",
+        not sin_soporte, "; ".join(sin_soporte) if sin_soporte
+        else f"{n_anim} beats ANIM en los {len(datos['G'])} guiones, todos resueltos")
+
+    sin_hooksegs = [g["n"] for g in datos["G"] if "hooksegs" not in g]
+    chk("todos los guiones declaran hooksegs",
+        not sin_hooksegs, f"faltan en {sin_hooksegs}" if sin_hooksegs
+        else "los 10 lo traen; sin el, el corte se come el hook fisico")
+
     # La duracion declarada tiene que coincidir con el data-duration del HTML.
     # El comentario de config lo afirma, pero nada lo comprobaba: si alguien
     # edita el HTML, el pipeline recorta o alarga el clip sin enterarse.

@@ -483,6 +483,15 @@ ANIMACION_DURACION = {
     "stickers": 2.5, "banner-hook": 3.2, "pip-producto": 4.0, "anim-apps": 3.0
 }
 
+# Plantillas que el pipeline construye CON DATOS PROPIOS y coloca por su cuenta:
+# el CTA lleva el mensaje, el WhatsApp y el eco del hook; la ficha y la
+# comparativa salen del catálogo de especificaciones. El camino genérico de
+# animaciones solo sabe pasar `variante`, `lado` y `etiqueta`, así que si un
+# beat ANIM del guion pide una de estas, saldría la plantilla VACÍA y encima
+# encimada con la que el pipeline ya puso. Pasó con `tarjeta-cta` en el guion 7:
+# el beat 11 caía en 23.09s, dentro del CTA automático de 18.33s a 24.83s.
+PLANTILLAS_CON_DATOS_PROPIOS = ("tarjeta-cta", "comparativa", "tarjeta-specs")
+
 # Cuántas variantes distintas tiene cada animación. La variante la elige una
 # semilla determinista (nombre del video + índice de aparición), nunca `random`:
 # el mismo video renderizado dos veces tiene que dar exactamente lo mismo.

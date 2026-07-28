@@ -444,7 +444,16 @@ def extraer_sfx_de_texto(texto_sonido: str) -> list[Path]:
 
 
 def extraer_plantilla_animacion(texto_ve: str, clips_map: dict = None) -> str:
-    """Extrae la plantilla de animación de 'qué se ve', soportando códigos H01-H08 y nombres directos."""
+    """Extrae la animación de 'qué se ve', soportando códigos H01-H08 y nombres directos.
+
+    Devuelve el nombre CANÓNICO, o sea el que usa config: el panel dice H03 y el
+    mapa de clips lo traduce a "anim-sol", pero config indexa esa animación como
+    "sol". Sin normalizar aquí, el nombre llegaba a f6_overlays sin entrada en
+    ANIMACION_DURACION y la animación se descartaba con un "animación
+    desconocida" que nadie mira.
+    """
+    import f8_hyperframes
+
     if not texto_ve:
         return "tarjeta-cta"
 
@@ -452,21 +461,40 @@ def extraer_plantilla_animacion(texto_ve: str, clips_map: dict = None) -> str:
     if match_h and clips_map:
         entry = clips_map.get(match_h.group(1))
         if entry:
-            return entry[0]
+            return f8_hyperframes.nombre_canonico(entry[0])
 
-    plantillas_validas = [
-        "anim-apps", "tarjeta-cta", "comparativa", "anim-sol", "anim-bateria",
-        "anim-moto", "anim-splash", "tarjeta-specs", "stickers", "banner-hook", "pip-producto"
-    ]
-    for p in plantillas_validas:
+    # Nombre escrito a mano en la celda, sin código H0x. El orden importa:
+    # "anim-splash" contiene "anim-s...", así que las más largas van primero.
+    for p in sorted(f8_hyperframes.PLANTILLAS, key=len, reverse=True):
         if p in texto_ve:
-            return p
+            return f8_hyperframes.nombre_canonico(p)
 
     match = re.search(r"\b(tarjeta-[a-z]+|anim-[a-z]+)\b", texto_ve)
     if match:
-        return match.group(1)
+        return f8_hyperframes.nombre_canonico(match.group(1))
 
     return "tarjeta-cta"  # fallback común si el tipo es ANIM
+
+
+# Tipos de sticker que acepta la plantilla H07 (ver compositions/stickers.html).
+STICKERS_VALIDOS = ("destello", "envio", "bandera")
+
+
+def extraer_variables_animacion(nombre_anim: str, texto_ve: str) -> dict:
+    """Variables que el guion le pasa a la plantilla, más allá de la variante.
+
+    Hoy solo la usa `stickers`, que es la única con una variable de contenido
+    (`tipo`) en vez de una de forma. Sin esto, escribir "H07 bandera" en el panel
+    daba igual: la plantilla salía siempre con su default (destello), porque el
+    camino de animaciones solo sabía pasar variante, lado y etiqueta.
+    """
+    if nombre_anim != "stickers":
+        return {}
+    plano = " ".join(normalize_text(texto_ve or ""))
+    for tipo in STICKERS_VALIDOS:
+        if tipo in plano:
+            return {"tipo": tipo}
+    return {}
 
 
 def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path,
@@ -581,20 +609,20 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
         # 2. ANIMACIONES
         if tipo == "ANIM":
             nombre_anim = extraer_plantilla_animacion(ve, clips_map)
-            if nombre_anim == "tarjeta-cta":
-                # La tarjeta de cierre NO se pide desde el guion: el pipeline ya
-                # coloca la suya (con el mensaje, el WhatsApp y el eco del hook)
-                # al final del video. Emitirla otra vez desde aquí ponía dos
-                # tarjetas encimadas — en la corrida `Guion-7` el beat 11 caía en
-                # 23.09s, dentro del CTA automático que iba de 18.33s a 24.83s.
-                print(f"  [Beat {idx:2d} - ANIM]: 'tarjeta-cta' la pone el pipeline al cerrar "
-                      f"-> no se duplica")
+            if nombre_anim in config.PLANTILLAS_CON_DATOS_PROPIOS:
+                # Estas las arma el pipeline con datos que este camino no tiene
+                # (el mensaje y el WhatsApp del CTA, las specs del catálogo, los
+                # dos modelos de la comparativa). Pedirlas por aquí las sacaría
+                # vacías y encimadas con la que el pipeline ya puso.
+                print(f"  [Beat {idx:2d} - ANIM]: '{nombre_anim}' la coloca el pipeline con sus "
+                      f"propios datos -> no se duplica")
                 reporte_filas[-1] = reporte_filas[-1].replace(
-                    "| conf ", "| CTA automático · conf ")
+                    "| conf ", f"| {nombre_anim} automática · conf ")
                 continue
             ordenes_animaciones.append({
                 "nombre": nombre_anim,
                 "ini": t_ini,
+                "variables": extraer_variables_animacion(nombre_anim, ve),
                 # A propósito SIN "dur": la animación dura lo que dura su
                 # composición (data-duration del HTML, replicado en
                 # config.ANIMACION_DURACION), no lo que dura la frase que la
