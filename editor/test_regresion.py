@@ -608,6 +608,64 @@ def pruebas_round_trip():
         "sin ese archivo el editor no sabe que era un video dirigido por guion")
 
 
+# ===========================================================================
+# 8. Preview de animaciones en el editor
+# ===========================================================================
+# Las animaciones son ProRes 4444 con alfa y ocupan un 4% del cuadro: el editor
+# enseñaba un rectangulo negro y no habia forma de saber cual era cual. El
+# preview recorta a la animacion y la pasa a WebM. Dos trampas que esto fija:
+# el recuadro tiene que RECORTAR (si no, la animacion sale del tamaño de una
+# uña) y el encode tiene que TERMINAR (el fondo de lavfi es infinito y sin
+# cortarlo dentro del filtro el WebM crece sin fin: se vio llegar a 3 MB).
+def pruebas_preview_animaciones():
+    import subprocess
+    import tempfile
+
+    import f10_editor_visual as f10
+
+    seccion("8. Preview de animaciones en el editor")
+
+    tmp = Path(tempfile.mkdtemp())
+    src = tmp / "sintetica.mov"
+    # Una animacion de mentira con la misma forma que las de verdad: lienzo
+    # 1080x1920 casi todo transparente con un elemento pequeño dentro.
+    hecho = subprocess.run([
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-f", "lavfi", "-i", "color=c=black@0.0:s=1080x1920:d=2:r=25,format=yuva444p10le",
+        "-f", "lavfi", "-i", "color=c=red:s=200x300:d=2:r=25",
+        "-filter_complex", "[0:v][1:v]overlay=440:800:format=auto",
+        "-c:v", "prores_ks", "-profile:v", "4444", "-pix_fmt", "yuva444p10le", str(src),
+    ], capture_output=True).returncode == 0
+
+    if not hecho or not src.exists():
+        chk("ffmpeg sabe hacer ProRes 4444 con alfa", False,
+            "sin eso no se puede comprobar el preview de animaciones")
+        return
+
+    caja = f10._caja_animacion(src)
+    # El elemento esta en (440,800) y mide 200x300; el margen del 6% ensancha
+    # un poco. Lo que importa es que NO devuelva el cuadro entero.
+    chk("el recuadro se ajusta a la animacion, no al cuadro entero",
+        caja is not None and caja[2] < 1080 * 0.5 and caja[3] < 1920 * 0.5
+        and abs(caja[0] - 440) < 60 and abs(caja[1] - 800) < 60,
+        f"caja={caja} para un elemento en (440,800) de 200x300")
+
+    prev = f10.preview_animacion(src, dir_cache=tmp / "cache")
+    chk("el preview se genera", prev is not None and prev.exists())
+    if prev is None or not prev.exists():
+        return
+
+    dur = f10._duracion(prev)
+    chk("el preview dura lo que la animacion y no crece sin fin",
+        1.5 <= dur <= 3.0,
+        f"{dur:.2f}s para una animacion de 2.0s "
+        f"(sin cortar el fondo de lavfi esto no terminaba nunca)")
+
+    kb = prev.stat().st_size / 1024
+    chk("el preview pesa poco: se cargan una docena en la misma pagina",
+        kb < 500, f"{kb:.1f} KB")
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -618,6 +676,7 @@ def main():
     pruebas_coherencia()
     pruebas_duplicados()
     pruebas_round_trip()
+    pruebas_preview_animaciones()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")

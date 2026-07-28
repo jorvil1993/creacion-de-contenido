@@ -313,6 +313,34 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(_estado_render())
             elif ruta == "/animaciones-disponibles":
                 self._json({"inventario": f10.inventario_animaciones()})
+            elif ruta == "/anim-preview":
+                # Un WebM corto de la animación, para verla moverse en la
+                # tarjeta. Por ruta si ya está en el video, o por plantilla
+                # (reusando cualquier MOV del caché de Hyperframes) para las
+                # del inventario, que todavía no se han renderizado nunca.
+                origen = None
+                if qs.get("ruta"):
+                    cand = Path(qs["ruta"][0])
+                    if not _archivo_permitido(cand):
+                        self.send_error(403, "ruta fuera de las carpetas permitidas")
+                        return
+                    origen = cand
+                elif qs.get("plantilla") or qs.get("nombre"):
+                    plantilla = (qs.get("plantilla") or [None])[0]
+                    if plantilla is None:
+                        # El editor conoce el nombre corto ("sol"); la plantilla
+                        # ("anim-sol") la resuelve el vocabulario de f8.
+                        import f8_hyperframes
+                        plantilla = f8_hyperframes.plantilla_de(qs["nombre"][0])
+                    origen = f10.mov_de_plantilla(plantilla)
+                if origen is None or not origen.exists():
+                    self.send_error(404, "sin animación que previsualizar")
+                    return
+                prev = f10.preview_animacion(origen)
+                if prev is None:
+                    self.send_error(404, "no se pudo generar el preview")
+                    return
+                self._archivo(prev, "video/webm")
             else:
                 self.send_error(404, "Ruta desconocida")
         except FileNotFoundError as e:
@@ -647,6 +675,13 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
 .anim-card { border: 1px solid var(--linea); border-radius: 8px; padding: 8px; display: flex;
              flex-direction: column; gap: 6px; }
 .anim-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 4px; background: #000; }
+/* El preview es vertical como el video, no apaisado: 16/9 recortaba justo la
+   animación, que es lo unico que hay que ver en la tarjeta. */
+.anim-preview { width: 100%; aspect-ratio: 4/5; object-fit: contain; border-radius: 4px;
+                background: #16232b; display: block; }
+.anim-sin-preview { width: 100%; aspect-ratio: 4/5; border-radius: 4px; background: #16232b;
+                    display: flex; align-items: center; justify-content: center; text-align: center;
+                    font-size: 12px; color: var(--fg-2); padding: 6px; }
 .anim-card .info { font-size: 12px; color: var(--fg-2); }
 .anim-card .info b { color: var(--fg); }
 .anim-card .fila-botones { display: flex; gap: 6px; }
@@ -756,6 +791,9 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
     <p class="hint">Batería, splash, moto y sol — Hyperframes. Se ven como un fotograma
       representativo (al 45% del clip, no el primero: todas entran con fade). Quitar, mover o
       añadir acá reemplaza el disparo automático por palabra para TODAS las animaciones del video.</p>
+    <div class="pista-enc" id="pistaAnimTimeline" style="margin-bottom:12px;">
+      <div class="franjas-enc" id="franjasAnimTimeline"></div>
+    </div>
     <div class="anim-grid" id="animGrid"></div>
     <button class="btn-primario" id="btnAñadirAnim" type="button" style="margin-top:8px;">+ Añadir animación en el segundo actual</button>
 
@@ -907,6 +945,7 @@ async function cargar() {
     // barra en la línea de tiempo (el render usa la del clip, no una fija).
     dur: Math.round((o.fin - o.ini) * 1000) / 1000,
     variante: o.variante, palabra: o.palabra, miniatura_archivo: o.miniatura_archivo,
+    archivo: o.archivo,
   }));
   animacionesModificado = false;
   editandoAnimIdx = null;
@@ -1351,6 +1390,32 @@ function sfxParaGuardar() {
   })).sort((a, b) => a.t - b.t);
 }
 
+// La animación EN MOVIMIENTO, no un rectángulo negro. Son ProRes 4444 con
+// alfa: ningún navegador los reproduce, y el <img> que había antes apuntaba a
+// un .mov, así que la tarjeta salía negra y no había forma de distinguir una
+// animación de otra. El servidor devuelve un WebM chico ya compuesto sobre el
+// color del panel. Si no hay ninguno (plantilla nunca renderizada), se cae a
+// una ficha de texto en vez de dejar un hueco.
+function medioAnimacion(a) {
+  const src = a.archivo
+    ? `/anim-preview?ruta=${encodeURIComponent(a.archivo)}`
+    : `/anim-preview?nombre=${encodeURIComponent(a.nombre)}`;
+  const v = document.createElement("video");
+  v.src = src;
+  v.autoplay = true; v.loop = true; v.muted = true;
+  v.playsInline = true; v.preload = "metadata";
+  v.className = "anim-preview";
+  v.title = "Pasá el ratón para reproducir desde el principio";
+  v.addEventListener("mouseenter", () => { v.currentTime = 0; v.play().catch(() => {}); });
+  v.addEventListener("error", () => {
+    const ficha = document.createElement("div");
+    ficha.className = "anim-sin-preview";
+    ficha.textContent = a.nombre;
+    if (v.parentNode) v.parentNode.replaceChild(ficha, v);
+  });
+  return v;
+}
+
 function renderAnimGrid() {
   const cont = document.getElementById("animGrid");
   cont.innerHTML = "";
@@ -1360,9 +1425,7 @@ function renderAnimGrid() {
   edicionAnimaciones.forEach((a, i) => {
     const card = document.createElement("div");
     card.className = "anim-card";
-    const img = document.createElement("img");
-    img.src = a.miniatura_archivo ? `/archivo?ruta=${encodeURIComponent(a.miniatura_archivo)}` : "";
-    card.appendChild(img);
+    card.appendChild(medioAnimacion(a));
     const info = document.createElement("div");
     info.className = "info";
     info.innerHTML = `<b>${a.nombre}</b>${a.palabra ? ` · "${a.palabra}"` : ""}<br>` +
@@ -1382,15 +1445,67 @@ function renderAnimGrid() {
   cont.querySelectorAll(".in-ini-anim").forEach(inp => {
     inp.addEventListener("change", () => {
       const i = parseInt(inp.dataset.idx, 10);
-      edicionAnimaciones[i].ini = parseFloat(inp.value) || 0;
-      // Con los 2.4s fijos que había antes, la barra mentía: el render usa la
-      // duración real del clip, que va de 1.2s a 3.6s según la animación.
-      edicionAnimaciones[i].fin =
-        edicionAnimaciones[i].ini + (edicionAnimaciones[i].dur || 2.4);
-      animacionesModificado = true;
+      moverAnimacion(edicionAnimaciones[i], parseFloat(inp.value) || 0);
+      renderAnimGrid();
     });
   });
+  pintarAnimTimeline();
 }
+
+// Una animación no se estira: dura lo que dura su clip. Mover = trasladar, y
+// el fin se recalcula siempre desde la duración real (antes eran 2.4s fijos,
+// así que la barra mentía para todas las que no midieran eso).
+function moverAnimacion(a, ini) {
+  const dur = a.dur || 2.4;
+  a.ini = Math.max(0, Math.min(DATA.duracion - dur, ini));
+  a.fin = a.ini + dur;
+  animacionesModificado = true;
+}
+
+function pintarAnimTimeline() {
+  const cont = document.getElementById("franjasAnimTimeline");
+  const pista = document.getElementById("pistaAnimTimeline");
+  if (!cont || !pista || !DATA) return;
+  cont.innerHTML = "";
+  const dur = DATA.duracion;
+
+  edicionAnimaciones.forEach((a, i) => {
+    const barra = document.createElement("div");
+    barra.className = "enc-cerrado";
+    barra.style.left = (a.ini / dur * 100) + "%";
+    barra.style.width = Math.max(0.6, ((a.fin - a.ini) / dur) * 100) + "%";
+    barra.style.background = "rgba(234, 179, 8, .28)";
+    barra.style.borderColor = "#eab308";
+    barra.textContent = a.nombre;
+    barra.title = `${a.nombre} · ${a.ini.toFixed(1)}s - ${a.fin.toFixed(1)}s`;
+
+    barra.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      const t0 = tiempoDesdeEvento(e, pista);
+      const ini0 = a.ini;
+      arrastrar((mv) => {
+        moverAnimacion(a, ini0 + (tiempoDesdeEvento(mv, pista) - t0));
+        // Solo la pista y la casilla de segundos. Rehacer la rejilla entera en
+        // cada frame reiniciaría los <video> de todas las tarjetas y el
+        // arrastre iría a tirones.
+        pintarAnimTimeline();
+        const inp = document.querySelector(`.in-ini-anim[data-idx="${i}"]`);
+        if (inp) inp.value = a.ini.toFixed(1);
+      });
+    });
+    cont.appendChild(barra);
+  });
+
+  const ph = document.createElement("div");
+  ph.className = "playhead";
+  ph.id = "playheadAnim";
+  cont.appendChild(ph);
+}
+
+document.getElementById("pistaAnimTimeline").addEventListener("click", (ev) => {
+  if (!DATA || ev.target.closest(".enc-cerrado")) return;
+  video.currentTime = tiempoDesdeEvento(ev, ev.currentTarget);
+});
 
 async function abrirInventarioAnim(idx) {
   editandoAnimIdx = idx;
@@ -1402,8 +1517,14 @@ async function abrirInventarioAnim(idx) {
   for (const a of datos.inventario) {
     const item = document.createElement("div");
     item.className = "inventario-item";
-    item.innerHTML = `<span class="nombre">${a.etiqueta || a.nombre}</span>` +
-      `<span class="detalle">${a.nombre} · ${a.duracion.toFixed(1)}s · ${a.motor}${a.reproducible_en_navegador ? "" : " (sin preview animado)"}</span>`;
+    // Elegir a ciegas por el nombre era adivinar: "splash" o "moto" no dicen
+    // cómo se ven. Ahora cada una se enseña moviéndose.
+    if (a.preview) item.appendChild(medioAnimacion({ nombre: a.nombre }));
+    const txt = document.createElement("div");
+    txt.innerHTML = `<span class="nombre">${a.etiqueta || a.nombre}</span>` +
+      `<span class="detalle">${a.nombre} · ${a.duracion.toFixed(1)}s · ${a.motor}` +
+      `${a.preview ? "" : " (sin render todavía)"}</span>`;
+    item.appendChild(txt);
     item.addEventListener("click", () => elegirAnimacion(a));
     grid.appendChild(item);
   }

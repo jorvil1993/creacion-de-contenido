@@ -201,6 +201,119 @@ def render_tarjeta_catalogo(asset: dict, dir_cache: Path | None = None) -> Path 
     return destino
 
 
+def _caja_animacion(origen: Path, muestras_por_s: float = 4.0) -> tuple | None:
+    """Recuadro que ocupa de verdad la animación dentro del cuadro de 1080x1920.
+
+    Una animación es un elemento pequeño sobre un lienzo enorme y transparente:
+    `anim-apps` cubre un 4% del cuadro. Escalar el cuadro entero a una tarjeta
+    de 240px deja la animación del tamaño de una uña, que es tan poco útil como
+    el rectángulo negro que había antes. Se muestrean unos fotogramas, se une el
+    recuadro de lo que no es transparente y se recorta ahí.
+
+    Devuelve (x, y, w, h) en coordenadas del original, o None si no se pudo.
+    """
+    from PIL import Image
+
+    with tempfile.TemporaryDirectory() as tmp:
+        # Un solo ffmpeg para todos los fotogramas, y en pequeño: el recuadro no
+        # necesita resolución, y a 1080x1920 esto costaría segundos por animación.
+        ancho_muestra = 270
+        r = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-i", str(origen),
+             "-vf", f"fps={muestras_por_s},scale={ancho_muestra}:-1",
+             "-pix_fmt", "rgba", str(Path(tmp) / "m_%03d.png")],
+            capture_output=True)
+        cuadros = sorted(Path(tmp).glob("m_*.png"))
+        if r.returncode != 0 or not cuadros:
+            return None
+
+        caja = None
+        escala = None
+        for f in cuadros:
+            with Image.open(f) as im:
+                if im.mode != "RGBA":
+                    continue
+                if escala is None:
+                    escala = 1.0
+                # Umbral: los bordes con fade dejan un alfa mínimo en casi todo
+                # el cuadro y sin él el recuadro sale siendo el cuadro entero.
+                b = im.getchannel("A").point(lambda v: 255 if v > 12 else 0).getbbox()
+                if b is None:
+                    continue
+                caja = b if caja is None else (min(caja[0], b[0]), min(caja[1], b[1]),
+                                               max(caja[2], b[2]), max(caja[3], b[3]))
+        if caja is None:
+            return None
+
+        with Image.open(cuadros[0]) as im:
+            w_m, h_m = im.size
+
+    w_o, h_o = _resolucion(origen)
+    k = w_o / w_m
+    x0, y0, x1, y1 = (int(v * k) for v in caja)
+    # Un respiro alrededor: pegado al borde se lee como recortado a mano.
+    margen = int(0.06 * max(x1 - x0, y1 - y0))
+    x0, y0 = max(0, x0 - margen), max(0, y0 - margen)
+    x1, y1 = min(w_o, x1 + margen), min(h_o, y1 + margen)
+    if x1 - x0 < 16 or y1 - y0 < 16:
+        return None
+    return (x0, y0, x1 - x0, y1 - y0)
+
+
+def preview_animacion(origen: Path, dir_cache: Path | None = None,
+                      ancho: int = 240, alto: int = 300) -> Path | None:
+    """WebM corto y liviano de una animación, para verla EN MOVIMIENTO.
+
+    Las animaciones son ProRes 4444 con alfa y ningún navegador las reproduce:
+    la tarjeta del editor enseñaba un rectángulo negro (el alfa del MOV leído
+    como negro) y no había forma de saber cuál era cuál. VP9 tampoco conserva
+    el alfa en este ffmpeg, así que se compone sobre un fondo plano del color
+    del panel — que además es parecido a cómo se ve sobre el video.
+
+    Cachea por mtime del MOV: un preview cuesta ~1s y no cambia nunca.
+    """
+    dir_cache = dir_cache or (config.DIR_EDITOR_CACHE / "anim")
+    dir_cache.mkdir(parents=True, exist_ok=True)
+    destino = dir_cache / f"{origen.stem}.webm"
+    if not origen.exists():
+        return None
+    if destino.exists() and destino.stat().st_mtime >= origen.stat().st_mtime:
+        return destino
+
+    caja = _caja_animacion(origen)
+    recorte = f"crop={caja[2]}:{caja[3]}:{caja[0]}:{caja[1]}," if caja else ""
+    # `shortest=1` en el overlay, no `-shortest` del contenedor: el fondo de
+    # lavfi es INFINITO, y sin cortarlo dentro del filtro el encode no termina
+    # nunca (se comprobó llegando a 3 MB y subiendo para un clip de 3s).
+    filtro = (f"[0:v]{recorte}scale={ancho}:{alto}:force_original_aspect_ratio=decrease[a];"
+              f"[1:v][a]overlay=(W-w)/2:(H-h)/2:format=auto:shortest=1,format=yuv420p")
+    dur = _duracion(origen)
+    r = subprocess.run([
+        "ffmpeg", "-y", "-loglevel", "error", "-i", str(origen),
+        "-f", "lavfi", "-i", f"color=c=0x16232b:s={ancho}x{alto}",
+        "-filter_complex", filtro,
+        "-c:v", "libvpx-vp9", "-b:v", "0", "-crf", "42", "-an",
+        # Tope de seguridad por si el filtro no cortara: un preview jamás dura
+        # más que su animación.
+        "-t", f"{max(0.5, min(dur or 8.0, 8.0)):.2f}", str(destino),
+    ], capture_output=True, timeout=120)
+    if r.returncode != 0 or not destino.exists():
+        return None
+    return destino
+
+
+def mov_de_plantilla(plantilla: str) -> Path | None:
+    """Un MOV ya renderizado de esta plantilla, si quedó alguno en el caché de
+    Hyperframes. Sirve para enseñar en el inventario cómo es una animación que
+    todavía no está en el video, sin pagar un render de Playwright."""
+    dir_cache = config.RAIZ_AI_VIDEO / "cache_hyperframes"
+    if not dir_cache.is_dir():
+        return None
+    candidatos = sorted(dir_cache.glob(f"{plantilla}_*.mov"),
+                        key=lambda p: p.stat().st_mtime, reverse=True)
+    return candidatos[0] if candidatos else None
+
+
 def fondo_pendiente(asset: dict) -> bool:
     """True si a este asset todavía le falta el recorte de quitar_fondos.py
     (Fase 2, punto 3: "marcar los que todavía tienen fondo")."""
@@ -214,10 +327,18 @@ def fondo_pendiente(asset: dict) -> bool:
 def inventario_animaciones() -> list:
     """Animaciones (bateria/splash/moto/sol) disponibles para añadir a mano
     desde el editor (§3c del plan) — reusa f8_hyperframes.inventario_animaciones(),
-    ya pensada para esto."""
+    ya pensada para esto.
+
+    Se le añade `preview`: si queda algún MOV de esa plantilla en el caché de
+    Hyperframes, la interfaz puede enseñar la animación EN MOVIMIENTO en vez de
+    una ficha de texto con su nombre.
+    """
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import f8_hyperframes
-    return f8_hyperframes.inventario_animaciones()
+    inv = f8_hyperframes.inventario_animaciones()
+    for a in inv:
+        a["preview"] = mov_de_plantilla(a["tipo"]) is not None
+    return inv
 
 
 def catalogo_pip(dir_trabajo: Path | None = None, todos: bool = False) -> dict:
