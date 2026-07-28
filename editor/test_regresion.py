@@ -747,6 +747,54 @@ def pruebas_round_trip():
         "ultimoGuardado = estadoSerializado()" in fuente_srv_txt,
         "el autoguardado parte de lo que se acaba de cargar, no de cero")
 
+    # --- versiones con nombre ----------------------------------------------
+    import f11_servidor as srv
+
+    # El nombre llega del navegador y acaba siendo una ruta en disco. Lo que hay
+    # que garantizar no es una cadena concreta sino la PROPIEDAD: mande lo que
+    # mande, la carpeta cae dentro de _versiones.
+    raiz = Path(tempfile.mkdtemp()) / "_versiones"
+    raiz.mkdir(parents=True)
+    escapan = []
+    for crudo in ("../../../etc", "prueba/../otra", r"..\..\windows", "/etc/passwd",
+                  "  ..  ", "", ".", "..", "con:stream", "a" * 200):
+        limpio = srv._nombre_version(crudo)
+        if limpio is None:
+            continue                      # rechazado de plano, que también vale
+        destino = (raiz / limpio).resolve()
+        if not destino.is_relative_to(raiz.resolve()) or destino == raiz.resolve():
+            escapan.append(f"{crudo!r} -> {limpio!r} sale a {destino}")
+    chk("un nombre de version no puede escribir fuera de la corrida",
+        not escapan, "\n          ".join(escapan) if escapan
+        else "las barras y los .. se filtran antes de tocar el disco")
+
+    chk("un nombre vacio o solo puntos se rechaza",
+        srv._nombre_version("") is None and srv._nombre_version("  ..  ") is None)
+
+    chk("un nombre normal se respeta",
+        srv._nombre_version("sin b-roll del final") == "sin b-roll del final")
+
+    # Cargar una version tiene que BORRAR los ajustes actuales antes de copiar:
+    # si la version no tenia B-roll y la de ahora si, quedarse con ellos
+    # mezclaria dos ediciones y el resultado no seria ninguna de las dos.
+    chk("cargar una version reemplaza, no mezcla",
+        re.search(r"/version/cargar", fuente_srv_txt) is not None
+        and "unlink(missing_ok=True)" in fuente_srv_txt,
+        "se limpian los ajustes actuales antes de restaurar los de la version")
+
+    chk("una version guarda TODOS los ajustes, no algunos",
+        set(srv.ARCHIVOS_AJUSTES) >= {
+            "ajustes.eventos.json", "ajustes.broll.json", "ajustes.sfx.json",
+            "ajustes.animaciones.json", "ajustes.encuadre.json",
+            "ajustes.hookcta.json", "ajustes.hook.json"},
+        f"{len(srv.ARCHIVOS_AJUSTES)} archivos en la lista")
+
+    # --- espacio = reproducir/pausar ---------------------------------------
+    chk("el espacio reproduce y pausa, pero no mientras se escribe",
+        'e.code !== "Space"' in fuente_srv_txt
+        and 'el.tagName === "TEXTAREA"' in fuente_srv_txt,
+        "en el hook o en el nombre de una version, un espacio es un espacio")
+
 
 # ===========================================================================
 # 8. Preview de animaciones en el editor

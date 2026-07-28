@@ -17,9 +17,11 @@ import argparse
 import json
 import mimetypes
 import re
+import shutil
 import subprocess
 import sys
 import webbrowser
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
@@ -124,6 +126,61 @@ def _guardar_encuadre(encuadre: dict) -> Path:
     limpio["punch_ins"].sort(key=lambda p: p["t"])
     limpio["planos_cerrados"].sort(key=lambda c: c["ini"])
     return _escritura_atomica(DIR_TRABAJO / "ajustes.encuadre.json", limpio)
+
+
+# Todo lo que compone "una edición": si mañana se añade otro ajuste, entra aquí
+# y las versiones lo guardan sin tocar nada más.
+ARCHIVOS_AJUSTES = (
+    "ajustes.eventos.json", "ajustes.broll.json", "ajustes.sfx.json",
+    "ajustes.animaciones.json", "ajustes.encuadre.json", "ajustes.hookcta.json",
+    "ajustes.hook.json", "ajustes.sesion.json",
+)
+
+
+def _nombre_version(crudo: str) -> str | None:
+    """Nombre de carpeta seguro a partir de lo que se escriba en la caja.
+
+    Se filtra a propósito en vez de confiar: el nombre llega del navegador y
+    acaba siendo una ruta en disco. Un `..` o una barra escribirían fuera de la
+    carpeta de la corrida.
+    """
+    limpio = re.sub(r"[^\w\s.-]", "", (crudo or "").strip(), flags=re.UNICODE)
+    limpio = re.sub(r"\s+", " ", limpio).strip(" .")
+    return limpio[:60] or None
+
+
+def _dir_versiones() -> Path:
+    return DIR_TRABAJO / "_versiones"
+
+
+def _listar_versiones() -> list:
+    raiz = _dir_versiones()
+    if not raiz.is_dir():
+        return []
+    versiones = []
+    for d in sorted(raiz.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+        if not d.is_dir():
+            continue
+        def cuenta(archivo, clave):
+            f = d / archivo
+            if not f.exists():
+                return None
+            try:
+                datos = json.loads(f.read_text(encoding="utf-8"))
+            except Exception:
+                return None
+            lista = datos.get(clave, datos) if isinstance(datos, dict) else datos
+            return len(lista) if isinstance(lista, list) else None
+
+        versiones.append({
+            "nombre": d.name,
+            "fecha": datetime.fromtimestamp(d.stat().st_mtime).strftime("%d/%m %H:%M"),
+            "insertos": cuenta("ajustes.eventos.json", "eventos"),
+            "broll": cuenta("ajustes.broll.json", "broll"),
+            "sfx": cuenta("ajustes.sfx.json", "sfx"),
+            "animaciones": cuenta("ajustes.animaciones.json", "animaciones"),
+        })
+    return versiones
 
 
 def _catalogo() -> list:
@@ -325,6 +382,8 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_error(404, "no se pudo renderizar la tarjeta")
                     return
                 self._archivo(ruta_tarjeta, "image/png")
+            elif ruta == "/versiones":
+                self._json({"versiones": _listar_versiones()})
             elif ruta == "/render/estado":
                 self._json(_estado_render())
             elif ruta == "/animaciones-disponibles":
@@ -430,6 +489,52 @@ class Handler(BaseHTTPRequestHandler):
                 destino_enc = _guardar_encuadre(datos["encuadre"])
                 resultado["ruta_encuadre"] = str(destino_enc)
             self._json(resultado)
+
+        elif partes.path == "/version/guardar":
+            nombre = _nombre_version(datos.get("nombre"))
+            if not nombre:
+                self.send_error(400, "hace falta un nombre para la versión")
+                return
+            destino = _dir_versiones() / nombre
+            destino.mkdir(parents=True, exist_ok=True)
+            # Se limpia primero: si la versión anterior con ese nombre tenía un
+            # ajuste que ahora no existe, quedarse con él mezclaría dos ediciones.
+            for viejo in destino.glob("ajustes.*.json"):
+                viejo.unlink()
+            copiados = []
+            for nombre_archivo in ARCHIVOS_AJUSTES:
+                origen = DIR_TRABAJO / nombre_archivo
+                if origen.exists():
+                    shutil.copy2(origen, destino / nombre_archivo)
+                    copiados.append(nombre_archivo)
+            self._json({"ok": True, "nombre": nombre, "archivos": len(copiados),
+                        "versiones": _listar_versiones()})
+
+        elif partes.path == "/version/cargar":
+            nombre = _nombre_version(datos.get("nombre"))
+            origen_dir = _dir_versiones() / nombre if nombre else None
+            if not nombre or not origen_dir.is_dir():
+                self.send_error(404, f"no existe la versión {datos.get('nombre')!r}")
+                return
+            # Se borran los ajustes actuales antes de copiar: si la versión que
+            # se carga no tenía B-rolls y la de ahora sí, dejarlos sería mezclar
+            # dos ediciones distintas y el resultado no sería ninguna de las dos.
+            for actual in ARCHIVOS_AJUSTES:
+                (DIR_TRABAJO / actual).unlink(missing_ok=True)
+            restaurados = []
+            for archivo in origen_dir.glob("ajustes.*.json"):
+                shutil.copy2(archivo, DIR_TRABAJO / archivo.name)
+                restaurados.append(archivo.name)
+            self._json({"ok": True, "nombre": nombre, "archivos": len(restaurados)})
+
+        elif partes.path == "/version/borrar":
+            nombre = _nombre_version(datos.get("nombre"))
+            destino = _dir_versiones() / nombre if nombre else None
+            if not nombre or not destino.is_dir():
+                self.send_error(404, "no existe esa versión")
+                return
+            shutil.rmtree(destino)
+            self._json({"ok": True, "versiones": _listar_versiones()})
 
         elif partes.path == "/restablecer":
             # Volver al automático para los insertos. Sin esto, un
@@ -767,6 +872,16 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
 .fila-variantes button { background: var(--panel); color: var(--fg); border: 1px solid var(--linea);
                           border-radius: 5px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
 .fila-variantes button:hover { border-color: var(--acento); color: var(--acento); }
+.versiones-caja { border: 1px dashed var(--linea); border-radius: 8px; padding: 10px;
+                  margin: 10px 0; display: flex; flex-direction: column; gap: 6px; }
+.version-fila { display: flex; align-items: center; gap: 10px; padding: 6px 8px;
+                border: 1px solid var(--linea); border-radius: 6px; font-size: 13px; }
+.version-fila > div:first-child { flex: 1; min-width: 0; }
+.version-fila .detalle { font-size: 11px; color: var(--fg-2); }
+.version-fila button { background: var(--panel); color: var(--fg); border: 1px solid var(--linea);
+                       border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+.version-fila button:hover { border-color: var(--acento); color: var(--acento); }
+.version-fila button.quitar:hover { border-color: #f87171; color: #f87171; }
 </style>
 </head>
 <body>
@@ -914,6 +1029,20 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
     <p class="hint">
       <button class="btn-primario" id="btnGuardar" type="button">Guardar cambios</button>
       <span class="hint" id="estadoGuardado">se guarda solo</span>
+    </p>
+    <div class="versiones-caja">
+      <div class="barra-sfx" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <label class="hint" for="nombreVersion" style="font-weight:600; color:var(--fg);">Versiones</label>
+        <input type="text" id="nombreVersion" maxlength="60" placeholder="p. ej. sin b-roll del final"
+               style="flex:1; min-width:200px; font:inherit; background:var(--bg); color:var(--fg);
+                      border:1px solid var(--linea); border-radius:6px; padding:5px 8px;">
+        <button class="btn-primario" id="btnGuardarVersion" type="button">Guardar esta versión</button>
+      </div>
+      <p class="hint">Guarda una copia con nombre de todo lo ajustado. Cargar una versión
+         reemplaza lo que tengas ahora — guardá antes la actual si la querés conservar.</p>
+      <div id="listaVersiones"></div>
+    </div>
+    <p class="hint">
       <button class="btn-primario" id="btnPreview" type="button">👁 Previsualizar</button>
       <button class="btn-primario" id="btnRender" type="button">🎬 Renderizar final</button>
       <br><span class="hint">Se guarda siempre antes de renderizar.
@@ -2023,6 +2152,88 @@ document.getElementById("pistaEnc").addEventListener("click", (ev) => {
   video.currentTime = tiempoDesdeEvento(ev, ev.currentTarget);
 });
 
+// ---- Versiones con nombre --------------------------------------------------
+// Una version es una copia de todos los ajustes.*.json en _versiones/<nombre>/.
+// Sirve para probar dos montajes distintos del mismo video y volver al que
+// gustara, sin tener que rehacerlo a mano.
+function pintarVersiones(versiones) {
+  const cont = document.getElementById("listaVersiones");
+  cont.innerHTML = "";
+  if (!versiones || !versiones.length) {
+    cont.innerHTML = '<p class="hint">Todavía no hay ninguna versión guardada.</p>';
+    return;
+  }
+  for (const v of versiones) {
+    const fila = document.createElement("div");
+    fila.className = "version-fila";
+    const partes = [];
+    if (v.insertos != null) partes.push(`${v.insertos} PiP`);
+    if (v.broll != null) partes.push(`${v.broll} B-roll`);
+    if (v.sfx != null) partes.push(`${v.sfx} sonidos`);
+    if (v.animaciones != null) partes.push(`${v.animaciones} animaciones`);
+
+    const info = document.createElement("div");
+    info.innerHTML = `<b>${v.nombre}</b><br><span class="detalle">${v.fecha}` +
+      `${partes.length ? " · " + partes.join(" · ") : ""}</span>`;
+    fila.appendChild(info);
+
+    const bCargar = document.createElement("button");
+    bCargar.type = "button"; bCargar.textContent = "Cargar";
+    bCargar.addEventListener("click", () => cargarVersion(v.nombre));
+    fila.appendChild(bCargar);
+
+    const bBorrar = document.createElement("button");
+    bBorrar.type = "button"; bBorrar.textContent = "Borrar"; bBorrar.className = "quitar";
+    bBorrar.addEventListener("click", async () => {
+      if (!confirm(`¿Borrar la versión "${v.nombre}"?`)) return;
+      const r = await fetch("/version/borrar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: v.nombre }),
+      });
+      pintarVersiones((await r.json()).versiones);
+    });
+    fila.appendChild(bBorrar);
+    cont.appendChild(fila);
+  }
+}
+
+async function refrescarVersiones() {
+  try {
+    const r = await fetch("/versiones");
+    pintarVersiones((await r.json()).versiones);
+  } catch (e) { /* sin versiones no se rompe nada */ }
+}
+
+document.getElementById("btnGuardarVersion").addEventListener("click", async () => {
+  const caja = document.getElementById("nombreVersion");
+  const nombre = caja.value.trim();
+  if (!nombre) { caja.focus(); return; }
+  // Lo que se guarda es lo que hay EN DISCO, asi que primero se vuelca el
+  // estado actual del editor; si no, la version saldria con lo de antes.
+  await guardarAhora(false);
+  const r = await fetch("/version/guardar", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nombre }),
+  });
+  const resp = await r.json();
+  if (resp.ok) { caja.value = ""; pintarVersiones(resp.versiones); }
+});
+
+async function cargarVersion(nombre) {
+  if (!confirm(`Cargar "${nombre}" reemplaza los ajustes actuales. ¿Seguir?`)) return;
+  await guardarAhora(false);   // por si acaso: lo de ahora queda en disco
+  const r = await fetch("/version/cargar", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nombre }),
+  });
+  if (!(await r.json()).ok) return;
+  // Se recarga desde el servidor: los paneles se repueblan solos con los
+  // ajustes de la version, igual que al abrir la corrida.
+  ultimoGuardado = null;       // que el autoguardado no pise lo recien cargado
+  await cargar();
+  marcarGuardado(`versión «${nombre}» cargada`);
+}
+
 // ---- Guardado automatico ---------------------------------------------------
 // "Estoy editando y me tengo que ir": cerrar la pestaña no puede costar el
 // trabajo. En vez de instrumentar cada sitio donde se toca algo —que es la
@@ -2360,9 +2571,27 @@ if (btnSound && volumenVideo) {
   });
 }
 
-document.getElementById("btnPlay").addEventListener("click", () => {
-  if (video.paused) { video.play(); document.getElementById("btnPlay").textContent = "⏸ Pausar"; }
-  else { video.pause(); document.getElementById("btnPlay").textContent = "▶ Reproducir"; }
+function alternarPlay() {
+  const btn = document.getElementById("btnPlay");
+  if (video.paused) { video.play(); btn.textContent = "⏸ Pausar"; }
+  else { video.pause(); btn.textContent = "▶ Reproducir"; }
+}
+document.getElementById("btnPlay").addEventListener("click", alternarPlay);
+
+// Espacio = reproducir/pausar desde cualquier parte del editor, que es lo que
+// hace cualquier editor de video. Con dos cuidados: si se esta escribiendo
+// (hook, nombre de version, casillas de segundos) el espacio es un espacio; y
+// si el foco esta en un boton hay que quitarselo, o el navegador ademas lo
+// pulsaria y el video se reproduciria y se pararia en el mismo golpe.
+window.addEventListener("keydown", (e) => {
+  if (e.code !== "Space" && e.key !== " ") return;
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  const el = document.activeElement;
+  if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" ||
+             el.tagName === "SELECT" || el.isContentEditable)) return;
+  e.preventDefault();          // si no, la pagina baja de golpe
+  if (el && el.tagName === "BUTTON") el.blur();
+  alternarPlay();
 });
 
 async function cargarProyectos() {
@@ -2414,6 +2643,7 @@ if (btnCargarProyecto) {
 }
 
 cargarProyectos();
+refrescarVersiones();
 cargar();
 </script>
 </body>

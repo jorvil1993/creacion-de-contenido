@@ -83,6 +83,17 @@ dos botones al final:
   archivo final ni publica nada. Para comprobar un ajuste.
 - **Renderizar final** — el bueno, y lo copia a OneDrive listo para subir.
 
+Todo lo que se ajusta **se guarda solo** cada par de segundos, así que cerrar la
+pestaña no cuesta el trabajo: al volver a abrir la corrida está todo donde se
+dejó, incluido el segundo del reproductor.
+
+Para probar dos montajes del mismo video hay **versiones con nombre**: se guarda
+una copia de todos los ajustes y se salta entre ellas. Viven en
+`_versiones/<nombre>/` dentro de la carpeta de la corrida. Cargar una reemplaza
+lo que haya en ese momento, no lo mezcla.
+
+**Espacio** reproduce y pausa desde cualquier parte del editor.
+
 ---
 
 ## Corridas desatendidas (un agente, una tanda nocturna)
