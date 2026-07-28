@@ -671,3 +671,33 @@ CapCut) según la bitácora original de la tarea.
 
 Ninguno pendiente de este bloque. Sigue el BLOQUE 7 (Guardar la portada).
 
+---
+
+## BLOQUE — Guardar la portada
+
+**Estado: hecho.**
+
+### Qué encontré y qué decidí
+
+- El reproductor del editor sirve un proxy reducido generado por `f10_editor_visual.generar_proxy()`. Capturar la portada desde el `<canvas>` del navegador hubiera guardado la resolución baja del proxy, no los 1080x1920 nativos.
+- Implementé la función `guardar_portada(dir_trabajo, segundo)` en `editor/f10_editor_visual.py`, que extrae el fotograma a resolución completa 1080x1920 con `ffmpeg` (`-ss {segundo} -i {v_origen} -vframes 1 -q:v 2`) directamente del video original (`07_FINAL.mp4` o `06_video.mp4`).
+- Guarda la portada en `salida/` de OneDrive (`config.DIR_PUBLICADOS`) con el nombre `<nombre-corrida>_portada_<segundo>s.jpg` (ej. `Guion-7_portada_4_2s.jpg`) junto al video final, conservando una copia en la carpeta de trabajo.
+- Agregué el endpoint `POST /guardar-portada` en `editor/f11_servidor.py` y el botón `📸 Guardar portada (1080x1920)` en los controles del reproductor del editor.
+
+### Verificación hecha
+
+- `python editor/test_regresion.py` (178 pruebas) y `python editor/test_align.py`: en verde.
+- Sección nueva 16 en `test_regresion.py` (`pruebas_guardar_portada`, 4 checks): valida extracción real de fotograma a (1080, 1920) contra video sintético de prueba, existencia del endpoint `/guardar-portada` y presencia del botón `#btnGuardarPortada`.
+
+### Archivos tocados
+
+- `editor/f10_editor_visual.py`
+- `editor/f11_servidor.py`
+- `editor/PLAN-MEJORAS.md`
+- `editor/test_regresion.py`
+
+### Siguiente paso
+
+Ninguno pendiente de este bloque. Sigue el BLOQUE 8 (Música).
+
+

@@ -21,6 +21,7 @@ Uso:
 import argparse
 import base64
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -1072,6 +1073,50 @@ pintar(); tabla();
             f"<style>{css}</style>\n{PLANTILLA}\n"
             f"<script>window.__DATOS__ = {datos_js};</script>\n"
             f"<script>{js}</script>\n")
+
+
+def guardar_portada(dir_trabajo: Path, segundo: float) -> dict:
+    """Extrae un fotograma a 1080x1920 con ffmpeg en el segundo indicado
+    y lo guarda en salida/ (DIR_PUBLICADOS) junto al video final.
+    """
+    candidatos = ["07_FINAL.mp4", "06_video.mp4", "02_cortado.mp4"]
+    v_origen = next((dir_trabajo / n for n in candidatos if (dir_trabajo / n).exists()), None)
+    if v_origen is None:
+        return {"ok": False, "error": "No se encontró ningún video para extraer la portada"}
+
+    segundo = max(0.0, float(segundo))
+    seg_fmt = f"{segundo:.1f}s".replace(".", "_")
+    nombre_corrida = dir_trabajo.name
+    nombre_archivo = f"{nombre_corrida}_portada_{seg_fmt}.jpg"
+
+    dir_publicados = config.DIR_PUBLICADOS
+    dir_publicados.mkdir(parents=True, exist_ok=True)
+    destino = dir_publicados / nombre_archivo
+    destino_local = dir_trabajo / nombre_archivo
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-ss", str(segundo),
+        "-i", str(v_origen),
+        "-vframes", "1",
+        "-q:v", "2",
+        str(destino)
+    ]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if r.returncode == 0 and destino.exists():
+            shutil.copyfile(destino, destino_local)
+            return {
+                "ok": True,
+                "ruta": str(destino),
+                "ruta_relativa": f"salida/{nombre_archivo}",
+                "nombre": nombre_archivo,
+                "segundo": segundo,
+            }
+        else:
+            return {"ok": False, "error": f"ffmpeg falló: {(r.stderr or '')[-300:]}"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 def main():

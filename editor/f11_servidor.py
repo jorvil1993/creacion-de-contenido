@@ -533,6 +533,11 @@ class Handler(BaseHTTPRequestHandler):
                 resultado["ruta_subtitulos"] = str(_guardar_subtitulos(datos["subtitulos"]))
             self._json(resultado)
 
+        elif partes.path == "/guardar-portada":
+            segundo = float(datos.get("segundo", 0.0))
+            resultado = f10.guardar_portada(DIR_TRABAJO, segundo)
+            self._json(resultado)
+
         elif partes.path == "/version/guardar":
             nombre = _nombre_version(datos.get("nombre"))
             if not nombre:
@@ -1017,6 +1022,7 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
     </div>
     <div class="controles">
       <button id="btnZonaSegura" type="button">🛡 Ver zona segura de TikTok</button>
+      <button id="btnGuardarPortada" type="button">📸 Guardar portada (1080x1920)</button>
     </div>
     <p class="hint">El encuadre (zoom + paneo) se calcula con la misma función que usa el
       render final. Puedes preescuchar todo el audio (voz + música + SFX) directamente en la vista previa.</p>
@@ -1366,6 +1372,33 @@ if (btnZonaSegura) {
     const visible = !zonaSeguraEl.classList.contains("visible");
     localStorage.setItem("zonaSeguraVisible", visible ? "1" : "0");
     aplicarVisibilidadZona(visible);
+  });
+}
+
+const btnGuardarPortada = document.getElementById("btnGuardarPortada");
+if (btnGuardarPortada) {
+  btnGuardarPortada.addEventListener("click", async () => {
+    const origText = btnGuardarPortada.textContent;
+    btnGuardarPortada.disabled = true;
+    btnGuardarPortada.textContent = "⏳ Guardando portada...";
+    try {
+      const res = await fetch("/guardar-portada", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ segundo: typeof video !== "undefined" && video ? video.currentTime : 0 })
+      });
+      const datos = await res.json();
+      if (datos.ok) {
+        alert(`🖼 Portada guardada exitosamente a 1080x1920:\n${datos.ruta_relativa || datos.ruta}`);
+      } else {
+        alert(`❌ Error al guardar portada: ${datos.error}`);
+      }
+    } catch (err) {
+      alert(`❌ Error de conexión: ${err.message}`);
+    } finally {
+      btnGuardarPortada.disabled = false;
+      btnGuardarPortada.textContent = origText;
+    }
   });
 }
 

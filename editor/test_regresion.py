@@ -23,7 +23,9 @@ Uso:  python editor/test_regresion.py
 """
 import ast
 import re
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -1523,6 +1525,46 @@ def pruebas_texto_destacado():
         "el motor de Hyperframes necesita la clave exacta para pausar/reproducir la composicion")
 
 
+def pruebas_guardar_portada():
+    seccion("16. Guardar la portada a resolución completa (f10 + f11)")
+    import f10_editor_visual
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        video_dummy = tmp_path / "07_FINAL.mp4"
+        cmd = [
+            "ffmpeg", "-y", "-f", "lavfi",
+            "-i", "color=c=blue:s=1080x1920:d=2",
+            "-c:v", "libx264", str(video_dummy)
+        ]
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode == 0 and video_dummy.exists():
+            res = f10_editor_visual.guardar_portada(tmp_path, 1.0)
+            chk("guardar_portada genera la imagen de salida correctamente",
+                res.get("ok") is True and Path(res["ruta"]).exists(),
+                "la portada debe ser extraida del video original con ffmpeg")
+
+            if res.get("ok") and "ruta" in res:
+                res_img = f10_editor_visual._resolucion(Path(res["ruta"]))
+                chk("la portada extraida conserva la resolucion completa 1080x1920",
+                    res_img == (1080, 1920),
+                    f"resolucion obtenida {res_img} -- si se sacara del canvas del reproductor se obtendria la del proxy, no 1080x1920")
+
+                if Path(res["ruta"]).exists():
+                    try: Path(res["ruta"]).unlink()
+                    except Exception: pass
+        else:
+            chk("guardar_portada ffmpeg dummy test disponible", False, "No se pudo generar video dummy con ffmpeg")
+
+    fuente_srv = (config.RAIZ_PROYECTO / "editor" / "f11_servidor.py").read_text(encoding="utf-8")
+    chk("existe el endpoint /guardar-portada en f11_servidor.py",
+        'partes.path == "/guardar-portada"' in fuente_srv,
+        "el frontend del editor realiza POST a /guardar-portada enviando el segundo del reproductor")
+
+    chk("existe el boton btnGuardarPortada en el HTML del editor",
+        'id="btnGuardarPortada"' in fuente_srv,
+        "el usuario debe tener el boton visible en los controles del reproductor")
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -1541,6 +1583,7 @@ def main():
     pruebas_recorte_broll()
     pruebas_subtitulos()
     pruebas_texto_destacado()
+    pruebas_guardar_portada()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")
