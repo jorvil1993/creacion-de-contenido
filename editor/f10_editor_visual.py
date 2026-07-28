@@ -635,6 +635,11 @@ def recolectar(dir_trabajo: Path) -> dict:
             "archivo": str(archivo_path.resolve()) if archivo_path else None,
             "miniatura": miniatura,
             "overlay": overlay_b64,
+            # Tramo elegido del clip fuente (bloque 4 del plan de mejoras). None
+            # si nunca se eligió uno: el pipeline sigue leyendo desde el
+            # segundo 0, igual que siempre.
+            "recorte_inicio": ev.get("recorte_inicio"),
+            "recorte_fin": ev.get("recorte_fin"),
         })
 
         overlays_list.append({

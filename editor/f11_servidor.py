@@ -1038,6 +1038,31 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       </div>
       <div class="grid-catalogo" id="gridCatalogo"></div>
     </div>
+
+    <div class="editor-caja" id="cajaSegmento">
+      <div class="filtros">
+        <strong id="segmentoInfo">Elegí el tramo del clip:</strong>
+        <button type="button" id="btnCancelarSegmento">cancelar</button>
+      </div>
+      <video id="segmentoVideo" controls muted
+             style="width:100%; max-width:280px; max-height:400px; display:block; margin:0 auto;
+                    background:#000; border-radius:8px;"></video>
+      <p class="hint" style="margin-top:8px;">
+        El audio de este clip <b>no se usa</b>: un B-roll o un PiP de video entra mudo,
+        solo se escucha tu voz (y la música/SFX, si van). Arrastrá las manijas para
+        elegir el tramo — no se puede pedir más metraje del que el archivo tiene.
+      </p>
+      <div class="pista-enc" id="pistaSegmento" style="margin-top:8px;">
+        <div class="franjas-enc" id="franjasSegmento">
+          <div class="enc-cerrado" id="segmentoRango" style="background:rgba(139,92,246,.28); border-color:#8b5cf6;">
+            <div class="enc-tirador izq" id="segTirIzq"></div>
+            <div class="enc-tirador der" id="segTirDer"></div>
+          </div>
+        </div>
+      </div>
+      <p class="hint" id="segmentoResumen"></p>
+      <button class="btn-primario" id="btnUsarSegmento" type="button">Usar este tramo</button>
+    </div>
   </div>
 
   <div class="panel">
@@ -1353,6 +1378,8 @@ async function cargar() {
     broll_fullscreen: m.broll_fullscreen,
     archivo: m.archivo, tarjeta: m.overlay, miniatura: m.miniatura, medio: m.medio, tipo: m.tipo,
     palabra: m.palabra,
+    // Tramo elegido del clip fuente (bloque 4): null si nunca se eligió uno.
+    recorte_inicio: m.recorte_inicio ?? null, recorte_fin: m.recorte_fin ?? null,
   }));
   renderPipsLista();
   construirOverlays(); // depende de edicionPip: tiene que ir después de poblarlo
@@ -1616,7 +1643,9 @@ function pintarPipTimeline() {
     barra.style.background = esVideo ? "rgba(139, 92, 246, 0.35)" : "rgba(79, 209, 217, 0.25)";
     barra.style.borderColor = esVideo ? "#8b5cf6" : "var(--acento)";
     barra.textContent = (esVideo ? "B-Roll: " : "PiP: ") + (ev.asset_id || ev.archivo?.split(/[\\/]/).pop() || ev.tipo);
-    barra.title = `${ev.ini.toFixed(1)}s - ${ev.fin.toFixed(1)}s`;
+    const maxClip = duracionMaximaClip(ev);
+    barra.title = `${ev.ini.toFixed(1)}s - ${ev.fin.toFixed(1)}s`
+      + (Number.isFinite(maxClip) ? ` (tramo elegido: ${maxClip.toFixed(1)}s como máximo)` : "");
 
     for (const lado of ["izq", "der"]) {
       const tir = document.createElement("div");
@@ -1625,8 +1654,17 @@ function pintarPipTimeline() {
         e.preventDefault(); e.stopPropagation();
         arrastrar((mv) => {
           const t = tiempoDesdeEvento(mv, pista);
-          if (lado === "izq") ev.ini = Math.min(t, ev.fin - 0.2);
-          else ev.fin = Math.max(t, ev.ini + 0.2);
+          // El hueco no puede ser mas largo que el tramo elegido del clip
+          // (bloque 4): estirarlo mas alla se frena, en vez de dejar que el
+          // render se quede sin metraje y congele el ultimo cuadro.
+          const tope = duracionMaximaClip(ev);
+          if (lado === "izq") {
+            const minIni = Number.isFinite(tope) ? ev.fin - tope : 0;
+            ev.ini = Math.max(minIni, Math.min(t, ev.fin - 0.2));
+          } else {
+            const maxFin = Number.isFinite(tope) ? ev.ini + tope : Infinity;
+            ev.fin = Math.min(maxFin, Math.max(t, ev.ini + 0.2));
+          }
           renderPipsLista();
           construirTimeline();
         });
@@ -2266,7 +2304,14 @@ async function cargarGridCatalogo() {
       pend.className = "pend"; pend.textContent = "sin recorte";
       item.appendChild(pend);
     }
-    item.addEventListener("click", () => elegirAsset(a));
+    item.addEventListener("click", () => {
+      // Un clip de verdad (no una imagen) puede tener cualquier duración —
+      // hoy 8 de los de assets/generado/video/manual/ pasan los 15s. Antes
+      // se usaba siempre desde el segundo 0; el modal deja elegir el tramo
+      // (bloque 4 del plan de mejoras).
+      if (a.es_clip) abrirModalSegmento(a);
+      else elegirAsset(a);
+    });
     grid.appendChild(item);
   }
 }
@@ -2301,6 +2346,115 @@ function elegirAsset(asset) {
   construirOverlays();
 }
 
+// --- Modal para elegir el tramo de un clip de B-roll (BLOQUE 4) -----------
+let segmentoAsset = null;
+let segmentoIni = 0, segmentoFin = 0, segmentoDur = 0;
+
+// Cuánto puede durar como máximo el hueco de un inserto de VIDEO sin pedirle
+// al clip más metraje del que tiene. Infinity si no aplica (una imagen no se
+// "acaba") o si el evento nunca pasó por el modal (comportamiento de
+// siempre: sin tope nuevo).
+function duracionMaximaClip(ev) {
+  if (ev.medio !== "video") return Infinity;
+  if (ev.recorte_inicio != null && ev.recorte_fin != null) return ev.recorte_fin - ev.recorte_inicio;
+  return Infinity;
+}
+
+function arrastrarSimple(alMover) {
+  const mover = (mv) => alMover(mv);
+  const soltar = () => {
+    window.removeEventListener("pointermove", mover);
+    window.removeEventListener("pointerup", soltar);
+  };
+  window.addEventListener("pointermove", mover);
+  window.addEventListener("pointerup", soltar);
+}
+
+function tiempoSegmento(ev, elemento) {
+  const r = elemento.getBoundingClientRect();
+  const t = (ev.clientX - r.left) / r.width * segmentoDur;
+  return Math.max(0, Math.min(segmentoDur, Math.round(t * 100) / 100));
+}
+
+function abrirModalSegmento(asset) {
+  segmentoAsset = asset;
+  segmentoDur = asset.duracion_s || 0;
+  segmentoIni = 0;
+  segmentoFin = segmentoDur;
+  document.getElementById("cajaCatalogo").classList.remove("activa");
+  document.getElementById("cajaSegmento").classList.add("activa");
+  document.getElementById("segmentoInfo").textContent =
+    `Elegí el tramo de "${asset.producto}" (dura ${segmentoDur.toFixed(1)}s en total):`;
+  const v = document.getElementById("segmentoVideo");
+  v.pause();
+  v.src = `/archivo?ruta=${encodeURIComponent(asset.archivo)}`;
+  v.currentTime = 0;
+  pintarSegmento();
+}
+
+function cerrarModalSegmento() {
+  document.getElementById("cajaSegmento").classList.remove("activa");
+  document.getElementById("segmentoVideo").pause();
+  segmentoAsset = null;
+}
+
+function pintarSegmento() {
+  const rango = document.getElementById("segmentoRango");
+  if (!rango || !segmentoDur) return;
+  rango.style.left = (segmentoIni / segmentoDur * 100) + "%";
+  rango.style.width = Math.max(1, (segmentoFin - segmentoIni) / segmentoDur * 100) + "%";
+  document.getElementById("segmentoResumen").textContent =
+    `${segmentoIni.toFixed(1)}s a ${segmentoFin.toFixed(1)}s de ${segmentoDur.toFixed(1)}s · `
+    + `el tramo elegido dura ${(segmentoFin - segmentoIni).toFixed(1)}s`;
+}
+
+document.getElementById("segTirIzq").addEventListener("pointerdown", (e) => {
+  e.preventDefault(); e.stopPropagation();
+  const pista = document.getElementById("pistaSegmento");
+  arrastrarSimple((mv) => {
+    // tiempoSegmento ya frena en 0 y en segmentoDur: no se puede pedir mas
+    // metraje del que el archivo tiene.
+    segmentoIni = Math.min(tiempoSegmento(mv, pista), segmentoFin - 0.3);
+    document.getElementById("segmentoVideo").currentTime = segmentoIni;
+    pintarSegmento();
+  });
+});
+document.getElementById("segTirDer").addEventListener("pointerdown", (e) => {
+  e.preventDefault(); e.stopPropagation();
+  const pista = document.getElementById("pistaSegmento");
+  arrastrarSimple((mv) => {
+    segmentoFin = Math.max(tiempoSegmento(mv, pista), segmentoIni + 0.3);
+    document.getElementById("segmentoVideo").currentTime = segmentoFin;
+    pintarSegmento();
+  });
+});
+document.getElementById("btnCancelarSegmento").addEventListener("click", cerrarModalSegmento);
+document.getElementById("btnUsarSegmento").addEventListener("click", () => {
+  if (!segmentoAsset) return;
+  const asset = segmentoAsset, recorteIni = segmentoIni, recorteFin = segmentoFin;
+  const duracionTramo = recorteFin - recorteIni;
+  const nuevo = {
+    ini: video.currentTime,
+    fin: Math.min(DATA.duracion, video.currentTime + duracionTramo),
+    x: 0, y: 0, asset_id: null, asset: asset.id, archivo: asset.archivo,
+    tarjeta: null, tipo: "broll", medio: "video", broll_fullscreen: true,
+    recorte_inicio: recorteIni, recorte_fin: recorteFin,
+  };
+  if (editandoIdx === -1) {
+    edicionPip.push(nuevo);
+  } else {
+    const viejo = edicionPip[editandoIdx];
+    // El hueco queda atado al tramo elegido: no puede quedar mas largo que
+    // el tramo, aunque el hueco viejo si lo fuera.
+    const fin = Math.min(viejo.fin, viejo.ini + duracionTramo);
+    edicionPip[editandoIdx] = { ...nuevo, ini: viejo.ini, fin };
+  }
+  cerrarModalSegmento();
+  editandoIdx = null;
+  renderPipsLista();
+  construirOverlays();
+});
+
 document.getElementById("btnAñadirPip").addEventListener("click", () => abrirCatalogo(-1));
 document.getElementById("btnResetPips").addEventListener("click", async () => {
   if (!confirm("Se descartan los insertos y B-rolls ajustados a mano y vuelven los del guion / los automáticos. ¿Seguir?")) return;
@@ -2333,6 +2487,10 @@ function eventoBase(ev) {
   if (ev.asset) base.asset = ev.asset;
   if (ev.archivo) base.archivo = ev.archivo;
   if (ev.codigo) base.codigo = ev.codigo;
+  // Tramo elegido del clip fuente (bloque 4): sin esto, guardar y recargar
+  // olvidaba el recorte y el render volvía a leer desde el segundo 0.
+  if (ev.recorte_inicio != null) base.recorte_inicio = ev.recorte_inicio;
+  if (ev.recorte_fin != null) base.recorte_fin = ev.recorte_fin;
   return base;
 }
 

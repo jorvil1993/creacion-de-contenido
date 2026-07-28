@@ -1602,6 +1602,14 @@ def cargar_eventos_manual(ruta_json: Path, dir_tmp: Path, catalogo: list = None)
             ev_dict["broll_fullscreen"] = ev["broll_fullscreen"]
         if "codigo" in ev:
             ev_dict["codigo"] = ev["codigo"]
+        # Tramo elegido del clip fuente (bloque 4), por si algún día un PiP de
+        # video también lo trae — hoy el modal del editor solo lo produce para
+        # B-roll, pero el render (f4_retencion.py) lo aplica a cualquier
+        # evento de medio "video".
+        if ev.get("recorte_inicio") is not None:
+            ev_dict["recorte_inicio"] = float(ev["recorte_inicio"])
+        if ev.get("recorte_fin") is not None:
+            ev_dict["recorte_fin"] = float(ev["recorte_fin"])
         eventos.append(ev_dict)
     return eventos
 
@@ -1635,7 +1643,7 @@ def cargar_broll_manual(ruta_json: Path) -> list | None:
             print(f"AVISO: B-roll manual #{i} sin ini/fin válidos — omitido.")
             continue
 
-        eventos.append({
+        evento = {
             "tipo": ev.get("tipo", "broll"),
             "medio": ev.get("medio", "video"),
             "broll_fullscreen": ev.get("broll_fullscreen", True),
@@ -1648,7 +1656,17 @@ def cargar_broll_manual(ruta_json: Path) -> list | None:
             "tag": ev.get("tag", ""),
             "asset": ev.get("asset", "broll-manual"),
             "codigo": ev.get("codigo", ""),
-        })
+        }
+        # Tramo elegido del clip fuente (bloque 4 del plan de mejoras): desde
+        # qué segundo del ARCHIVO ORIGEN se lee, no desde qué segundo del
+        # video final se muestra (eso ya son `ini`/`fin`). Sin esto el render
+        # siempre leía desde el segundo 0, sin importar lo que se eligiera en
+        # el editor.
+        if ev.get("recorte_inicio") is not None:
+            evento["recorte_inicio"] = float(ev["recorte_inicio"])
+        if ev.get("recorte_fin") is not None:
+            evento["recorte_fin"] = float(ev["recorte_fin"])
+        eventos.append(evento)
     return eventos
 
 

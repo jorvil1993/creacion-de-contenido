@@ -1196,6 +1196,112 @@ def pruebas_densidad_sfx():
         "sfx-denso" in fuente_srv and "cada < umbral" in fuente_srv)
 
 
+# ===========================================================================
+# 13. Elegir el tramo de un clip de B-roll (f4_retencion + f6_overlays + editor)
+# ===========================================================================
+# Verificado antes de tocar nada: un B-roll de video SIEMPRE se leía desde el
+# segundo 0 del archivo fuente (ni `-ss` ni `atrim` en ningún lado de la
+# composición), y si el hueco de la línea de tiempo quedaba más largo que el
+# clip, el `overlay` de ffmpeg (eof_action por defecto = repeat) congelaba el
+# último cuadro — se ve como un error. El audio del B-roll nunca se mezcla
+# (solo se mapea `[N]:v`, nunca `[N]:a`). Este bloque agrega el modal para
+# elegir el tramo Y el cambio real en el render (f4_retencion.py), que es
+# donde el bloque 1 y el 3 ya enseñaron que el bug real puede vivir fuera de
+# donde apunta el diagnóstico si no se sigue el dato hasta el final.
+def pruebas_recorte_broll():
+    import json
+    import tempfile
+
+    import f6_overlays
+
+    seccion("13. Elegir el tramo de un clip de B-roll (f4_retencion + f6_overlays + editor)")
+
+    fuente_f4 = (AQUI / "f4_retencion.py").read_text(encoding="utf-8")
+    chk("el render arranca la LECTURA del clip en recorte_inicio, no siempre en 0",
+        '["-ss", f"{recorte_inicio:.3f}"]' in fuente_f4,
+        "antes -itsoffset solo desplazaba DONDE aparece en la salida, nunca "
+        "DESDE DONDE se lee el archivo -- el tramo elegido en el editor no habria "
+        "cambiado nada del video final")
+    chk("el render recorta el hueco al tramo elegido ANTES de componer (defensa contra el freeze)",
+        'min(ev["fin"], ev["ini"] + (ev["recorte_fin"] - ev["recorte_inicio"]))' in fuente_f4,
+        "sin este tope, un ajustes.broll.json tocado a mano por fuera del editor "
+        "podia pedir mas metraje del que el clip tiene y el ultimo cuadro se congela")
+
+    # --- round-trip: recorte_inicio/recorte_fin sobreviven ajustes.broll.json ---
+    tmp = Path(tempfile.mkdtemp())
+    clip = tmp / "clip.mp4"
+    clip.write_bytes(b"no es un mp4 de verdad, pero existe y con eso basta")
+    broll_json = tmp / "ajustes.broll.json"
+    broll_json.write_text(json.dumps({"broll": [
+        {"ini": 5.0, "fin": 8.0, "tipo": "broll", "medio": "video", "broll_fullscreen": True,
+         "archivo": str(clip), "recorte_inicio": 8.0, "recorte_fin": 11.0},
+    ]}), encoding="utf-8")
+    vueltos = f6_overlays.cargar_broll_manual(broll_json)
+    chk("cargar_broll_manual conserva recorte_inicio/recorte_fin, no los descarta",
+        len(vueltos) == 1 and vueltos[0].get("recorte_inicio") == 8.0 and vueltos[0].get("recorte_fin") == 11.0,
+        f"evento recuperado: {vueltos[0] if vueltos else None}")
+
+    # Un evento SIN recorte (el caso de siempre, o un B-roll automático del
+    # guion) no debe inventarse un recorte de la nada.
+    broll_json2 = tmp / "ajustes.broll2.json"
+    broll_json2.write_text(json.dumps({"broll": [
+        {"ini": 1.0, "fin": 4.0, "tipo": "broll", "medio": "video", "broll_fullscreen": True,
+         "archivo": str(clip)},
+    ]}), encoding="utf-8")
+    sin_recorte = f6_overlays.cargar_broll_manual(broll_json2)
+    chk("un B-roll sin tramo elegido no trae recorte_inicio/recorte_fin inventados",
+        sin_recorte[0].get("recorte_inicio") is None and sin_recorte[0].get("recorte_fin") is None,
+        f"evento: {sin_recorte[0]}")
+
+    # --- round-trip a través de f10_editor_visual.recolectar() --------------
+    import f10_editor_visual as f10
+    dir_corrida = tmp / "corrida_recorte"
+    dir_corrida.mkdir(parents=True)
+    (dir_corrida / "ajustes.broll.json").write_text(json.dumps({"broll": [
+        {"ini": 5.0, "fin": 8.0, "tipo": "broll", "medio": "video", "broll_fullscreen": True,
+         "archivo": str(clip), "recorte_inicio": 8.0, "recorte_fin": 11.0},
+    ]}), encoding="utf-8")
+    datos = f10.recolectar(dir_corrida)
+    broll_mov = next((m for m in datos["movibles"] if m["tipo"] == "broll"), None)
+    chk("recolectar() expone el tramo elegido en 'movibles' para que el editor lo recupere al recargar",
+        broll_mov is not None and broll_mov.get("recorte_inicio") == 8.0 and broll_mov.get("recorte_fin") == 11.0,
+        f"movible: {broll_mov}")
+
+    # --- el editor: modal, tope del hueco, y aviso de audio ------------------
+    fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+    chk("existe el modal para elegir el tramo, con manijas de inicio y fin",
+        'id="cajaSegmento"' in fuente_srv and 'id="segTirIzq"' in fuente_srv and 'id="segTirDer"' in fuente_srv)
+    chk("el modal reproduce el clip ENTERO (no un recorte del servidor) para elegir el tramo",
+        re.search(r"v\.src = `/archivo\?ruta=\$\{encodeURIComponent\(asset\.archivo\)\}`", fuente_srv)
+        is not None)
+    chk("las manijas del modal no dejan pedir mas metraje del que el clip tiene",
+        "function tiempoSegmento(ev, elemento)" in fuente_srv
+        and "Math.max(0, Math.min(segmentoDur" in fuente_srv,
+        "tiempoSegmento frena en [0, segmentoDur]")
+    chk("el audio del B-roll se declara explicito en la interfaz, no se asume",
+        "no se usa" in fuente_srv and "entra mudo" in fuente_srv,
+        "verificado en f4_retencion.py: el B-roll solo aporta [N]:v, el audio de "
+        "salida sale siempre de 1:a (la voz) -- el editor ahora lo dice, no lo da por sentado")
+    chk("existe la funcion que limita el hueco al tramo elegido",
+        "function duracionMaximaClip(ev)" in fuente_srv,
+        "los bloques 5 y 6 no la necesitan, pero sigue el mismo patron de "
+        "'una funcion reutilizable, no metida en el dibujado' del bloque 2")
+    chk("estirar el borde derecho del bloque en la linea de tiempo respeta ese tope",
+        re.search(r"const maxFin = Number\.isFinite\(tope\) \? ev\.ini \+ tope : Infinity;", fuente_srv)
+        is not None,
+        "sin este tope, arrastrar el borde podia pedir mas metraje del que el tramo elegido tiene")
+    chk("estirar el borde IZQUIERDO tambien respeta el tope (alarga el hueco igual que el derecho)",
+        re.search(r"const minIni = Number\.isFinite\(tope\) \? ev\.fin - tope : 0;", fuente_srv)
+        is not None,
+        "mover el inicio mas temprano alarga el hueco tanto como mover el fin mas tarde")
+    chk("guardar y recargar no pierde el tramo elegido (eventoBase lo propaga)",
+        "if (ev.recorte_inicio != null) base.recorte_inicio = ev.recorte_inicio;" in fuente_srv,
+        "sin esto, ajustes.broll.json se guardaba sin el recorte y el render volvia al segundo 0")
+    chk("sustituir un inserto ata el hueco nuevo al tramo del clip nuevo, no al hueco viejo",
+        "const fin = Math.min(viejo.fin, viejo.ini + duracionTramo);" in fuente_srv,
+        "decision explicita del bloque: el hueco no puede ser mas largo que el pedazo")
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -1211,6 +1317,7 @@ def main():
     pruebas_sfx_previa()
     pruebas_zona_segura()
     pruebas_densidad_sfx()
+    pruebas_recorte_broll()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")

@@ -393,6 +393,21 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
     h_out = int(config.ALTO * escala) // 2 * 2
 
     eventos_overlay = eventos_overlay or []
+    # Un video (B-roll o PiP) no puede durar en pantalla más de lo que el
+    # tramo elegido del archivo fuente permite (bloque 4 del plan de mejoras:
+    # modal para elegir el tramo de un clip). Sin este tope, si el hueco de la
+    # línea de tiempo quedó más largo que el tramo, ffmpeg se queda sin frames
+    # y `overlay` (con su `eof_action` por defecto, `repeat`) congela el
+    # último cuadro — se ve como un error, no como una decisión. El editor ya
+    # frena al estirar el hueco, pero esto cubre también un ajuste.eventos/
+    # broll.json tocado a mano por fuera del editor.
+    eventos_overlay = [
+        {**ev, "fin": min(ev["fin"], ev["ini"] + (ev["recorte_fin"] - ev["recorte_inicio"]))}
+        if ev.get("medio") == "video" and ev.get("recorte_inicio") is not None
+           and ev.get("recorte_fin") is not None
+        else ev
+        for ev in eventos_overlay
+    ]
     # los streams de PNG deben durar al menos hasta el fin del último overlay
     # (el conteo de frames puede quedar unas décimas por debajo de la duración
     # del contenedor con la que f6 planificó los eventos)
@@ -409,7 +424,12 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
         if ev.get("medio") == "video":
             # Animaciones (ProRes 4444 con alfa): se desplazan en el tiempo con
             # -itsoffset para que empiecen en su momento, en vez de en t=0.
-            inputs += ["-itsoffset", f"{ev['ini']:.3f}", "-i", str(ev["archivo"])]
+            # Si se eligió un tramo del archivo (bloque 4), `-ss` ANTES del
+            # -i arranca la LECTURA ahí — sin esto, el clip siempre se leía
+            # desde su segundo 0 sin importar qué tramo se hubiera elegido.
+            recorte_inicio = float(ev.get("recorte_inicio") or 0.0)
+            semilla = ["-ss", f"{recorte_inicio:.3f}"] if recorte_inicio > 0 else []
+            inputs += semilla + ["-itsoffset", f"{ev['ini']:.3f}", "-i", str(ev["archivo"])]
         else:
             # Igual que en f6_overlays.componer_overlays: sin -loop 1 -t el PNG sería
             # un solo frame en t=0 y el fade quedaría congelado casi transparente.

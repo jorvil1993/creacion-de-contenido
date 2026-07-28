@@ -326,5 +326,138 @@ caminos, no solo en el que menciona el diagnóstico.
 Ninguno pendiente de este bloque. Los valores de "sobrio" (6.5s) y "cargado"
 (2.5s) no están calibrados contra una corrida real todavía — son el
 doble/mitad de "normal" a ojo. Si en uso real se sienten mal, ajustar esos dos
-números en `config.SFX_DENSIDAD_PRESETS` sin tocar el resto. Sigue el BLOQUE 4
-(modal para elegir el tramo de un clip de B-roll).
+números en `config.SFX_DENSIDAD_PRESETS` sin tocar el resto.
+
+---
+
+## BLOQUE — Modal para elegir el tramo de un clip de B-roll
+
+**Estado: hecho.**
+
+### Lo que investigué antes de tocar nada
+
+- Un B-roll de video **siempre se lee desde el segundo 0** del archivo fuente:
+  `f4_retencion.py` usa `-itsoffset {ini} -i archivo` para ubicarlo en la
+  salida, pero `-itsoffset` NO mueve desde dónde se lee — no había ningún
+  `-ss`/`atrim`/`trim=` tocando estos clips en ningún lado del render real.
+- Si el hueco de la línea de tiempo queda más largo que el clip, `overlay`
+  (con su `eof_action` por defecto, `repeat`) **congela el último cuadro** —
+  no hace loop ni corta el video ni rompe el render.
+- El **audio del B-roll nunca se mezcla**: el filtro solo referencia `[N]:v`
+  de cada clip, nunca `[N]:a`; el mapeo final siempre sale de `1:a` (el video
+  hablado). Esto lo hice explícito en la interfaz en vez de asumirlo (pedido
+  del bloque).
+- **Hallazgo de arquitectura importante**: `f6_overlays.py` tiene su PROPIO
+  código de composición con B-roll (líneas ~1410-1466), pero está MUERTO en
+  el pipeline real — `editor.py` solo lo llama con `--solo-planificar`
+  (planifica eventos, no compone). La composición real siempre pasa por
+  `f4_retencion.py --solo-render`. Solo toqué ese camino; no toqué el código
+  muerto de `f6_overlays.py` (fuera de alcance, y tocar código que nunca se
+  ejecuta no arregla nada).
+- El catálogo del editor solo mostraba miniaturas estáticas (un frame fijo a
+  los 0.5s) para los clips — nunca un `<video>` real. Sí existe un mecanismo
+  de preview con `<video>` en el editor, pero es el de animaciones/hook/CTA
+  (`medioAnimacion()`), no conectado al grid de B-roll.
+- No existía ningún campo de offset/recorte en la estructura de un evento de
+  B-roll (`ini, fin, x, y, tipo, medio, archivo, ...` — nada de
+  `recorte_inicio`/`recorte_fin`).
+
+### Qué decidí y por qué
+
+- Dos campos nuevos, opcionales: `recorte_inicio` y `recorte_fin` — el tramo
+  del ARCHIVO FUENTE que se usa (distinto de `ini`/`fin`, que es dónde cae en
+  el video final). `None`/ausentes = comportamiento de siempre (desde el
+  segundo 0, sin tope nuevo) — ningún B-roll viejo ni automático se ve
+  afectado.
+- **`f4_retencion.py`** (el único camino de render real):
+  1. `-ss {recorte_inicio}` ANTES del `-i` del clip (además del `-itsoffset`
+     que ya existía) — arranca la LECTURA en ese segundo del archivo. Sin
+     esto, elegir un tramo en el editor no habría cambiado nada del render.
+  2. Clamp defensivo: `fin = min(fin, ini + (recorte_fin - recorte_inicio))`
+     aplicado a TODOS los eventos de video con recorte, antes de componer —
+     por si un `ajustes.broll.json` tocado a mano por fuera del editor pide
+     más metraje del que el clip tiene. Doble red de seguridad junto con el
+     freno del editor.
+- **`f6_overlays.cargar_broll_manual` y `cargar_eventos_manual`**: antes
+  reconstruían el evento con una lista fija de claves (sin recorte); ahora
+  propagan `recorte_inicio`/`recorte_fin` si vienen. Lo agregué a los dos por
+  simetría, aunque hoy el modal solo genera B-roll (`cargar_broll_manual`) —
+  `f4_retencion.py` aplica el offset a CUALQUIER evento de `medio: "video"`,
+  así que un PiP de video con recorte también funcionaría si algún día se
+  genera uno con esos campos.
+- **`f10_editor_visual.recolectar()`**: el diccionario `movibles` (lo que
+  repuebla `edicionPip` al recargar la página) ahora incluye
+  `recorte_inicio`/`recorte_fin` — sin esto, guardar un tramo y refrescar la
+  página lo habría olvidado.
+- **Editor — el modal**: se abre SOLO para assets con `es_clip: true` (los de
+  `assets/generado/video/manual/`, verificado que son los únicos con un
+  `archivo` resuelto de forma confiable; hay 2 assets del catálogo con
+  `medio: "video"` y `"pip"` en usos que hoy ya se manejan como imagen en
+  `elegirAsset` — queda fuera de alcance, es un gap previo no relacionado).
+  Reproduce el `<video>` COMPLETO vía `/archivo?ruta=...` (ya servible, sin
+  endpoint nuevo). Dos manijas (`segTirIzq`/`segTirDer`) sobre una pista tipo
+  `.enc-cerrado`, con `tiempoSegmento()` frenando siempre en `[0, duración]`
+  — no se puede pedir más metraje del que el archivo tiene.
+- **DECISIÓN explícita del bloque, implementada tal cual**: el hueco en la
+  línea de tiempo queda ATADO al tramo — al confirmar el modal, `fin = ini +
+  duración_del_tramo` (para un inserto nuevo) o `fin = min(hueco_viejo, ini +
+  duración_del_tramo)` (al sustituir uno existente, nunca más largo que el
+  tramo nuevo). `duracionMaximaClip(ev)` es la función reutilizable que dice
+  cuánto puede durar el hueco; los dos tiradores de estirar el bloque en la
+  línea de tiempo principal (`pintarPipTimeline`) la usan para frenarse — el
+  IZQUIERDO también, porque adelantar el inicio alarga el hueco tanto como
+  atrasar el fin.
+- El aviso de audio ("el audio de este clip no se usa... entra mudo") va
+  dentro del modal, verificado contra el código real de `f4_retencion.py`
+  (no es una suposición).
+
+### Verificación hecha
+
+- `test_regresion.py` sección 13 (`pruebas_recorte_broll`, 13 checks):
+  `-ss` condicional presente en `f4_retencion.py`, el clamp defensivo del
+  `fin`, round-trip de `recorte_inicio`/`recorte_fin` a través de
+  `cargar_broll_manual` (con y sin recorte, para no inventar uno de la nada),
+  round-trip a través de `f10.recolectar()` → `movibles`, existencia del
+  modal y sus manijas, el aviso de audio, la función `duracionMaximaClip`, el
+  tope en los dos tiradores de la línea de tiempo, y que `eventoBase` /
+  "sustituir" respeten el tramo.
+- `node --check` sobre el `<script>` completo: sin errores.
+- **Abrí el editor de verdad** contra `Guion-7` (Edge headless + CDP):
+  - Catálogo real: 3 clips de Flow (`abandonado` 8s, `inside box` 5s,
+    `kindle primer plano` 10.01s) con sus duraciones reales.
+  - Clic en "abandonado" → modal abierto de verdad, `<video>` apuntando al
+    archivo real, resumen inicial "0.0s a 8.0s de 8.0s".
+  - Simulé arrastrar las manijas a [2s, 6s] y confirmé: el evento nuevo en
+    `edicionPip` trae `recorte_inicio:2, recorte_fin:6` y **el hueco quedó en
+    exactamente 4s** (`fin - ini = 4`), igual a la duración del tramo.
+  - Repliqué la lógica EXACTA de los dos tiradores con valores extremos
+    (pedir el borde derecho a 60s, el izquierdo a 0s): los dos se frenaron
+    exactamente en el límite del tramo (`ini + 4` y `fin - 4`
+    respectivamente), no más allá.
+- **Mismo percance que en el bloque 3, dos veces**: el autoguardado escribió
+  mi B-roll de prueba en el `ajustes.broll.json` REAL de `Guion-7`. Lo
+  detecté después (`ls` mostró un 4to evento con `asset:
+  "broll-manual:abandonado"`) y lo saqué a mano, restaurando los 3 eventos
+  originales. **Regla que adopto de acá en adelante para lo que queda del
+  plan**: para cualquier verificación en el navegador que vaya a tocar
+  PiP/B-roll/SFX/hook-CTA (cualquier cosa que dispare el autoguardado), usar
+  una copia descartable de la corrida (como hice en el bloque 1 con
+  `_prueba-sfx-raw`), nunca la corrida real con nombre, aunque sea "solo para
+  mirar".
+- `python editor/test_regresion.py` (141 pruebas) y `python editor/test_align.py`:
+  en verde.
+
+### Archivos tocados
+
+- `editor/f4_retencion.py`
+- `editor/f6_overlays.py`
+- `editor/f10_editor_visual.py`
+- `editor/f11_servidor.py`
+- `editor/test_regresion.py`
+
+### Siguiente paso
+
+Ninguno pendiente de este bloque. Sigue el BLOQUE 5 (subtítulos: tamaño
+ajustable y corregir el texto). `cajaEnZonaTapada` (bloque 2) y el patrón de
+exponer constantes vía `/datos` en vez de hardcodearlas en el JS (bloques 1 y
+3) ya están listos para reusar ahí.
