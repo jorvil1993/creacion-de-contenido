@@ -316,3 +316,15 @@ los puntos 5 y 6, que son desarrollo nuevo.
 El punto **3b** (usar el face tracking para posicionar overlays) es
 probablemente el cambio más elegante de toda la lista: el dato ya se calcula
 en cada corrida y hoy se descarta.
+
+
+---
+
+## 📌 BLOQUES DE LA TIRA VISUAL (PENDIENTES PARA PRÓXIMA ETAPA)
+
+1. **Tira de capas apiladas en la interfaz (`f11_servidor.py`)**:
+   - Visualización multi-pista (Voz, Subtítulos, B-Roll/Overlays, Animaciones GSAP, SFX/Música).
+2. **Ver y deshacer el corte de silencios**:
+   - Inspeccionar los tramos recortados por `f2_cortar.py` y restaurar o ajustar silencios desde la línea de tiempo.
+3. **Arrastrar en la tira con imán (snapping) y zoom**:
+   - Control de escala de tiempo con zoom y ajuste magnético de marcas hacia bordes de palabras o beats de guion.

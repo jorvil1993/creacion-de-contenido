@@ -897,3 +897,17 @@ resolución fue quedarse con las dos partes: las secciones de pruebas de esta
 sesión pasaron a ser la **18**, después de las 17 de la otra. `config.py` y
 `editor.py` se fusionaron solos y se comprobó a mano que no se perdiera nada.
 El worktree y sus enlaces (`entrada/`, `salida/`, `assets/`) ya se quitaron.
+
+
+---
+
+## 📌 TAREAS PENDIENTES FUTURAS (Próxima Fase del Editor Visual)
+
+Los siguientes 3 bloques quedaron **planificados y pendientes** para ser desarrollados en la próxima tanda sobre `f11_servidor.py`:
+
+1. **Bloque A — Tira de capas apiladas en la interfaz**:
+   - Visualización multi-pista en el editor HTML: Pista de Voz/Transcripción, Pista de Subtítulos, Pista de B-Roll / Overlays, Pista de Animaciones Hyperframes, Pista de SFX y Música.
+2. **Bloque B — Ver y deshacer el corte de silencios**:
+   - Inspeccionar visualmente en la línea de tiempo los silencios removidos por `f2_cortar.py` con opción de restaurar o ajustar tramos recortados.
+3. **Bloque C — Arrastrar en la tira con imán (snapping) y zoom**:
+   - Control de zoom en la escala de tiempo y arrastre magnético de marcadores hacia bordes de palabras o de beats de guion.
