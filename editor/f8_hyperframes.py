@@ -54,6 +54,7 @@ PLANTILLAS = {
     # dibujado (§3a del plan v2).
     "anim-sol":       ["variante", "lado", "etiqueta", "imagen"],
     "anim-apps":      ["variante"],
+    "texto-destacado":["texto", "estilo"],
 }
 
 # Duración de cada composición, tomada del `data-duration` de su HTML. El
@@ -70,6 +71,7 @@ DURACIONES = {
     "anim-moto": 2.6,
     "anim-sol": 2.6,
     "anim-apps": 3.0,
+    "texto-destacado": 2.5,
 }
 
 

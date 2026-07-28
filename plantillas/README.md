@@ -56,6 +56,7 @@ zonas seguras — no hace falta calcular offsets x/y al componer, solo superpone
 | `compositions/anim-splash.html` | `variante` (0\|1\|2), `lado`, `etiqueta` | 2.2s |
 | `compositions/anim-moto.html` | `variante` (0\|1\|2), `etiqueta` | 2.6s |
 | `compositions/anim-sol.html` | `variante` (0\|1\|2), `lado`, `etiqueta`, `imagen` | 2.6s |
+| `compositions/texto-destacado.html` | `texto`, `estilo` (`contorno` \| `pildora` \| `neon` \| `degradado` \| `sombra` \| `marcador`) | 2.5s |
 
 Si se cambia un `data-duration`, hay que actualizar también
 `editor/f8_hyperframes.py → DURACIONES`, que es de donde el pipeline lo lee sin

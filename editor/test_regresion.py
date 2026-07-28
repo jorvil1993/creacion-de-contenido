@@ -1488,6 +1488,41 @@ def pruebas_subtitulos():
         "en el JSON no encontraria su palabra y la correccion se perderia en silencio")
 
 
+def pruebas_texto_destacado():
+    seccion("15. Texto destacado tipo CapCut (plantilla Hyperframes + f8)")
+    import f8_hyperframes
+    ruta_tpl = config.RAIZ_PROYECTO / "plantillas" / "compositions" / "texto-destacado.html"
+    chk("existe la plantilla HTML de texto-destacado",
+        ruta_tpl.exists(),
+        "sin la plantilla HTML, f8_hyperframes.render no puede generar el clip MOV")
+
+    chk("texto-destacado esta registrada en f8_hyperframes.PLANTILLAS con texto y estilo",
+        f8_hyperframes.PLANTILLAS.get("texto-destacado") == ["texto", "estilo"],
+        "si falta en PLANTILLAS, render() la rechaza antes de llamar a npx")
+
+    chk("texto-destacado tiene su duracion registrada en f8_hyperframes.DURACIONES",
+        f8_hyperframes.DURACIONES.get("texto-destacado") == 2.5,
+        "si falta en DURACIONES, el pipeline asume 2.4s por defecto y la barra de tiempo miente")
+
+    chk("config.ANIMACION_DURACION incluye texto-destacado",
+        config.ANIMACION_DURACION.get("texto-destacado") == 2.5,
+        "config centraliza las duraciones para el editor visual y los respaldos")
+
+    html_text = ruta_tpl.read_text(encoding="utf-8") if ruta_tpl.exists() else ""
+    chk("la plantilla declara las 2 variables (texto y estilo) en data-composition-variables",
+        '"id":"texto"' in html_text and '"id":"estilo"' in html_text,
+        "Hyperframes lee estas variables del data-attribute del html")
+
+    estilos_esperados = ["contorno", "pildora", "neon", "degradado", "sombra", "marcador"]
+    chk("la plantilla soporta los 6 estilos pedidos (contorno, pildora, neon, degradado, sombra, marcador)",
+        all(est in html_text for est in estilos_esperados),
+        f"deben estar los 6 estilos CSS pedidos: {estilos_esperados}")
+
+    chk("la plantilla registra la linea de tiempo en window.__timelines['texto-destacado']",
+        'window.__timelines["texto-destacado"]' in html_text,
+        "el motor de Hyperframes necesita la clave exacta para pausar/reproducir la composicion")
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -1505,6 +1540,7 @@ def main():
     pruebas_densidad_sfx()
     pruebas_recorte_broll()
     pruebas_subtitulos()
+    pruebas_texto_destacado()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")
@@ -1512,11 +1548,12 @@ def main():
         print(f"{len(fallan)} de {len(_resultados)} pruebas FALLAN:")
         for n in fallan:
             print(f"  - {n}")
+        return 1
     else:
         print(f"LAS {len(_resultados)} PRUEBAS PASAN")
     print("\nFalta la otra mitad:  python editor/test_align.py"
           "  (alineacion guion <-> transcripcion contra el panel real)")
-    return 1 if fallan else 0
+    return 0
 
 
 if __name__ == "__main__":

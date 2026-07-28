@@ -533,7 +533,8 @@ ANIMACION_ETIQUETAS_REPETICION = {
 ANIMACION_DURACION = {
     "bateria": 2.4, "splash": 2.2, "moto": 2.6, "sol": 2.6,
     "tarjeta-cta": 6.5, "comparativa": 5.0, "tarjeta-specs": 4.5,
-    "stickers": 2.5, "banner-hook": 3.2, "pip-producto": 4.0, "anim-apps": 3.0
+    "stickers": 2.5, "banner-hook": 3.2, "pip-producto": 4.0, "anim-apps": 3.0,
+    "texto-destacado": 2.5
 }
 
 # Plantillas que el pipeline construye CON DATOS PROPIOS y coloca por su cuenta:

@@ -632,3 +632,42 @@ derecha del aviso de zona tapada de subtítulos casi no reacciona al tamaño
 `cajaSubActual()` en `f11_servidor.py`, no `cajaEnZonaTapada` (que es
 genérica y la reusan hook/CTA/PiP). Sigue el BLOQUE 6 (texto llamativo tipo
 CapCut) según la bitácora original de la tarea.
+
+---
+
+## BLOQUE — Texto llamativo tipo CapCut
+
+**Estado: hecho.**
+
+### Qué encontré y qué decidí
+
+- Creé la composición de Hyperframes `plantillas/compositions/texto-destacado.html` siguiendo el estándar HTML/GSAP/CSS de `banner-hook.html`.
+- Incluye 5-6 estilos visuales predefinidos seleccionables por la variable `estilo`:
+  1. `contorno`: texto blanco con contorno grueso negro y sombra.
+  2. `pildora`: tarjeta sólida azul oscuro con borde cian y esquinas redondeadas.
+  3. `neon`: efecto resplandor neón cian.
+  4. `degradado`: relleno gradiente magenta-dorado.
+  5. `sombra`: texto amarillo con sombra dura 3D negra.
+  6. `marcador`: fondo amarillo resaltador estilo marcador con leve inclinación (-1.5deg).
+- Incluye ajuste automático del tamaño de letra (76px a 44px) para asegurar que frases largas quepan hasta en 3 líneas sin salirse.
+- Animación de entrada GSAP con pop y `back.out(2.2)` y salida fade out en 2.5s.
+- Registrada en `editor/f8_hyperframes.py` (`PLANTILLAS` y `DURACIONES`), `config.ANIMACION_DURACION` y documentada en `plantillas/README.md`.
+
+### Verificación hecha
+
+- `python editor/test_regresion.py` (174 pruebas) y `python editor/test_align.py`: en verde.
+- Sección nueva 15 en `test_regresion.py` (`pruebas_texto_destacado`, 7 checks): valida la plantilla HTML, registro en `PLANTILLAS`, `DURACIONES`, `config.ANIMACION_DURACION`, variables `texto` y `estilo`, soporte de los 6 estilos CSS pedidos y registro en `window.__timelines["texto-destacado"]`.
+
+### Archivos tocados
+
+- `plantillas/compositions/texto-destacado.html`
+- `plantillas/README.md`
+- `editor/f8_hyperframes.py`
+- `editor/config.py`
+- `editor/PLAN-MEJORAS.md`
+- `editor/test_regresion.py`
+
+### Siguiente paso
+
+Ninguno pendiente de este bloque. Sigue el BLOQUE 7 (Guardar la portada).
+
