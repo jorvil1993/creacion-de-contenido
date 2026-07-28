@@ -48,7 +48,13 @@ def cargar_datos_html(ruta_html: Path = None) -> dict:
         eval('var G=' + gCode);
         console.log(JSON.stringify({CLIPS, G}));
         """
-        res = subprocess.run(["node", "-e", js_code, str(ruta_html)], capture_output=True, text=True)
+        # encoding explícito: Node escribe UTF-8, pero `text=True` a secas
+        # decodifica con la codificación regional de Windows (cp1252 en esta
+        # máquina). Sin esto, cada tilde del panel llegaba rota: el reporte
+        # 10_guion-alineado.md salía con "Â¿Por quÃ© dejaste de leer?" y las
+        # razones de los punch-ins con "acercÃ¡ la cÃ¡mara".
+        res = subprocess.run(["node", "-e", js_code, str(ruta_html)],
+                             capture_output=True, text=True, encoding="utf-8")
         if res.returncode == 0:
             return json.loads(res.stdout)
     except Exception:

@@ -274,16 +274,29 @@ def calcular_zoom_en_t(t: float, planos: list, picos: list, cerrados: list = Non
         zoom = max(zoom, config.ZOOM_PROGRESIVO_INICIO
                    + factor * (objetivo - config.ZOOM_PROGRESIVO_INICIO))
 
-    # Punch-in: acercamiento breve con entrada y salida suavizadas. Antes era
-    # una rampa triangular LINEAL de 0.3s, que a 30 fps son 9 fotogramas de ida
-    # y 9 de vuelta — se percibe como un golpe de imagen, no como cámara.
+    # Punch-in: entra rápido, aguanta y sale suave. Dos versiones anteriores y
+    # por qué ninguna servía:
+    #   · rampa triangular LINEAL de 0.3s: 9 fotogramas de ida y 9 de vuelta,
+    #     que se percibe como un golpe de imagen, no como cámara.
+    #   · la misma rampa alargada a 1.2s: el pico caía a la mitad, o sea 0.6s
+    #     después de la palabra marcada, y el acento aterrizaba sobre la
+    #     siguiente.
+    # Ahora el énfasis llega en PUNCH_IN_ATAQUE_S y se sostiene: el acento cae
+    # donde el guion lo pide.
     dur_punch = config.PUNCH_IN_DURACION_S
+    ataque = min(config.PUNCH_IN_ATAQUE_S, dur_punch * 0.4)
+    salida = dur_punch * config.PUNCH_IN_SALIDA_PCT
+    inicio_salida = dur_punch - salida
     for pico in picos:
         dt = t - pico["t"]
         if not (0 <= dt <= dur_punch):
             continue
-        mitad = dur_punch / 2
-        factor = _suave(dt / mitad) if dt <= mitad else _suave((dur_punch - dt) / mitad)
+        if dt < ataque:
+            factor = _suave(dt / ataque)
+        elif dt > inicio_salida:
+            factor = 1 - _suave((dt - inicio_salida) / salida)
+        else:
+            factor = 1.0
         zoom = max(zoom, config.ZOOM_PROGRESIVO_INICIO
                    + factor * (config.PUNCH_IN_ZOOM - config.ZOOM_PROGRESIVO_INICIO))
 

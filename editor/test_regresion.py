@@ -193,13 +193,22 @@ def pruebas_zoom():
 
     # El punch-in sube y baja: no se queda pegado.
     z_antes = f4_retencion.calcular_zoom_en_t(5.5, planos, picos, cerrados)
-    z_pico = max(f4_retencion.calcular_zoom_en_t(6.0 + i / 100, planos, picos, cerrados)
-                 for i in range(int(config.PUNCH_IN_DURACION_S * 100)))
+    muestreo = [(i / 100, f4_retencion.calcular_zoom_en_t(6.0 + i / 100, planos, picos, cerrados))
+                for i in range(int(config.PUNCH_IN_DURACION_S * 100))]
+    z_pico = max(z for _, z in muestreo)
     z_despues = f4_retencion.calcular_zoom_en_t(6.0 + config.PUNCH_IN_DURACION_S + 0.5,
                                                 planos, picos, cerrados)
     chk("el punch-in sube y vuelve a bajar",
         z_pico > z_antes + 0.05 and abs(z_despues - z_antes) < 0.02,
         f"antes {z_antes:.3f} -> pico {z_pico:.3f} -> despues {z_despues:.3f}")
+
+    # Y sobre todo: el acento tiene que caer DONDE se marco. Con la curva
+    # triangular el pico llegaba a la mitad de la ventana, o sea 0.6s tarde, y
+    # el enfasis aterrizaba en la palabra siguiente.
+    dt_pico = next(dt for dt, z in muestreo if z >= z_pico - 1e-9)
+    chk("el punch-in llega arriba sobre la palabra marcada",
+        dt_pico <= config.PUNCH_IN_ATAQUE_S + 0.02,
+        f"pico a los {dt_pico:.2f}s de la marca (ataque {config.PUNCH_IN_ATAQUE_S}s)")
 
     chk("dos efectos a la vez no se suman (se toma el mayor)",
         f4_retencion.calcular_zoom_en_t(
@@ -362,6 +371,17 @@ def pruebas_coherencia():
     chk("toda animacion pedida por el panel la sabe construir el pipeline",
         not sin_soporte, "; ".join(sin_soporte) if sin_soporte
         else f"{n_anim} beats ANIM en los {len(datos['G'])} guiones, todos resueltos")
+
+    # El panel se lee lanzando Node y leyendo su stdout. Node escribe UTF-8,
+    # pero `text=True` a secas decodifica con la codificacion regional de
+    # Windows: cada tilde llegaba rota y el reporte que lee Jose salia con
+    # "Â¿Por quÃ© dejaste de leer?".
+    textos = " ".join(f[1] for g in datos["G"] for f in g["tl"]) + " ".join(
+        g["t"] for g in datos["G"])
+    chk("el panel se lee con los acentos intactos",
+        "Ã" not in textos and "Â" not in textos and "é" in textos,
+        "mojibake en el texto del panel" if "Ã" in textos
+        else "tildes y signos de apertura correctos")
 
     sin_hooksegs = [g["n"] for g in datos["G"] if "hooksegs" not in g]
     chk("todos los guiones declaran hooksegs",

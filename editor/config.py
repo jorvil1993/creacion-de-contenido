@@ -264,6 +264,15 @@ PUNCH_IN_DURACION_S = 1.2
 PUNCH_IN_SEPARACION_MIN_S = 4.0      # antes 1.5s, y era el espaciado real
 PUNCH_IN_MAX_POR_MINUTO = 8          # tope duro: en 25s no pueden salir más de 3
 
+# Cuánto tarda en llegar arriba. El punch-in NO es simétrico: entra rápido,
+# aguanta y sale suave, como un énfasis hablado. Con la curva triangular
+# anterior el pico caía a la mitad de la duración, o sea 0.6s DESPUÉS de la
+# palabra marcada — con los 0.3s viejos eso era medio pelo y no se notaba, pero
+# a 1.2s el acento aterrizaba sobre la palabra siguiente. 0.30s son 9 fotogramas
+# a 30 fps: se lee como inmediato sin ser un tirón.
+PUNCH_IN_ATAQUE_S = 0.30
+PUNCH_IN_SALIDA_PCT = 0.40           # el último 40% de la ventana es la bajada
+
 ZOOM_PROGRESIVO_INICIO = 1.00
 ZOOM_PROGRESIVO_FIN = 1.08
 

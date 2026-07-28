@@ -138,6 +138,10 @@ def main():
                         help="Lista completa de animaciones armada en el editor visual "
                              "(Fase 3c): quita, mueve y añade animaciones. Reemplaza el "
                              "disparo por palabra de config.ANIMACIONES_POR_PALABRA")
+    parser.add_argument("--encuadre-manual", type=str, default=None, metavar="JSON",
+                        help="Punch-ins y tramos de plano cerrado elegidos a mano en el editor "
+                             "visual (Fase 3d). Manda sobre lo que saque del guion y sobre los "
+                             "picos de energía del audio")
     parser.add_argument("--sol-pip-video", action="store_true",
                         help="Usar el video de sol (sol_video_pip.mov) como PiP en vez de la animación HTML")
     parser.add_argument("--video-ambiente", action="store_true",
@@ -259,6 +263,13 @@ def main():
             args.hook = res_g["hook"]
         if not args.musica and res_g.get("musica"):
             args.musica = res_g["musica"]
+
+    # El encuadre hecho a mano gana sobre el que sale del guion: si José movió
+    # un acercamiento en el editor es porque el automático no le convenció.
+    # Funciona con o sin --guion.
+    if args.encuadre_manual:
+        encuadre_guion = ["--encuadre", args.encuadre_manual]
+        print(f"\nEncuadre manual: {args.encuadre_manual}")
 
     if not args.reaplicar:
         # El nombre 03_retencion.mp4 no se renderiza: --sin-render solo escribe el

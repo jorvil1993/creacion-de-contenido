@@ -51,20 +51,28 @@ def _resolucion(ruta: Path) -> tuple[int, int]:
     return int(w), int(h)
 
 
-def muestras_encuadre(dir_trabajo: Path, duracion: float) -> list:
+def muestras_encuadre(dir_trabajo: Path, duracion: float,
+                      encuadre: dict = None) -> list:
     """Un [t, cx, cy, zoom] por frame, con la MISMA función que usa el render
     real (f4_retencion.encuadre_en_t) — el preview del editor no aproxima el
-    encuadre, lo replica exacto (sección 1.5 del plan v2)."""
+    encuadre, lo replica exacto (sección 1.5 del plan v2).
+
+    `encuadre` permite recalcular la curva con punch-ins y planos cerrados que
+    todavía no están en el plan, que es lo que hace el editor mientras José los
+    arrastra. Se calcula acá, en Python, a propósito: reimplementar la fórmula
+    en JavaScript para la vista previa es exactamente la forma de que el editor
+    y el render terminen enseñando cosas distintas."""
     plan = json.loads((dir_trabajo / "03_retencion.plan.json").read_text(encoding="utf-8"))
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import f4_retencion as f4
 
+    encuadre = encuadre or {}
     track_rostro = plan["track_rostro"]
     planos = plan["planos"]
-    picos = plan["picos_energia"]
+    picos = encuadre.get("punch_ins") or plan["picos_energia"]
     # Los tramos de plano cerrado también forman parte del encuadre: sin
     # pasarlos, el preview del editor mostraría un zoom distinto al del render.
-    cerrados = plan.get("planos_cerrados", [])
+    cerrados = encuadre.get("planos_cerrados", plan.get("planos_cerrados", []))
     tiempos_track = np.array([p["t"] for p in track_rostro]) if track_rostro else np.array([0.0])
     cx_track = np.array([p["cx"] for p in track_rostro]) if track_rostro else np.array([0.5])
     cy_track = np.array([p["cy"] for p in track_rostro]) if track_rostro else np.array([0.4])
@@ -232,6 +240,34 @@ def catalogo_pip(dir_trabajo: Path | None = None, todos: bool = False) -> dict:
     }
 
 
+def _plan_encuadre_editable(dir_trabajo: Path, plan: dict) -> dict:
+    """Punch-ins y planos cerrados con los que arranca el editor.
+
+    Prioridad: lo que José ya ajustó a mano (`ajustes.encuadre.json`), si no lo
+    que salió del guion, y si no los picos de energía del audio que calculó f4.
+    Los picos se marcan con `origen` para que la interfaz pueda avisar de que
+    esos NO son una decisión editorial sino una medición del volumen de la voz.
+    """
+    guardado = dir_trabajo / "ajustes.encuadre.json"
+    if guardado.exists():
+        datos = json.loads(guardado.read_text(encoding="utf-8"))
+        datos["origen"] = "manual"
+        return datos
+
+    del_guion = dir_trabajo / "guion.encuadre.json"
+    if del_guion.exists():
+        datos = json.loads(del_guion.read_text(encoding="utf-8"))
+        datos["origen"] = "guion"
+        return datos
+
+    return {
+        "punch_ins": [{"t": p["t"], "razon": "pico de energía del audio"}
+                      for p in plan.get("picos_energia", [])],
+        "planos_cerrados": plan.get("planos_cerrados", []),
+        "origen": "audio",
+    }
+
+
 def recolectar(dir_trabajo: Path) -> dict:
     """Junta todo lo que el editor necesita desde la carpeta de trabajo."""
     dir_trabajo = Path(dir_trabajo)
@@ -285,6 +321,17 @@ def recolectar(dir_trabajo: Path) -> dict:
         "ancho": config.ANCHO, "alto": config.ALTO, "fps": config.FPS,
         "resolucion_origen": list(resolucion_origen),  # w_in/h_in reales del recorte de f4_retencion
         "encuadre": muestras_encuadre(dir_trabajo, duracion),
+        # Lo EDITABLE del encuadre, separado de las muestras ya calculadas: los
+        # acercamientos puntuales y los tramos sostenidos, tal como los dejó el
+        # guion (o el ajuste manual anterior, si ya lo hubo).
+        "plan_encuadre": _plan_encuadre_editable(dir_trabajo, plan),
+        "limites_zoom": {
+            "punch_in": config.PUNCH_IN_ZOOM,
+            "punch_in_dur": config.PUNCH_IN_DURACION_S,
+            "plano_cerrado": config.ZOOM_PLANO_CERRADO,
+            "base": config.ZOOM_PROGRESIVO_INICIO,
+            "transicion": config.ZOOM_TRANSICION_S,
+        },
         "palabras": [{"t": p["inicio"], "fin": p["fin"], "texto": p["texto"]}
                      for p in transcripcion["palabras"]],
         "limites": {"insertos_max": config.INSERTOS_MAX,

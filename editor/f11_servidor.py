@@ -56,6 +56,28 @@ def _guardar_animaciones(animaciones: list) -> Path:
     return _escritura_atomica(DIR_TRABAJO / "ajustes.animaciones.json", {"animaciones": animaciones})
 
 
+def _guardar_encuadre(encuadre: dict) -> Path:
+    """Punch-ins y planos cerrados ajustados a mano.
+
+    Se escribe con la misma forma que `guion.encuadre.json`, que es lo que
+    espera `f4_retencion --encuadre`: así el archivo que sale del editor y el
+    que sale del guion son intercambiables y no hay dos formatos que mantener.
+    """
+    limpio = {
+        "punch_ins": [{"t": round(float(p["t"]), 3), "razon": p.get("razon", "manual")}
+                      for p in encuadre.get("punch_ins", [])],
+        "planos_cerrados": [{"ini": round(float(c["ini"]), 3),
+                             "fin": round(float(c["fin"]), 3),
+                             "zoom": float(c.get("zoom", config.ZOOM_PLANO_CERRADO)),
+                             "razon": c.get("razon", "manual")}
+                            for c in encuadre.get("planos_cerrados", [])
+                            if float(c["fin"]) > float(c["ini"])],
+    }
+    limpio["punch_ins"].sort(key=lambda p: p["t"])
+    limpio["planos_cerrados"].sort(key=lambda c: c["ini"])
+    return _escritura_atomica(DIR_TRABAJO / "ajustes.encuadre.json", limpio)
+
+
 def _catalogo() -> list:
     global _CATALOGO_CACHE
     if _CATALOGO_CACHE is None:
@@ -257,7 +279,21 @@ class Handler(BaseHTTPRequestHandler):
                 destino_anim = _guardar_animaciones(datos["animaciones"])
                 resultado["ruta_animaciones"] = str(destino_anim)
                 resultado["n_animaciones"] = len(datos["animaciones"])
+            if "encuadre" in datos:
+                destino_enc = _guardar_encuadre(datos["encuadre"])
+                resultado["ruta_encuadre"] = str(destino_enc)
             self._json(resultado)
+
+        elif partes.path == "/encuadre/vista-previa":
+            # La curva se recalcula en Python con la MISMA funcion del render.
+            # Reimplementarla en JavaScript para la vista previa seria la forma
+            # mas directa de que el editor y el video terminen enseñando cosas
+            # distintas, que es justo lo que este editor existe para evitar.
+            duracion = float(datos.get("duracion") or 0) or f10._duracion(
+                DIR_TRABAJO / "06_video.mp4" if (DIR_TRABAJO / "06_video.mp4").exists()
+                else DIR_TRABAJO / "02_cortado.mp4")
+            muestras = f10.muestras_encuadre(DIR_TRABAJO, duracion, datos.get("encuadre"))
+            self._json({"ok": True, "encuadre": muestras})
 
         elif partes.path == "/render":
             proceso_previo = ESTADO_RENDER.get("proceso")
@@ -291,6 +327,14 @@ class Handler(BaseHTTPRequestHandler):
                 if candidato_anim.exists():
                     ajustes_anim = candidato_anim
 
+            ajustes_enc = None
+            if "encuadre" in datos:
+                ajustes_enc = _guardar_encuadre(datos["encuadre"])
+            else:
+                candidato_enc = DIR_TRABAJO / "ajustes.encuadre.json"
+                if candidato_enc.exists():
+                    ajustes_enc = candidato_enc
+
             # editor.py solo necesita que "entrada" exista — en --reaplicar no
             # se lee: la transcripción/corte/análisis ya están en dir_trabajo.
             dummy_entrada = DIR_TRABAJO / "02_cortado.mp4"
@@ -302,6 +346,8 @@ class Handler(BaseHTTPRequestHandler):
                 cmd += ["--sfx-manual", str(ajustes_sfx)]
             if ajustes_anim is not None:
                 cmd += ["--animaciones-manual", str(ajustes_anim)]
+            if ajustes_enc is not None:
+                cmd += ["--encuadre-manual", str(ajustes_enc)]
             if datos.get("hook"):
                 cmd += ["--hook", datos["hook"]]
 
@@ -411,6 +457,21 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
                display: none; }
 .editor-caja.activa { display: block; }
 
+.pista-enc { position: relative; height: 46px; border: 1px solid var(--linea); border-radius: 8px;
+             background: var(--bg); overflow: hidden; cursor: crosshair; }
+.franjas-enc { position: absolute; inset: 0; }
+.enc-cerrado { position: absolute; top: 6px; height: 34px; border-radius: 5px; cursor: grab;
+               background: rgba(79,209,217,.22); border: 1px solid var(--acento);
+               display: flex; align-items: center; justify-content: center;
+               font-size: 11px; color: var(--fg); overflow: hidden; white-space: nowrap; }
+.enc-cerrado.sel { background: rgba(79,209,217,.4); box-shadow: 0 0 0 2px var(--acento); }
+.enc-tirador { position: absolute; top: 0; width: 8px; height: 100%; cursor: ew-resize; }
+.enc-tirador.izq { left: 0; } .enc-tirador.der { right: 0; }
+.enc-punch { position: absolute; top: 4px; width: 3px; height: 38px; margin-left: -1px;
+             background: var(--sol, #ffc93c); border-radius: 2px; cursor: grab; }
+.enc-punch.sel { box-shadow: 0 0 0 3px rgba(255,201,60,.45); }
+.curva-zoom { width: 100%; height: 90px; margin-top: 6px; display: block;
+              background: var(--bg); border: 1px solid var(--linea); border-radius: 8px; }
 .pista-sfx { position: relative; height: 54px; border: 1px solid var(--linea); border-radius: 8px;
              background: rgba(79,209,217,.06); cursor: pointer; touch-action: none; }
 .franjas-sfx { position: relative; width: 100%; height: 100%; }
@@ -543,6 +604,29 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
   </div>
 
   <div class="panel" style="grid-column: 1 / -1;">
+    <h2>Encuadre <span class="hint" id="encOrigen"></span></h2>
+    <p class="hint">Dos cosas distintas. Un <b>punch-in</b> es un acercamiento corto que subraya
+      una palabra. Un <b>plano cerrado</b> es un tramo entero más íntimo: entra, se queda y sale.
+      Arrastrá el cuerpo de una barra para moverla y sus bordes para estirarla. La curva de abajo
+      es el zoom real del render, no un dibujo aproximado.</p>
+    <div class="barra-sfx" style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+      <button class="btn-primario" id="btnAddPunch" type="button">+ Punch-in en el segundo actual</button>
+      <button class="btn-primario" id="btnAddCerrado" type="button">+ Plano cerrado desde aquí</button>
+      <button class="btn-primario" id="btnBorrarEnc" type="button">Quitar el seleccionado</button>
+      <button class="btn-primario" id="btnResetEnc" type="button">Volver al automático</button>
+      <span class="hint" id="infoEnc"></span>
+    </div>
+    <div class="pista-enc" id="pistaEnc">
+      <div class="franjas-enc" id="franjasEnc"></div>
+    </div>
+    <svg class="curva-zoom" id="curvaZoom" preserveAspectRatio="none" viewBox="0 0 1000 120">
+      <polyline id="curvaLinea" fill="none" stroke="var(--acento)" stroke-width="2" points="" />
+      <line id="curvaCursor" x1="0" y1="0" x2="0" y2="120" stroke="var(--fg-2)" stroke-width="1" />
+    </svg>
+    <div class="hint" id="leyendaZoom"></div>
+  </div>
+
+  <div class="panel" style="grid-column: 1 / -1;">
     <p class="hint">
       <button class="btn-primario" id="btnGuardar" type="button">Guardar cambios</button>
       <button class="btn-primario" id="btnRender" type="button">Re-renderizar</button>
@@ -574,6 +658,12 @@ const audioPreview = new Audio();
 let edicionAnimaciones = [];
 let animacionesModificado = false;  // si es false, no se manda --animaciones-manual: sigue automático
 let editandoAnimIdx = null;         // índice en edicionAnimaciones, o -1 para "nueva antes de agregar"
+
+let encPunch = [];              // [{t, razon}]
+let encCerrados = [];           // [{ini, fin, zoom, razon}]
+let encModificado = false;      // si es false, no se manda --encuadre-manual
+let encSeleccion = null;        // {tipo: "punch"|"cerrado", i}
+let encPendiente = null;        // timer del recálculo de la curva
 
 function escucharSfx(nombre) {
   if (!DATA.sonidos[nombre]) return;
@@ -607,6 +697,23 @@ async function cargar() {
   construirSelectorSonidos();
   pintarSfx();
   tablaSfx();
+
+  const pe = DATA.plan_encuadre || { punch_ins: [], planos_cerrados: [], origen: "audio" };
+  encPunch = (pe.punch_ins || []).map(p => ({ t: p.t, razon: p.razon || "" }));
+  encCerrados = (pe.planos_cerrados || []).map(c => ({
+    ini: c.ini, fin: c.fin, zoom: c.zoom || DATA.limites_zoom.plano_cerrado, razon: c.razon || "",
+  }));
+  // Arrancar "modificado" cuando el origen ya es manual: si no, guardar sin
+  // tocar nada volveria a lo automatico y se perderia el ajuste anterior.
+  encModificado = pe.origen === "manual";
+  encSeleccion = null;
+  document.getElementById("encOrigen").textContent = {
+    manual: "· ajustado a mano",
+    guion: "· sale de la columna «Qué se ve» del panel",
+    audio: "· medido del volumen de la voz, no es una decisión editorial",
+  }[pe.origen] || "";
+  pintarEncuadre();
+  dibujarCurva(DATA.encuadre);
 
   const hook = DATA.overlays.find(o => o.tipo === "hook");
   const cta = DATA.overlays.find(o => o.tipo === "cta");
@@ -729,6 +836,140 @@ function pintarSfx() {
   });
   document.getElementById("infoSfx").textContent =
     `${edicionSfx.length} efecto(s)` + (sfxModificado ? " · editado a mano" : " · automático");
+}
+
+// ---- Encuadre: punch-ins y planos cerrados ---------------------------------
+// La curva NO se calcula aca. Se le pide al servidor, que la saca con la misma
+// funcion del render (f4_retencion.encuadre_en_t). Reimplementarla en JS para
+// la vista previa seria la forma mas directa de que el editor y el video
+// terminen enseñando cosas distintas, que es justo lo que este editor evita.
+function tiempoDesdeEvento(ev, elemento) {
+  const r = elemento.getBoundingClientRect();
+  const t = (ev.clientX - r.left) / r.width * DATA.duracion;
+  return Math.max(0, Math.min(DATA.duracion, Math.round(t * 100) / 100));
+}
+
+function arrastrar(alMover) {
+  const mover = (mv) => alMover(mv);
+  const soltar = () => {
+    window.removeEventListener("pointermove", mover);
+    window.removeEventListener("pointerup", soltar);
+    recalcularCurva();
+  };
+  window.addEventListener("pointermove", mover);
+  window.addEventListener("pointerup", soltar);
+}
+
+function pintarEncuadre() {
+  const cont = document.getElementById("franjasEnc");
+  const pista = document.getElementById("pistaEnc");
+  cont.innerHTML = "";
+  encCerrados.sort((a, b) => a.ini - b.ini);
+  encPunch.sort((a, b) => a.t - b.t);
+
+  encCerrados.forEach((c, i) => {
+    const barra = document.createElement("div");
+    barra.className = "enc-cerrado" + (encSeleccion?.tipo === "cerrado" && encSeleccion.i === i ? " sel" : "");
+    barra.style.left = (c.ini / DATA.duracion * 100) + "%";
+    barra.style.width = Math.max(0.6, (c.fin - c.ini) / DATA.duracion * 100) + "%";
+    barra.textContent = `cerrado ${c.ini.toFixed(1)}–${c.fin.toFixed(1)}s`;
+    barra.title = c.razon || "plano cerrado";
+
+    for (const lado of ["izq", "der"]) {
+      const tir = document.createElement("div");
+      tir.className = "enc-tirador " + lado;
+      tir.addEventListener("pointerdown", (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        encSeleccion = { tipo: "cerrado", i }; pintarEncuadre();
+        arrastrar((mv) => {
+          const t = tiempoDesdeEvento(mv, pista);
+          if (lado === "izq") c.ini = Math.min(t, c.fin - 0.2);
+          else c.fin = Math.max(t, c.ini + 0.2);
+          encModificado = true; pintarEncuadre();
+        });
+      });
+      barra.appendChild(tir);
+    }
+
+    barra.addEventListener("pointerdown", (ev) => {
+      if (ev.target.classList.contains("enc-tirador")) return;
+      ev.preventDefault();
+      encSeleccion = { tipo: "cerrado", i }; pintarEncuadre();
+      const t0 = tiempoDesdeEvento(ev, pista);
+      const ini0 = c.ini, fin0 = c.fin;
+      arrastrar((mv) => {
+        const d = tiempoDesdeEvento(mv, pista) - t0;
+        const largo = fin0 - ini0;
+        c.ini = Math.max(0, Math.min(DATA.duracion - largo, ini0 + d));
+        c.fin = c.ini + largo;
+        encModificado = true; pintarEncuadre();
+      });
+    });
+    cont.appendChild(barra);
+  });
+
+  encPunch.forEach((p, i) => {
+    const m = document.createElement("div");
+    m.className = "enc-punch" + (encSeleccion?.tipo === "punch" && encSeleccion.i === i ? " sel" : "");
+    m.style.left = (p.t / DATA.duracion * 100) + "%";
+    m.title = `punch-in ${p.t.toFixed(2)}s · ${p.razon || "manual"}`;
+    m.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      encSeleccion = { tipo: "punch", i }; pintarEncuadre();
+      arrastrar((mv) => {
+        p.t = tiempoDesdeEvento(mv, pista);
+        encModificado = true; pintarEncuadre();
+      });
+    });
+    cont.appendChild(m);
+  });
+
+  document.getElementById("infoEnc").textContent =
+    `${encPunch.length} punch-in(s) · ${encCerrados.length} plano(s) cerrado(s)` +
+    (encModificado ? " · editado a mano" : "");
+}
+
+function dibujarCurva(muestras) {
+  if (!muestras || !muestras.length) return;
+  const zMax = Math.max(DATA.limites_zoom.punch_in, DATA.limites_zoom.plano_cerrado);
+  const zMin = DATA.limites_zoom.base;
+  const paso = Math.max(1, Math.floor(muestras.length / 1000));
+  const pts = [];
+  for (let i = 0; i < muestras.length; i += paso) {
+    const [t, , , z] = muestras[i];
+    const x = t / DATA.duracion * 1000;
+    const y = 115 - (z - zMin) / (zMax - zMin || 1) * 110;
+    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+  document.getElementById("curvaLinea").setAttribute("points", pts.join(" "));
+  const zs = muestras.map(m => m[3]);
+  document.getElementById("leyendaZoom").textContent =
+    `zoom ${Math.min(...zs).toFixed(3)}× a ${Math.max(...zs).toFixed(3)}× ` +
+    `(la base sube sola de ${zMin.toFixed(2)}× a lo largo del plano; un punch-in llega a ` +
+    `${DATA.limites_zoom.punch_in}× durante ${DATA.limites_zoom.punch_in_dur}s)`;
+}
+
+function recalcularCurva() {
+  // Se agrupa: arrastrando se disparan decenas de eventos por segundo y no
+  // hace falta una vuelta al servidor por cada pixel.
+  clearTimeout(encPendiente);
+  encPendiente = setTimeout(async () => {
+    const r = await fetch("/encuadre/vista-previa", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ duracion: DATA.duracion, encuadre: encuadreParaGuardar() }),
+    });
+    const datos = await r.json();
+    if (datos.ok) { DATA.encuadre = datos.encuadre; dibujarCurva(datos.encuadre); }
+  }, 180);
+}
+
+function encuadreParaGuardar() {
+  return {
+    punch_ins: encPunch.map(p => ({ t: p.t, razon: p.razon || "manual" })),
+    planos_cerrados: encCerrados.map(c => ({
+      ini: c.ini, fin: c.fin, zoom: c.zoom, razon: c.razon || "manual",
+    })),
+  };
 }
 
 function tablaSfx() {
@@ -966,8 +1207,45 @@ function cuerpoAjustes() {
   const cuerpo = { eventos: eventosParaGuardar(), hook: document.getElementById("hookTexto").value };
   if (sfxModificado) cuerpo.sfx = sfxParaGuardar();
   if (animacionesModificado) cuerpo.animaciones = animacionesParaGuardar();
+  if (encModificado) cuerpo.encuadre = encuadreParaGuardar();
   return cuerpo;
 }
+
+document.getElementById("btnAddPunch").addEventListener("click", () => {
+  encPunch.push({ t: Math.round(video.currentTime * 100) / 100, razon: "manual" });
+  encSeleccion = null; encModificado = true; pintarEncuadre(); recalcularCurva();
+});
+
+document.getElementById("btnAddCerrado").addEventListener("click", () => {
+  const ini = Math.round(video.currentTime * 100) / 100;
+  const fin = Math.min(DATA.duracion, ini + 4);
+  if (fin - ini < 0.5) return;
+  encCerrados.push({ ini, fin, zoom: DATA.limites_zoom.plano_cerrado, razon: "manual" });
+  encSeleccion = null; encModificado = true; pintarEncuadre(); recalcularCurva();
+});
+
+document.getElementById("btnBorrarEnc").addEventListener("click", () => {
+  if (!encSeleccion) return;
+  if (encSeleccion.tipo === "punch") encPunch.splice(encSeleccion.i, 1);
+  else encCerrados.splice(encSeleccion.i, 1);
+  encSeleccion = null; encModificado = true; pintarEncuadre(); recalcularCurva();
+});
+
+document.getElementById("btnResetEnc").addEventListener("click", () => {
+  const pe = DATA.plan_encuadre || { punch_ins: [], planos_cerrados: [] };
+  encPunch = (pe.punch_ins || []).map(p => ({ t: p.t, razon: p.razon || "" }));
+  encCerrados = (pe.planos_cerrados || []).map(c => ({
+    ini: c.ini, fin: c.fin, zoom: c.zoom || DATA.limites_zoom.plano_cerrado, razon: c.razon || "",
+  }));
+  encModificado = false; encSeleccion = null; pintarEncuadre(); recalcularCurva();
+});
+
+// Clic en la pista (fuera de una barra) = mover el video ahi, para poder ver
+// que esta pasando en pantalla en el segundo que se esta ajustando.
+document.getElementById("pistaEnc").addEventListener("click", (ev) => {
+  if (!DATA || ev.target.closest(".enc-cerrado") || ev.target.closest(".enc-punch")) return;
+  video.currentTime = tiempoDesdeEvento(ev, ev.currentTarget);
+});
 
 document.getElementById("btnGuardar").addEventListener("click", async () => {
   const r = await fetch("/guardar", {
@@ -1166,6 +1444,13 @@ function actualizarUI(t) {
   const dur = DATA.duracion;
   const ph = document.getElementById("playhead");
   if (ph) ph.style.left = (Math.min(1, t / dur) * 100) + "%";
+  // Cursor sobre la curva de zoom: sin el no se sabe que parte de la curva
+  // corresponde al fotograma que se esta mirando.
+  const cur = document.getElementById("curvaCursor");
+  if (cur) {
+    const x = Math.min(1, t / dur) * 1000;
+    cur.setAttribute("x1", x); cur.setAttribute("x2", x);
+  }
   for (const span of document.querySelectorAll(".palabra")) {
     const pt = parseFloat(span.dataset.t);
     span.classList.toggle("activa", Math.abs(pt - t) < 0.35 && t >= pt);
