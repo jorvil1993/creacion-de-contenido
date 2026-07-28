@@ -76,6 +76,35 @@ DURACION_MIN_S = 30
 DURACION_MAX_S = 40
 
 # ---------------------------------------------------------------------------
+# Zona segura de TikTok/Reels/Shorts (BLOQUE 2 del plan de mejoras)
+# ---------------------------------------------------------------------------
+# La app tapa el video con su propia interfaz: una franja inferior (leyenda,
+# usuario, disco de sonido, barra de progreso) y una franja derecha (like,
+# comentar, compartir, guardar). Un overlay, un subtítulo o el CTA que caiga
+# ahí se ve invisible en el celular sin que se note en el editor.
+#
+# Valores APROXIMADOS, sacados a ojo de capturas de pantalla de TikTok e
+# Instagram Reels en un celular de gama media — no medidos con una regla.
+# Calibrar de verdad contra una captura real de la app antes de confiar en
+# este número para decidir la posición de un elemento clave.
+ZONA_SEGURA_INFERIOR_PX = 340   # ~18% de 1920
+ZONA_SEGURA_DERECHA_PX = 160    # ~15% de 1080
+# La columna de íconos (like/comentar/compartir/disco de sonido) no ocupa TODA
+# la altura: arranca recién a mitad de pantalla más o menos (el avatar) y baja
+# hasta cerca del final. Sin este límite, cualquier cosa en la mitad SUPERIOR
+# derecha (como el hook) avisaba "tapado" siempre, aunque ahí arriba la app no
+# pone nada — alarma que se ignora es alarma inútil.
+ZONA_SEGURA_DERECHA_DESDE_PCT = 0.45
+
+# Cajas aproximadas del hook y el CTA sobre el lienzo de 1080x1920, leídas de
+# las plantillas Hyperframes reales (banner-hook.html: top 300px, left/right
+# 60px; tarjeta-cta.html: top 230px, ancho completo). El ALTO es una
+# estimación generosa porque depende del texto real (número de líneas): sirve
+# para el aviso de zona tapada del editor, no para posicionar nada.
+ZONA_HOOK_APROX_PX = {"x": 60, "y": 300, "ancho": 960, "alto": 480}
+ZONA_CTA_APROX_PX = {"x": 0, "y": 230, "ancho": 1080, "alto": 900}
+
+# ---------------------------------------------------------------------------
 # Codificación de video — GPU (NVENC) con fallback a CPU
 # ---------------------------------------------------------------------------
 # La RTX 5070 Ti tiene un chip NVENC dedicado, independiente de los núcleos

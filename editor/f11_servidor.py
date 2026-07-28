@@ -794,6 +794,16 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
 .lienzo .overlay-img { position: absolute; top: 0; left: 0; transform-origin: 0 0;
                         cursor: grab; image-rendering: -webkit-optimize-contrast; }
 .lienzo .overlay-img:active { cursor: grabbing; }
+/* Zona segura de TikTok/Reels: franjas semitransparentes donde la app tapa el
+   video con su propia interfaz. display:none por defecto — se prende con el
+   botón y el estado se recuerda en localStorage. pointer-events:none para no
+   robarle el arrastre a los PiP que queden debajo. */
+.zona-segura { position: absolute; inset: 0; pointer-events: none; display: none; z-index: 8; }
+.zona-segura.visible { display: block; }
+.zona-segura .franja { position: absolute; background: repeating-linear-gradient(
+    135deg, rgba(244,63,94,.28) 0 10px, rgba(244,63,94,.14) 10px 20px); }
+.zona-segura .franja-inferior { left: 0; right: 0; bottom: 0; }
+.zona-segura .franja-derecha { right: 0; bottom: 0; } /* el "top" lo fija pintarZonaSegura() */
 .controles { display: flex; gap: 8px; align-items: center; }
 .controles button { background: var(--panel); color: var(--fg); border: 1px solid var(--linea);
                      border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 14px; }
@@ -946,6 +956,10 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
   <div class="lienzo-wrap">
     <div class="lienzo" id="lienzo">
       <video id="video" playsinline preload="auto"></video>
+      <div class="zona-segura" id="zonaSegura">
+        <div class="franja franja-inferior" id="zonaSeguraInferior" title="Franja inferior que TikTok/Reels tapa con su interfaz"></div>
+        <div class="franja franja-derecha" id="zonaSeguraDerecha" title="Franja derecha que TikTok/Reels tapa con sus botones"></div>
+      </div>
     </div>
     <div class="controles">
       <button id="btnPlay" type="button">▶ Reproducir</button>
@@ -954,8 +968,14 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       <span class="t" id="tActual">0.00s</span>
       <span class="t">/ <span id="tTotal">0.00s</span></span>
     </div>
+    <div class="controles">
+      <button id="btnZonaSegura" type="button">🛡 Ver zona segura de TikTok</button>
+    </div>
     <p class="hint">El encuadre (zoom + paneo) se calcula con la misma función que usa el
       render final. Puedes preescuchar todo el audio (voz + música + SFX) directamente en la vista previa.</p>
+    <p class="hint">La zona segura marca dónde TikTok/Reels tapan el video con su propia
+      interfaz (aproximado — calibrar contra una captura real). Un overlay que caiga ahí
+      avisa en su panel.</p>
   </div>
 
   <div class="columna-izq">
@@ -1019,8 +1039,10 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       <label class="hint" for="hookTexto">Texto del hook</label>
       <textarea id="hookTexto" maxlength="140"></textarea>
       <div class="hook-preview">
-        <div id="hookMedio"><p class="hint">hook · <span id="hookRango">?</span></p></div>
-        <div id="ctaMedio"><p class="hint">cta · <span id="ctaRango">?</span> · eco: "<span id="ctaEco"></span>"</p></div>
+        <div id="hookMedio"><p class="hint">hook · <span id="hookRango">?</span>
+          <span class="badge aviso" id="hookZonaAviso" style="display:none;"></span></p></div>
+        <div id="ctaMedio"><p class="hint">cta · <span id="ctaRango">?</span> · eco: "<span id="ctaEco"></span>"
+          <span class="badge aviso" id="ctaZonaAviso" style="display:none;"></span></p></div>
       </div>
     </div>
     <div class="pista-enc" id="pistaHookCta" style="margin-top:12px;">
@@ -1179,6 +1201,70 @@ function escucharSfx(nombre, volumen) {
   slot.el.play().catch(() => {});
 }
 
+// --- Zona segura de TikTok/Reels (BLOQUE 2) --------------------------------
+// Reutilizable: los bloques de subtítulos y texto destacado (CapCut-style)
+// también necesitan saber si lo suyo cae donde la app tapa el video. Todas
+// las coordenadas son en el espacio de salida (DATA.ancho x DATA.alto,
+// 1080x1920), no en píxeles de pantalla.
+function cajaEnZonaTapada(x, y, ancho, alto) {
+  if (!DATA || !DATA.zona_segura) return null;
+  const zs = DATA.zona_segura;
+  const y2 = y + alto, x2 = x + ancho;
+  // La franja inferior cubre TODO el ancho: alcanza con el solape vertical.
+  const tocaInferior = y2 > (DATA.alto - zs.inferior_px);
+  // La franja derecha (columna de íconos) no arranca arriba del todo: hace
+  // falta solape horizontal Y vertical con el tramo donde sí hay íconos.
+  const tocaDerecha = x2 > (DATA.ancho - zs.derecha_px)
+                    && y2 > (DATA.alto * zs.derecha_desde_pct);
+  if (tocaInferior && tocaDerecha) return "inferior y derecha";
+  if (tocaInferior) return "inferior";
+  if (tocaDerecha) return "derecha";
+  return null;
+}
+
+function pintarZonaSegura() {
+  if (!DATA || !DATA.zona_segura) return;
+  const zs = DATA.zona_segura;
+  const inf = document.getElementById("zonaSeguraInferior");
+  const der = document.getElementById("zonaSeguraDerecha");
+  if (inf) inf.style.height = (zs.inferior_px / DATA.alto * 100) + "%";
+  if (der) {
+    der.style.width = (zs.derecha_px / DATA.ancho * 100) + "%";
+    der.style.top = (zs.derecha_desde_pct * 100) + "%";
+  }
+
+  // Hook y CTA no tienen x/y en el editor (son composiciones a pantalla
+  // completa con posición fija en su plantilla) — se avisa una sola vez con
+  // la caja aproximada de config, no en cada frame.
+  const avisoHook = document.getElementById("hookZonaAviso");
+  const avisoCta = document.getElementById("ctaZonaAviso");
+  if (avisoHook) {
+    const z = cajaEnZonaTapada(zs.hook_aprox.x, zs.hook_aprox.y, zs.hook_aprox.ancho, zs.hook_aprox.alto);
+    avisoHook.style.display = z ? "" : "none";
+    avisoHook.textContent = z ? `⚠ puede caer en zona tapada (${z})` : "";
+  }
+  if (avisoCta) {
+    const z = cajaEnZonaTapada(zs.cta_aprox.x, zs.cta_aprox.y, zs.cta_aprox.ancho, zs.cta_aprox.alto);
+    avisoCta.style.display = z ? "" : "none";
+    avisoCta.textContent = z ? `⚠ puede caer en zona tapada (${z})` : "";
+  }
+}
+
+const btnZonaSegura = document.getElementById("btnZonaSegura");
+if (btnZonaSegura) {
+  const zonaSeguraEl = document.getElementById("zonaSegura");
+  const aplicarVisibilidadZona = (visible) => {
+    zonaSeguraEl.classList.toggle("visible", visible);
+    btnZonaSegura.textContent = visible ? "🛡 Ocultar zona segura de TikTok" : "🛡 Ver zona segura de TikTok";
+  };
+  aplicarVisibilidadZona(localStorage.getItem("zonaSeguraVisible") === "1");
+  btnZonaSegura.addEventListener("click", () => {
+    const visible = !zonaSeguraEl.classList.contains("visible");
+    localStorage.setItem("zonaSeguraVisible", visible ? "1" : "0");
+    aplicarVisibilidadZona(visible);
+  });
+}
+
 async function cargar() {
   const r = await fetch("/datos");
   DATA = await r.json();
@@ -1248,6 +1334,7 @@ async function cargar() {
   });
   hookCtaModificado = !!(hcGuardado && hcGuardado.length);
   pintarHookCta();
+  pintarZonaSegura();
 
   const animDelRender = DATA.overlays.filter(o => o.tipo.startsWith("anim-")).map(o => ({
     nombre: o.anim || o.tipo.replace("anim-", ""), ini: o.ini, fin: o.fin,
@@ -1315,6 +1402,14 @@ function avisosPip() {
       avisos[orden[k - 1].i].push(`muy cerca del siguiente`);
     }
   }
+  // Un B-roll a pantalla completa SIEMPRE "tapa" la zona segura — es normal,
+  // igual que el video de la app real. Solo importa para la tarjeta PiP, que
+  // mide 400x520 (f10_editor_visual.render_tarjeta_catalogo).
+  edicionPip.forEach((ev, i) => {
+    if (esBroll(ev)) return;
+    const zona = cajaEnZonaTapada(ev.x, ev.y, 400, 520);
+    if (zona) avisos[i].push(`tapado por la interfaz de la app (${zona})`);
+  });
   return avisos;
 }
 

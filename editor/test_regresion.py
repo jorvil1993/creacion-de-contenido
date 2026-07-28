@@ -1012,6 +1012,81 @@ def pruebas_sfx_previa():
         "es la señal que usa el navegador para decidir si dispara los SFX el mismo")
 
 
+# ===========================================================================
+# 11. Zona segura de TikTok/Reels sobre el reproductor (f10 + f11)
+# ===========================================================================
+# El editor no mostraba donde la app tapa el video con su propia interfaz:
+# un overlay, el hook o el CTA podian quedar invisibles en el celular sin que
+# se notara en el editor. Bloque 2 del plan de mejoras.
+def pruebas_zona_segura():
+    import tempfile
+
+    import f10_editor_visual as f10
+
+    seccion("11. Zona segura de TikTok/Reels sobre el reproductor (f10 + f11)")
+
+    for nombre in ("ZONA_SEGURA_INFERIOR_PX", "ZONA_SEGURA_DERECHA_PX"):
+        valor = getattr(config, nombre, None)
+        chk(f"config.{nombre} existe y es un numero positivo",
+            isinstance(valor, (int, float)) and valor > 0,
+            f"valor: {valor!r}")
+
+    chk("config.ZONA_SEGURA_DERECHA_DESDE_PCT es una fraccion entre 0 y 1",
+        isinstance(config.ZONA_SEGURA_DERECHA_DESDE_PCT, (int, float))
+        and 0 <= config.ZONA_SEGURA_DERECHA_DESDE_PCT <= 1,
+        f"valor: {config.ZONA_SEGURA_DERECHA_DESDE_PCT!r} "
+        "-- la columna de iconos no arranca arriba del todo")
+
+    hook_y2 = config.ZONA_HOOK_APROX_PX["y"] + config.ZONA_HOOK_APROX_PX["alto"]
+    chk("el hook (arriba de la pantalla) no cae en la franja derecha por defecto",
+        hook_y2 <= config.ALTO * config.ZONA_SEGURA_DERECHA_DESDE_PCT,
+        f"hook baja hasta {hook_y2}px, la columna de iconos arranca en "
+        f"{config.ALTO * config.ZONA_SEGURA_DERECHA_DESDE_PCT:.0f}px -- si la columna cubriera "
+        "toda la altura, el hook avisaria SIEMPRE y la alarma se volveria ruido")
+
+    for nombre in ("ZONA_HOOK_APROX_PX", "ZONA_CTA_APROX_PX"):
+        caja = getattr(config, nombre, None)
+        chk(f"config.{nombre} trae x/y/ancho/alto",
+            isinstance(caja, dict) and {"x", "y", "ancho", "alto"} <= caja.keys(),
+            f"valor: {caja!r}")
+
+    tmp = Path(tempfile.mkdtemp()) / "corrida_zona_segura"
+    tmp.mkdir(parents=True)
+    datos = f10.recolectar(tmp)
+    zs = datos.get("zona_segura")
+    chk("recolectar() expone 'zona_segura' con los datos que necesita el navegador",
+        isinstance(zs, dict)
+        and {"inferior_px", "derecha_px", "derecha_desde_pct", "hook_aprox", "cta_aprox"} <= zs.keys(),
+        f"zona_segura: {zs!r}")
+    chk("los valores que viajan son los mismos de config, no una copia desincronizada",
+        zs == {
+            "inferior_px": config.ZONA_SEGURA_INFERIOR_PX,
+            "derecha_px": config.ZONA_SEGURA_DERECHA_PX,
+            "derecha_desde_pct": config.ZONA_SEGURA_DERECHA_DESDE_PCT,
+            "hook_aprox": config.ZONA_HOOK_APROX_PX,
+            "cta_aprox": config.ZONA_CTA_APROX_PX,
+        })
+
+    fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+
+    chk("existe la funcion reutilizable de deteccion de zona tapada",
+        "function cajaEnZonaTapada(x, y, ancho, alto)" in fuente_srv,
+        "los bloques 5 (subtitulos) y 6 (texto destacado) la reusan tal cual")
+
+    chk("el boton de zona segura recuerda el estado en localStorage",
+        "zonaSeguraVisible" in fuente_srv and 'localStorage.getItem("zonaSeguraVisible")' in fuente_srv,
+        "si no, hay que volver a prenderlo cada vez que se abre el editor")
+
+    chk("un B-roll a pantalla completa no genera aviso de zona tapada",
+        re.search(r"if\s*\(esBroll\(ev\)\)\s*return;\s*\n\s*const zona = cajaEnZonaTapada\(ev\.x, ev\.y, 400, 520\)",
+                   fuente_srv) is not None,
+        "un B-roll pantalla completa SIEMPRE tapa esa zona -- avisar seria ruido, no informacion")
+
+    chk("el hook y el CTA muestran su propio aviso de zona tapada",
+        "hookZonaAviso" in fuente_srv and "ctaZonaAviso" in fuente_srv,
+        "con la caja aproximada de config.ZONA_HOOK_APROX_PX / ZONA_CTA_APROX_PX")
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -1025,6 +1100,7 @@ def main():
     pruebas_preview_animaciones()
     pruebas_orientacion()
     pruebas_sfx_previa()
+    pruebas_zona_segura()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")

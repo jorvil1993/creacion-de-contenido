@@ -692,6 +692,13 @@ def recolectar(dir_trabajo: Path) -> dict:
         "volumenes": {k: v["volumen"] for k, v in config.SFX_POR_EVENTO.items()},
         "niveles_sfx": niveles_sfx,
         "sfx_pico_objetivo_db": config.SFX_PICO_OBJETIVO_DB,
+        "zona_segura": {
+            "inferior_px": config.ZONA_SEGURA_INFERIOR_PX,
+            "derecha_px": config.ZONA_SEGURA_DERECHA_PX,
+            "derecha_desde_pct": config.ZONA_SEGURA_DERECHA_DESDE_PCT,
+            "hook_aprox": config.ZONA_HOOK_APROX_PX,
+            "cta_aprox": config.ZONA_CTA_APROX_PX,
+        },
     }
 
 
