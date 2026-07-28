@@ -78,18 +78,17 @@ def main():
 
     # --- 3. improvisacion: cambia palabras, agrega muletillas ------------
     improvisado = [
-        "No es que no te guste leer",
-        "Es que estas compitiendo contra una aplicacion",
-        "diseniada por miles de ingenieros",
-        "para que vos no puedas soltarla",
-        "O sea no es falta de disciplina",
-        "Es una pelea totalmente injusta",
-        "tu con tu fuerza de voluntad contra un algoritmo",
-        "La unica manera de ganarla es no pelearla",
-        "Leer en algo que no tenga aplicaciones",
-        "ni notificaciones ni nada mas que la pagina",
-        "Si te pasa mandale esto a alguien",
-        "que tambien dejo un libro a medias",
+        "Te diste cuenta de que ya no podes estar 5 minutos sin hacer nada",
+        "Sin sacar el celular o buscar dopamina barata",
+        "Ya casi nadie puede gente y no es casualidad",
+        "Estas compitiendo contra una app disenada por miles de ingenieros para que no la sueltes",
+        "El video que sale solo la notificacion el siguiente todo esta hecho para ganarte",
+        "O sea no es falta de disciplina es una pelea re injusta tu fuerza de voluntad contra el algoritmo y no la vas a ganar",
+        "La unica manera de ganarla es salirte del juego",
+        "Volver a un espacio donde nada te interrumpa donde abris un libro y se apaga el mundo",
+        "sin notificaciones sin pantallas que quemen la vista sin tentaciones",
+        "Un espacio donde tu atencion vuelve a ser 100 por ciento tuya",
+        "Mandaselo a alguien que no suelta el cel ni en la mesa",
     ]
     def chk3(res):
         n = sum(1 for r in res if r["matched"])
@@ -99,7 +98,7 @@ def main():
                       tl, transcribir(improvisado), chk3)
 
     # --- 4. hook repetido al final (el loop): no debe engancharse lejos ---
-    con_eco = dichos + ["No es que no te guste leer"]
+    con_eco = dichos + ["¿Te diste cuenta de que ya no podés estar cinco minutos sin hacer nada?"]
     def chk4(res):
         b0 = next(r for r in res if r["index"] == 0)
         temprano = b0["matched"] and b0["ini"] < 2.0
