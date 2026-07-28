@@ -1808,14 +1808,11 @@ function actualizarUI(t) {
   const dur = DATA.duracion;
   const pct = (Math.min(1, t / dur) * 100) + "%";
 
-  const ph = document.getElementById("playhead");
-  if (ph) ph.style.left = pct;
-
-  const phSfx = document.getElementById("playheadSfx");
-  if (phSfx) phSfx.style.left = pct;
-
-  const phEnc = document.getElementById("playheadEnc");
-  if (phEnc) phEnc.style.left = pct;
+  // Todas las agujas a la vez, por clase y no por id: cada pista dibuja la
+  // suya con class="playhead", y enumerarlas una por una hacia que la pista
+  // que se olvidara se quedara con la aguja clavada en el 0 (le paso a la de
+  // PiP y B-Rolls). Una pista nueva ya la trae andando sin tocar esto.
+  for (const ph of document.querySelectorAll(".playhead")) ph.style.left = pct;
 
   const cur = document.getElementById("curvaCursor");
   if (cur) {
