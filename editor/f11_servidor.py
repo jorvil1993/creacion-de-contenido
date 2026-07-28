@@ -136,6 +136,31 @@ ARCHIVOS_AJUSTES = (
     "ajustes.hook.json", "ajustes.sesion.json",
 )
 
+# El PLAN sobre el que se hicieron esos ajustes. Va en la versión junto a ellos,
+# porque el editor no enseña solo lo ajustado: lo monta ENCIMA de esto. El hook,
+# el CTA y las animaciones que no se tocaron salen de aquí, igual que la curva
+# de encuadre. Sin guardarlo, cargar una versión después de haber renderizado
+# otra cosa devolvía un híbrido: tus ajustes sobre el plan nuevo.
+ARCHIVOS_BASE = ("05_overlays.eventos.json", "03_retencion.plan.json")
+
+
+def _huella_corte() -> dict:
+    """Con qué corte se hizo esta edición.
+
+    Si se vuelve a cortar el video (correr sin `--reaplicar`), la línea de
+    tiempo entera cambia y una versión anterior deja de tener sentido: sus
+    segundos apuntan a otro sitio. No se puede impedir, pero sí avisar.
+    """
+    f = DIR_TRABAJO / "02_cortado.json"
+    if not f.exists():
+        return {}
+    try:
+        palabras = json.loads(f.read_text(encoding="utf-8"))["palabras"]
+    except Exception:
+        return {}
+    return {"palabras": len(palabras),
+            "fin": round(float(palabras[-1]["fin"]), 2) if palabras else 0.0}
+
 
 def _nombre_version(crudo: str) -> str | None:
     """Nombre de carpeta seguro a partir de lo que se escriba en la caja.
@@ -499,14 +524,15 @@ class Handler(BaseHTTPRequestHandler):
             destino.mkdir(parents=True, exist_ok=True)
             # Se limpia primero: si la versión anterior con ese nombre tenía un
             # ajuste que ahora no existe, quedarse con él mezclaría dos ediciones.
-            for viejo in destino.glob("ajustes.*.json"):
+            for viejo in destino.glob("*.json"):
                 viejo.unlink()
             copiados = []
-            for nombre_archivo in ARCHIVOS_AJUSTES:
+            for nombre_archivo in ARCHIVOS_AJUSTES + ARCHIVOS_BASE:
                 origen = DIR_TRABAJO / nombre_archivo
                 if origen.exists():
                     shutil.copy2(origen, destino / nombre_archivo)
                     copiados.append(nombre_archivo)
+            _escritura_atomica(destino / "version.json", {"corte": _huella_corte()})
             self._json({"ok": True, "nombre": nombre, "archivos": len(copiados),
                         "versiones": _listar_versiones()})
 
@@ -522,10 +548,30 @@ class Handler(BaseHTTPRequestHandler):
             for actual in ARCHIVOS_AJUSTES:
                 (DIR_TRABAJO / actual).unlink(missing_ok=True)
             restaurados = []
-            for archivo in origen_dir.glob("ajustes.*.json"):
-                shutil.copy2(archivo, DIR_TRABAJO / archivo.name)
-                restaurados.append(archivo.name)
-            self._json({"ok": True, "nombre": nombre, "archivos": len(restaurados)})
+            for nombre_archivo in ARCHIVOS_AJUSTES + ARCHIVOS_BASE:
+                archivo = origen_dir / nombre_archivo
+                if archivo.exists():
+                    shutil.copy2(archivo, DIR_TRABAJO / nombre_archivo)
+                    restaurados.append(nombre_archivo)
+
+            # Si se volvió a cortar el video desde que se guardó esta versión,
+            # sus segundos apuntan a otro sitio. No se puede arreglar, pero
+            # callarlo sería peor: se avisa y que decida quien edita.
+            aviso = None
+            meta = origen_dir / "version.json"
+            if meta.exists():
+                try:
+                    guardada = json.loads(meta.read_text(encoding="utf-8")).get("corte", {})
+                except Exception:
+                    guardada = {}
+                ahora = _huella_corte()
+                if guardada and ahora and guardada != ahora:
+                    aviso = ("Esta versión se guardó con otro corte del video "
+                             f"({guardada.get('palabras')} palabras, {guardada.get('fin')}s) "
+                             f"y ahora el corte tiene {ahora.get('palabras')} palabras y "
+                             f"{ahora.get('fin')}s. Los tiempos pueden no cuadrar.")
+            self._json({"ok": True, "nombre": nombre,
+                        "archivos": len(restaurados), "aviso": aviso})
 
         elif partes.path == "/version/borrar":
             nombre = _nombre_version(datos.get("nombre"))
@@ -2226,12 +2272,14 @@ async function cargarVersion(nombre) {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ nombre }),
   });
-  if (!(await r.json()).ok) return;
+  const resp = await r.json();
+  if (!resp.ok) return;
   // Se recarga desde el servidor: los paneles se repueblan solos con los
   // ajustes de la version, igual que al abrir la corrida.
   ultimoGuardado = null;       // que el autoguardado no pise lo recien cargado
   await cargar();
   marcarGuardado(`versión «${nombre}» cargada`);
+  if (resp.aviso) alert(resp.aviso);
 }
 
 // ---- Guardado automatico ---------------------------------------------------

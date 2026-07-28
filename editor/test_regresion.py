@@ -789,6 +789,26 @@ def pruebas_round_trip():
             "ajustes.hookcta.json", "ajustes.hook.json"},
         f"{len(srv.ARCHIVOS_AJUSTES)} archivos en la lista")
 
+    # El editor no enseña solo lo ajustado: lo monta ENCIMA del plan del ultimo
+    # render. El hook, el CTA y las animaciones que no se tocaron salen de ahi,
+    # igual que la curva de encuadre. Sin guardar ese plan con la version,
+    # cargarla despues de renderizar otra cosa devolvia un HIBRIDO: tus ajustes
+    # sobre el plan nuevo. Comprobado: el CTA volvia con el fin del render nuevo.
+    chk("una version guarda tambien el plan sobre el que se ajusto",
+        set(srv.ARCHIVOS_BASE) >= {"05_overlays.eventos.json", "03_retencion.plan.json"},
+        "si no, cargarla tras un re-render devuelve un hibrido")
+
+    chk("cargar una version restaura ajustes Y plan",
+        "ARCHIVOS_AJUSTES + ARCHIVOS_BASE" in fuente_srv_txt,
+        "las dos listas viajan juntas al guardar y al cargar")
+
+    # Volver a cortar el video mueve la linea de tiempo entera: los segundos de
+    # una version anterior apuntan a otro sitio. No se puede arreglar, pero
+    # callarlo seria peor.
+    chk("se avisa si la version es de otro corte del video",
+        "_huella_corte" in fuente_srv_txt and "pueden no cuadrar" in fuente_srv_txt,
+        "se compara el numero de palabras y el final del corte")
+
     # --- espacio = reproducir/pausar ---------------------------------------
     chk("el espacio reproduce y pausa, pero no mientras se escribe",
         'e.code !== "Space"' in fuente_srv_txt

@@ -88,9 +88,14 @@ pestaña no cuesta el trabajo: al volver a abrir la corrida está todo donde se
 dejó, incluido el segundo del reproductor.
 
 Para probar dos montajes del mismo video hay **versiones con nombre**: se guarda
-una copia de todos los ajustes y se salta entre ellas. Viven en
-`_versiones/<nombre>/` dentro de la carpeta de la corrida. Cargar una reemplaza
-lo que haya en ese momento, no lo mezcla.
+una copia de todos los ajustes **y del plan sobre el que se hicieron**, así que
+cargar una devuelve la edición exactamente como estaba, aunque entre medias se
+haya renderizado otra cosa. Viven en `_versiones/<nombre>/` dentro de la carpeta
+de la corrida. Cargar una reemplaza lo que haya en ese momento, no lo mezcla.
+
+Lo único que una versión no puede rescatar es un **re-corte**: si se vuelve a
+correr sin `--reaplicar`, la línea de tiempo cambia entera y los segundos de una
+versión anterior apuntan a otro sitio. El editor lo detecta y avisa al cargarla.
 
 **Espacio** reproduce y pausa desde cualquier parte del editor.
 
