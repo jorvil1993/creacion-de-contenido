@@ -1628,6 +1628,159 @@ def pruebas_musica_editor():
         "el usuario debe disponer de los controles de musica en la interfaz")
 
 
+# ===========================================================================
+# 18. Fase 0: preparar la entrada (recortar, ordenar, unir) — f0_preparar
+# ===========================================================================
+# La clase de fallo que cazan estas pruebas: el recorte SALE (el video se hace,
+# dura lo que tiene que durar) pero los EMPALMES quedan medidos sobre la
+# duracion original del clip en vez de sobre la recortada. El resultado no da
+# ningun error: f4_retencion reinicia la rampa de zoom en el segundo
+# equivocado, o sea "los acercamientos estan corridos", y solo se descubre
+# mirando el video terminado.
+#
+# Usan clips sinteticos de lavfi (mismo recurso que pruebas_preview_animaciones)
+# para no depender de que haya una grabacion real en entrada/.
+def _clip_sintetico(destino: Path, segs: float, silencio_hasta: float = 0.0):
+    """Un clip de prueba: barras de color + tono, opcionalmente mudo al principio."""
+    import subprocess
+    cmd = ["ffmpeg", "-y", "-loglevel", "error",
+           "-f", "lavfi", "-i", f"testsrc=size=320x568:rate=30:d={segs}",
+           "-f", "lavfi", "-i", f"sine=frequency=440:duration={segs}:sample_rate=48000"]
+    if silencio_hasta > 0:
+        cmd += ["-af", f"volume=0:enable='lt(t,{silencio_hasta})'"]
+    cmd += ["-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-shortest", str(destino)]
+    subprocess.run(cmd, check=True, capture_output=True)
+    return destino
+
+
+def pruebas_preparacion():
+    seccion("18. Fase 0: recortar y unir antes de transcribir (f0_preparar)")
+    import tempfile
+    import f0_preparar as f0
+
+    tmp = Path(tempfile.mkdtemp())
+    a = _clip_sintetico(tmp / "a.mp4", 6.0)
+    b = _clip_sintetico(tmp / "b.mp4", 5.0)
+
+    # --- una sola implementacion de la union, no dos ------------------------
+    # Si editor.py se quedara con su propia copia de unir_tomas, la previa de la
+    # pantalla y el pipeline podrian divergir sin que nada avisara.
+    import editor as editor_mod
+    chk("editor.py y la pantalla unen con LA MISMA funcion",
+        editor_mod.unir_tomas is f0.unir_tomas,
+        "dos copias de unir_tomas = la previa muestra una cosa y el render saca otra")
+
+    # --- el atajo: sin recorte no se toca el archivo ------------------------
+    ruta, empalmes = f0.preparar_entrada(
+        [{"ruta": a, "desde": 0, "hasta": None}], tmp / "out_atajo.mp4")
+    chk("un clip sin recortar se pasa TAL CUAL, sin recodificar",
+        Path(ruta) == Path(a) and empalmes == [] and not (tmp / "out_atajo.mp4").exists(),
+        "el caso normal no debe costar una generacion de compresion de mas")
+
+    # --- recorte exacto -----------------------------------------------------
+    ruta, _ = f0.preparar_entrada(
+        [{"ruta": a, "desde": 1.0, "hasta": 4.0}], tmp / "out_recorte.mp4")
+    dur = f0.duracion(ruta)
+    chk("recortar 1.0s->4.0s deja exactamente 3s",
+        abs(dur - 3.0) < 0.15, f"quedaron {dur:.3f}s")
+
+    # --- EL EMPALME SE MIDE SOBRE EL CLIP RECORTADO ------------------------
+    # Es la prueba central de este bloque. Con clips de 6s y 5s recortados a 3s
+    # y 2s, el empalme tiene que caer en 3.0s (el fin del PRIMER clip ya
+    # recortado). Si alguien volviera a medirlo sobre el original caeria en
+    # 6.0s: un numero perfectamente creible que nadie mira, y que manda el
+    # reinicio del zoom a un sitio donde no hay ningun cambio de plano.
+    ruta, empalmes = f0.preparar_entrada(
+        [{"ruta": a, "desde": 1.0, "hasta": 4.0},
+         {"ruta": b, "desde": 0.5, "hasta": 2.5}], tmp / "out_dos.mp4")
+    dur = f0.duracion(ruta)
+    chk("el empalme se mide sobre la duracion RECORTADA, no la original",
+        len(empalmes) == 1 and abs(empalmes[0] - 3.0) < 0.15,
+        f"empalme en {empalmes} (esperado ~[3.0]; sobre el original habria dado 6.0)")
+    chk("dos clips recortados suman sus duraciones recortadas",
+        abs(dur - 5.0) < 0.2, f"{dur:.3f}s (esperado ~5.0 = 3.0 + 2.0)")
+
+    # --- la previa no puede mentir -----------------------------------------
+    # Mismo montaje por el mismo camino, solo cambia `escala`. Si los empalmes
+    # difirieran, "ver como quedan unidas" dejaria de servir para decidir.
+    ruta_p, empalmes_p = f0.preparar_entrada(
+        [{"ruta": a, "desde": 1.0, "hasta": 4.0},
+         {"ruta": b, "desde": 0.5, "hasta": 2.5}], tmp / "out_previa.mp4",
+        escala=config.PREVIEW_ESCALA)
+    chk("la previa a baja resolucion da los MISMOS empalmes que el render",
+        empalmes_p == empalmes,
+        f"previa {empalmes_p} vs corrida {empalmes}")
+    chk("la previa sale a la escala pedida y no a tamaño completo",
+        abs(f0.duracion(ruta_p) - dur) < 0.2,
+        "misma duracion, distinta resolucion")
+
+    # --- el empalme sigue cuadrando DESPUES del corte de silencios ----------
+    # Es el encadenado real del pipeline: f0 entrega los empalmes en la linea de
+    # tiempo del archivo unido, y f2_cortar los remapea con mapear_a_nueva_linea
+    # a la del video ya cortado. Un empalme en 3.0s, con 0.8s de silencio
+    # cortado antes, tiene que terminar en 2.2s.
+    intervalos = [{"inicio": 0.0, "fin": 1.2}, {"inicio": 2.0, "fin": 5.0}]
+    nuevo = f2_cortar.mapear_a_nueva_linea(3.0, intervalos)
+    chk("el empalme sobrevive al corte de silencios (mapear_a_nueva_linea)",
+        abs(nuevo - 2.2) < 1e-6,
+        f"3.00s del unido -> {nuevo:.2f}s del cortado (esperado 2.20)")
+
+    # --- acotado de valores heredados --------------------------------------
+    # Un .preparado.json viejo puede pedir un `hasta` que ya no existe si la
+    # grabacion se volvio a hacer mas corta. ffmpeg no avisa: devuelve un clip
+    # mas corto y el empalme queda mal.
+    norm = f0.normalizar_clips([{"ruta": a, "desde": 0, "hasta": 999.0}])
+    chk("un 'hasta' mas alla del final se acota a la duracion real",
+        abs(norm[0]["hasta"] - 6.0) < 0.15, f"hasta={norm[0]['hasta']}")
+    norm = f0.normalizar_clips([{"ruta": a, "desde": 5.0, "hasta": 2.0}])
+    chk("un 'desde' posterior al 'hasta' no produce un clip negativo",
+        norm[0]["desde"] < norm[0]["hasta"],
+        f"desde={norm[0]['desde']} hasta={norm[0]['hasta']}")
+
+    # --- deteccion de bordes ------------------------------------------------
+    # El umbral se MIDE del archivo (ver SILENCIO_MARGEN_BAJO_MEDIA_DB): uno
+    # fijo no encontraba ni un silencio en la grabacion real de entrada/, que
+    # esta muy caliente.
+    c = _clip_sintetico(tmp / "c.mp4", 6.0, silencio_hasta=2.0)
+    bordes = f0.detectar_bordes(c)
+    esperado = 2.0 - f0.MARGEN_PROPUESTA_S
+    chk("detectar_bordes encuentra el silencio inicial y deja aire",
+        bordes["detectado"] and abs(bordes["desde"] - esperado) < 0.25,
+        f"propone desde={bordes['desde']}s (esperado ~{esperado:.2f}s), "
+        f"umbral medido {bordes['umbral_db']}dB")
+
+    # --- memoria: el .preparado.json ---------------------------------------
+    archivo = f0.guardar_preparado([{"ruta": a, "desde": 1.0, "hasta": 4.0}], guion=7)
+    leido = f0.leer_preparado(a)
+    chk("guardar y leer la preparacion devuelve los mismos recortes",
+        leido is not None and leido["guion"] == 7
+        and abs(leido["clips"][0]["desde"] - 1.0) < 1e-6,
+        f"{archivo.name}: {leido and leido['clips']}")
+    archivo.unlink(missing_ok=True)
+    chk("sin .preparado.json, leer_preparado devuelve None y no revienta",
+        f0.leer_preparado(a) is None)
+
+    # --- editor.py: por donde NO tiene que pasar ----------------------------
+    fuente = (AQUI / "editor.py").read_text(encoding="utf-8")
+    chk("editor.py no vuelve a recortar con --reaplicar",
+        "if not args.reaplicar:" in fuente
+        and fuente.index("if not args.reaplicar:")
+            < fuente.index("f0_preparar.preparar_entrada("),
+        "recortar en cada re-render del editor visual seria recodificar la "
+        "grabacion entera para nada")
+    chk("--desde/--hasta se rechazan con varios archivos de entrada",
+        "--desde/--hasta solo valen con UN archivo" in fuente,
+        "con dos archivos no hay forma de saber a cual se refiere el recorte")
+    chk("la pantalla de preparacion no ofrece zoom",
+        "zoom" not in (AQUI / "f0_servidor_preparar.py").read_text(encoding="utf-8").lower(),
+        "el encuadre se combina con la curva del pipeline en el panel de "
+        "Encuadre; un segundo control aqui se multiplicaria con aquel")
+
+    import shutil as _shutil
+    _shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -1648,6 +1801,7 @@ def main():
     pruebas_texto_destacado()
     pruebas_guardar_portada()
     pruebas_musica_editor()
+    pruebas_preparacion()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")

@@ -16,6 +16,40 @@ a propósito). Solo el video final se copia a `salida/` del proyecto.
 
 ---
 
+## Si lo va a hacer José: la pantalla de preparación
+
+Doble clic en **`editor/Preparar grabación.bat`** (o `python editor/preparar.py`).
+Abre una pantalla en el navegador que hace todo lo de abajo sin escribir nada:
+
+1. Lista los videos de `entrada/` y deja elegir uno o varios.
+2. Por cada clip, recorta el principio y el final con dos manijas. **Propone los
+   puntos solo**, buscando el primer y el último sonido real (`silencedetect` de
+   ffmpeg, no transcribe: tarda décimas de segundo). Lo normal es mirar y aceptar.
+   **Espacio** reproduce el clip activo, y se detiene en el punto de corte.
+3. Ordena los clips y muestra el total de segundos que va a quedar.
+4. Elige el número de guion.
+5. **«Ver cómo quedan unidas»** — previa en baja resolución del montaje completo.
+   Usa la misma función de unión que el pipeline, así que lo que se ve ahí es lo
+   que va a entrar al render, no una aproximación.
+6. **«Empezar»** — la pantalla se apaga y arranca el pipeline en la misma
+   terminal. Al terminar se abre el editor visual como en cualquier corrida.
+
+Lo elegido se guarda en `<video>.preparado.json`, al lado del archivo de entrada.
+A partir de ahí, **cualquier corrida sobre ese material aplica esos recortes
+sola** — incluida la de un agente, que no tiene que saber nada de esto. Para
+ignorarlos, borrá ese archivo o pasá `--desde/--hasta`.
+
+El recorte se aplica **antes de transcribir**. Esa es la razón de que sea barato:
+el resto del pipeline mira un solo archivo ya recortado y ninguna coordenada de
+tiempo de aguas abajo (palabras, SFX, overlays, encuadre, `ajustes.*.json`) se
+entera de que hubo un recorte.
+
+La pantalla **no reencuadra**: no hay zoom ahí. El encuadre fino va en el panel
+de Encuadre del editor visual, que es donde se combina bien con la curva de
+acercamientos del pipeline.
+
+---
+
 ## El caso normal: una grabación → un video publicable
 
 ```bash
@@ -38,6 +72,28 @@ Pasá los archivos en orden. El pipeline los une y marca los empalmes como los
 ```bash
 python editor/editor.py "entrada/plano-abierto.mp4" "entrada/plano-cerrado.mp4" --guion 7
 ```
+
+Son **tomas seguidas** (la parte 1 en plano abierto, la parte 2 en cerrado), no
+dos ángulos de la misma frase: para cortar entre ángulos haría falta el mismo
+audio en los dos clips y no lo hay.
+
+### Si sobran segundos al principio o al final
+
+`--desde` y `--hasta` recortan sin abrir ninguna pantalla, para una corrida de
+agente. Solo valen con **un** archivo de entrada.
+
+```bash
+python editor/editor.py "entrada/mi_video.mp4" --guion 7 --desde 7.5 --hasta 44
+```
+
+Importa más de lo que parece: la transcripción corre sobre el archivo entero, y
+las palabras sueltas de antes de empezar disparan insertos equivocados (los PiP
+se eligen por palabra dicha, `config.PALABRAS_A_TAGS`).
+
+**Ojo con `hooksegs`.** Si el guion pide hook físico, f2_cortar conserva esos
+segundos de silencio antes de la primera palabra —el gesto de entrar al cuadro—
+así que el recorte tiene que dejarle ese aire por delante. La pantalla de
+preparación avisa sola; por línea de comandos hay que acordarse.
 
 ### Si habla la esposa de José y no él
 
@@ -125,6 +181,7 @@ python editor/editor.py "entrada/video.mp4" --guion 7 --sin-abrir-editor
 | «los insertos de ambiente en video» | `--video-ambiente` (minutos de GPU) |
 | «reutilizá lo ya transcrito» | `--reaplicar` |
 | «otro nombre de salida» | `--nombre X` |
+| «cortale los primeros/últimos segundos» | `--desde N` / `--hasta N` |
 
 Lo que se ajusta a mano en el editor viaja en archivos `ajustes.*.json` dentro
 de la carpeta de la corrida, y el editor los reenvía solo al re-renderizar. No

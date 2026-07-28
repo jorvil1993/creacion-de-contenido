@@ -64,6 +64,11 @@ DIR_COMFYUI = RAIZ_AI_VIDEO / "comfyui"
 # Fuera de OneDrive como todo lo demás (sección 3 del plan).
 DIR_EDITOR_CACHE = RAIZ_AI_VIDEO / "_editor_cache"
 
+# Fase 0 (pantalla de preparación, f0_preparar.py): proxies de los clips crudos
+# para poder arrastrarlos en el navegador y las previas de cómo quedan unidos.
+# Todo desechable y regenerable, así que fuera de OneDrive como el resto.
+DIR_PREPARACION = RAIZ_AI_VIDEO / "_preparacion"
+
 VIDEO_PRUEBA = DIR_CONTEXTO / "tiktok video deviceshop.mp4"
 
 # ---------------------------------------------------------------------------
