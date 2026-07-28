@@ -832,6 +832,7 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
 .badge { display: inline-block; background: var(--acento-suave); color: var(--acento);
          border-radius: 4px; padding: 1px 6px; font-size: 11px; margin-left: 6px; }
 .badge.aviso { background: rgba(230,180,40,.18); color: #e6b428; }
+#infoDensidadSfx.sfx-denso { color: #ef4444; font-weight: 600; }
 
 .pips-lista { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .pip-card { display: flex; gap: 10px; align-items: center; border: 1px solid var(--linea);
@@ -998,6 +999,15 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       <button class="btn-primario" id="btnAgregarSfx" type="button">+ Agregar en el centro</button>
       <span class="hint" id="infoSfx"></span>
     </div>
+    <div class="barra-sfx" style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+      <label class="hint" for="selDensidadSfx">Densidad</label>
+      <select id="selDensidadSfx">
+        <option value="sobrio">Sobrio</option>
+        <option value="normal" selected>Normal</option>
+        <option value="cargado">Cargado</option>
+      </select>
+      <span class="hint" id="infoDensidadSfx"></span>
+    </div>
     <div class="pista-sfx" id="pistaSfx">
       <div class="franjas-sfx" id="franjasSfx"></div>
     </div>
@@ -1138,6 +1148,7 @@ let editandoIdx = null; // índice en edicionPip, o -1 para "nuevo antes de agre
 let loopArrancado = false;
 
 let edicionSfx = [];
+let edicionSfxCandidatos = []; // pool completo antes del tope de densidad (bloque 3)
 let sfxModificado = false;      // si es false, no se manda --sfx-manual: sigue automático
 let sfxSeleccion = null;
 
@@ -1265,6 +1276,57 @@ if (btnZonaSegura) {
   });
 }
 
+// --- Densidad de SFX (BLOQUE 3) --------------------------------------------
+// Misma cuenta que f5_audio.aplicar_tope_densidad: prioridad por tipo de
+// evento (config.PRIORIDAD_SFX_POR_RAZON, expuesta como DATA.sfx_prioridades)
+// y, entre eventos de igual prioridad, gana el más temprano en el tiempo.
+function prioridadSfx(ev) {
+  const p = (DATA && DATA.sfx_prioridades) || {};
+  return ev.razon in p ? p[ev.razon] : ((DATA && DATA.sfx_prioridad_defecto) ?? 80);
+}
+
+function aplicarTopeDensidadSfx(eventos, separacionS) {
+  const ordenados = [...eventos].sort((a, b) => (prioridadSfx(b) - prioridadSfx(a)) || (a.t - b.t));
+  const aceptados = [];
+  for (const ev of ordenados) {
+    if (aceptados.some(a => Math.abs(ev.t - a.t) < separacionS)) continue;
+    aceptados.push(ev);
+  }
+  aceptados.sort((a, b) => a.t - b.t);
+  return aceptados;
+}
+
+function actualizarContadorSfx() {
+  const el = document.getElementById("infoDensidadSfx");
+  if (!el || !DATA) return;
+  const n = edicionSfx.length;
+  const dur = DATA.duracion || 0;
+  const presets = DATA.sfx_densidad_presets || {};
+  const umbral = presets.normal || 4.5;
+  if (!n) {
+    el.textContent = "sin efectos de sonido";
+    el.classList.remove("sfx-denso");
+    return;
+  }
+  const cada = dur / n;
+  el.textContent = `${n} sonido(s) en ${dur.toFixed(0)}s · uno cada ${cada.toFixed(1)}s`;
+  el.classList.toggle("sfx-denso", cada < umbral);
+}
+
+const selDensidadSfx = document.getElementById("selDensidadSfx");
+if (selDensidadSfx) {
+  selDensidadSfx.addEventListener("change", () => {
+    const presets = DATA.sfx_densidad_presets || {};
+    const sep = presets[selDensidadSfx.value];
+    if (sep == null) return;
+    const pool = edicionSfxCandidatos.length ? edicionSfxCandidatos : edicionSfx;
+    edicionSfx = aplicarTopeDensidadSfx(pool, sep);
+    sfxModificado = true;
+    pintarSfx();
+    tablaSfx();
+  });
+}
+
 async function cargar() {
   const r = await fetch("/datos");
   DATA = await r.json();
@@ -1296,8 +1358,14 @@ async function cargar() {
   construirOverlays(); // depende de edicionPip: tiene que ir después de poblarlo
 
   edicionSfx = DATA.sfx.map((e, i) => ({ ...e, id: i }));
+  // Pool completo para el selector sobrio/normal/cargado (bloque 3): si el
+  // backend no manda uno más ancho (ajustes.sfx.json guardado a mano no lo
+  // trae), el único pool posible es el propio DATA.sfx.
+  edicionSfxCandidatos = (DATA.sfx_candidatos || DATA.sfx).map((e, i) => ({ ...e, id: i }));
   sfxModificado = false;
   sfxSeleccion = null;
+  const selDens = document.getElementById("selDensidadSfx");
+  if (selDens) selDens.value = "normal";
   construirSelectorSonidos();
   pintarSfx();
   tablaSfx();
@@ -1651,6 +1719,8 @@ function pintarSfx() {
   phSfx.className = "playhead";
   phSfx.id = "playheadSfx";
   cont.appendChild(phSfx);
+
+  actualizarContadorSfx();
 }
 
 document.getElementById("pistaSfx").addEventListener("click", (ev) => {

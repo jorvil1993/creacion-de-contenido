@@ -554,21 +554,36 @@ def recolectar(dir_trabajo: Path) -> dict:
     # derivados del plan cuando la columna «Sonido» del panel había pedido 13,
     # y al re-renderizar se quedaban los 5: la hoja de sonido del guion se
     # perdía sin que nada lo dijera.
+    # `sfx_candidatos`, cuando existe, es el pool COMPLETO antes del tope de
+    # densidad (bloque 3 del plan de mejoras) — lo escribe f13_guion.py junto
+    # a `sfx`. El selector sobrio/normal/cargado del editor lo usa para poder
+    # ofrecer una opción más densa sin tener que regenerar el guion. Si no
+    # existe (ajustes.sfx.json guardado a mano, o el automático puro de más
+    # abajo), el propio `sfx` es el único pool disponible.
     sfx = None
+    sfx_candidatos = None
     for candidato in (dir_trabajo / "ajustes.sfx.json", dir_trabajo / "guion.sfx.json"):
         if candidato.exists():
             try:
                 raw_sfx = json.loads(candidato.read_text(encoding="utf-8"))
-                sfx = raw_sfx.get("sfx", raw_sfx) if isinstance(raw_sfx, dict) else raw_sfx
+                if isinstance(raw_sfx, dict):
+                    sfx = raw_sfx.get("sfx", raw_sfx)
+                    sfx_candidatos = raw_sfx.get("candidatos")
+                else:
+                    sfx = raw_sfx
                 break
             except Exception:
                 sfx = None
     if sfx is None:
-        sfx = f5_audio.construir_eventos_sfx(plan, eventos)
+        sfx_candidatos = f5_audio.construir_eventos_sfx(plan, eventos)
+        sfx = f5_audio.aplicar_tope_densidad(sfx_candidatos, config.SFX_DENSIDAD_PRESETS["normal"])
     # El desplegable de sonidos del editor se indexa por nombre de archivo;
     # guion.sfx.json los trae con ruta absoluta.
     for e in sfx:
         e["archivo"] = Path(str(e.get("archivo", ""))).name
+    if sfx_candidatos:
+        for e in sfx_candidatos:
+            e["archivo"] = Path(str(e.get("archivo", ""))).name
 
     # Vocabulario completo de sonidos, embebido para poder escucharlos
     dir_sfx = config.DIR_ASSETS / "sfx"
@@ -692,6 +707,11 @@ def recolectar(dir_trabajo: Path) -> dict:
         "volumenes": {k: v["volumen"] for k, v in config.SFX_POR_EVENTO.items()},
         "niveles_sfx": niveles_sfx,
         "sfx_pico_objetivo_db": config.SFX_PICO_OBJETIVO_DB,
+        "sfx_candidatos": sfx_candidatos,
+        "sfx_prioridades": f5_audio.PRIORIDAD_SFX_POR_RAZON,
+        "sfx_prioridad_defecto": f5_audio.PRIORIDAD_SFX_DEFECTO,
+        "sfx_densidad_presets": config.SFX_DENSIDAD_PRESETS,
+        "resumen_sfx": f5_audio.resumen_densidad(sfx, duracion),
         "zona_segura": {
             "inferior_px": config.ZONA_SEGURA_INFERIOR_PX,
             "derecha_px": config.ZONA_SEGURA_DERECHA_PX,

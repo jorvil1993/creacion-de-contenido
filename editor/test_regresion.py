@@ -1087,6 +1087,115 @@ def pruebas_zona_segura():
         "con la caja aproximada de config.ZONA_HOOK_APROX_PX / ZONA_CTA_APROX_PX")
 
 
+# ===========================================================================
+# 12. Densidad de efectos de sonido (f5_audio + f13_guion + f10 + f11)
+# ===========================================================================
+# Medido antes de tocar nada (ver PLAN-MEJORAS.md): Guion-7 (guion.sfx.json,
+# lo que de verdad suena en un render con --guion 7) traia 11 SFX en 24.8s,
+# uno cada 2.25s. El automatico puro (construir_eventos_sfx) traia 10 en
+# 24.8s, uno cada 2.48s. Los dos caminos sonaban a "tic de editor". El bug
+# real es que --guion N (el caso recomendado en COMO-USAR.md) NUNCA pasaba
+# por construir_eventos_sfx: f13_guion.py arma su propia lista desde la
+# columna "Sonido" del panel y editor.py la inyecta como --sfx-manual, así
+# que tocar solo f5_audio.construir_eventos_sfx habria dejado el problema
+# real intacto. El tope global se aplica en LOS DOS caminos.
+def pruebas_densidad_sfx():
+    import tempfile
+
+    import f5_audio
+    import f10_editor_visual as f10
+
+    seccion("12. Densidad de efectos de sonido (f5_audio + f13_guion + f10 + f11)")
+
+    chk("SFX_MAX_PUNCH_INS se bajo de 6 a 2",
+        config.SFX_MAX_PUNCH_INS == 2,
+        "el zoom del punch-in YA es el enfasis; un whoosh en cada uno de los 6 lo subrayaba dos veces")
+
+    chk("SFX_SEPARACION_MIN_S se subio de 1.2 a 1.8",
+        config.SFX_SEPARACION_MIN_S == 1.8)
+
+    presets = config.SFX_DENSIDAD_PRESETS
+    chk("SFX_DENSIDAD_PRESETS trae sobrio/normal/cargado, de mas a menos separacion",
+        isinstance(presets, dict) and {"sobrio", "normal", "cargado"} <= presets.keys()
+        and presets["sobrio"] > presets["normal"] > presets["cargado"] > 0,
+        f"valores: {presets!r}")
+
+    # --- aplicar_tope_densidad: respeta prioridad, no solo el tiempo --------
+    eventos = [
+        {"t": 1.0, "archivo": "a.mp3", "razon": "punch-in"},   # prioridad 10 (baja)
+        {"t": 1.3, "archivo": "b.mp3", "razon": "hook"},       # prioridad 100, muy cerca del anterior
+        {"t": 5.0, "archivo": "c.mp3", "razon": "corte"},      # prioridad 50, lejos de todo
+        {"t": 5.2, "archivo": "d.mp3", "razon": "punch-in"},   # cerca del corte, prioridad menor
+    ]
+    resultado = f5_audio.aplicar_tope_densidad(eventos, separacion_s=2.0)
+    archivos = [e["archivo"] for e in resultado]
+    chk("entre dos SFX que chocan, sobrevive el de mayor prioridad, no el mas temprano",
+        "b.mp3" in archivos and "a.mp3" not in archivos,
+        f"sobrevivieron: {archivos} (el hook en t=1.3 debe ganarle al punch-in en t=1.0)")
+    chk("ningun par de sobrevivientes queda mas cerca que la separacion pedida",
+        all(b["t"] - a["t"] >= 2.0 for a, b in zip(resultado, resultado[1:])),
+        f"tiempos: {[e['t'] for e in resultado]}")
+
+    # --- reproduce la medicion real de Guion-7 (11 SFX en 24.8s, uno cada 2.25s) ---
+    sinteticos = [
+        {"t": t, "archivo": f"guion_{i}.mp3", "razon": f"guion_{i}"}
+        for i, t in enumerate([2.00, 3.88, 5.34, 6.70, 8.46, 10.11, 13.09, 16.07, 17.99, 20.97, 23.09], start=1)
+    ]
+    capado = f5_audio.aplicar_tope_densidad(sinteticos, presets["normal"])
+    resumen = f5_audio.resumen_densidad(capado, 24.8)
+    chk("el tope 'normal' baja una densidad tipo Guion-7 (11 en 24.8s) al rango sano (5-8)",
+        5 <= resumen["n"] <= 8,
+        f"{resumen['n']} sonidos en {resumen['duracion']}s (uno cada {resumen['cada_s']}s), "
+        f"antes eran 11 (uno cada 2.25s)")
+
+    # --- avisos_sfx ahora tambien avisa densidad, no solo separacion/repeticion ---
+    avisos = f5_audio.avisos_sfx(sinteticos, 24.8)
+    chk("avisos_sfx() marca una lista mas densa que 'normal'",
+        any(a["tipo"] == "densidad" for a in avisos),
+        f"avisos: {[a['tipo'] for a in avisos]}")
+    chk("avisos_sfx() NO marca densidad sobre la lista ya topada",
+        not any(a["tipo"] == "densidad" for a in f5_audio.avisos_sfx(capado, 24.8)),
+        "si sigue avisando despues de aplicar el tope, el umbral esta mal calibrado contra el propio preset")
+
+    # --- f13_guion aplica el tope al escribir guion.sfx.json y guarda el pool completo
+    fuente_guion = (AQUI / "f13_guion.py").read_text(encoding="utf-8")
+    chk("f13_guion.py aplica el tope de densidad antes de escribir guion.sfx.json",
+        "aplicar_tope_densidad" in fuente_guion,
+        "si no, el bug real (--guion N nunca pasa por construir_eventos_sfx) queda intacto")
+    chk("f13_guion.py guarda el pool completo como 'candidatos', no solo lo topado",
+        re.search(r'"sfx":\s*ordenes_sfx,\s*"candidatos":\s*candidatos_sfx', fuente_guion) is not None,
+        "el editor necesita el pool sin topar para poder ofrecer 'cargado'")
+
+    # --- f10_editor_visual expone lo que el selector del editor necesita ----
+    tmp = Path(tempfile.mkdtemp()) / "corrida_densidad_sfx"
+    tmp.mkdir(parents=True)
+    datos = f10.recolectar(tmp)
+    for clave in ("sfx_candidatos", "sfx_prioridades", "sfx_prioridad_defecto",
+                  "sfx_densidad_presets", "resumen_sfx"):
+        chk(f"recolectar() expone '{clave}'", clave in datos, f"claves presentes: {sorted(datos.keys())}")
+    chk("sfx_prioridades coincide con f5_audio.PRIORIDAD_SFX_POR_RAZON",
+        datos.get("sfx_prioridades") == f5_audio.PRIORIDAD_SFX_POR_RAZON)
+    chk("sfx_densidad_presets coincide con config.SFX_DENSIDAD_PRESETS",
+        datos.get("sfx_densidad_presets") == config.SFX_DENSIDAD_PRESETS)
+
+    # --- el editor: selector, contador y funcion de re-filtrado en vivo -----
+    fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+    chk("existe el selector sobrio/normal/cargado en el editor",
+        'id="selDensidadSfx"' in fuente_srv,
+        "con las tres opciones sobrio/normal/cargado")
+    chk("existe la funcion de re-filtrado en vivo por prioridad",
+        "function aplicarTopeDensidadSfx(eventos, separacionS)" in fuente_srv)
+    chk("el selector re-filtra desde el pool completo, no desde la lista ya topada",
+        "edicionSfxCandidatos.length ? edicionSfxCandidatos : edicionSfx" in fuente_srv,
+        "si re-filtrara sobre edicionSfx, pasar de sobrio a cargado no podria recuperar "
+        "los sonidos que sobrio ya habia descartado")
+    chk("el contador de densidad se actualiza cada vez que se repinta la pista de SFX",
+        re.search(r"function pintarSfx\(\)[\s\S]*?actualizarContadorSfx\(\);\s*\n\}", fuente_srv) is not None,
+        "para que no se desactualice al agregar, quitar o mover un efecto a mano")
+    chk("el contador se pinta en rojo cuando la densidad supera lo recomendado",
+        "sfx-denso" in fuente_srv and "cada < umbral" in fuente_srv)
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -1101,6 +1210,7 @@ def main():
     pruebas_orientacion()
     pruebas_sfx_previa()
     pruebas_zona_segura()
+    pruebas_densidad_sfx()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")

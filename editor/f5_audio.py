@@ -186,7 +186,7 @@ def reanclar_sfx(eventos_sfx: list, eventos_overlay: list) -> int:
     return movidos
 
 
-def avisos_sfx(eventos: list) -> list:
+def avisos_sfx(eventos: list, duracion: float = None) -> list:
     """Problemas que el automático no resuelve solo y que José debe poder VER.
 
     No bloquean nada: el criterio del plan v2 es que lo automático es un primer
@@ -216,7 +216,65 @@ def avisos_sfx(eventos: list) -> list:
                 "tipo": "repeticion", "t": e["t"],
                 "texto": f"{e['archivo']} suena {seguidos} veces seguidas",
             })
+
+    # Densidad global (bloque 3 del plan de mejoras): 12-15 SFX en 35s suena a
+    # tic de editor, no a intención. El umbral es el mismo preset "normal" que
+    # usa el tope automático, así el aviso y el tope hablan de lo mismo.
+    if duracion:
+        resumen = resumen_densidad(eventos, duracion)
+        if resumen["cada_s"] is not None and resumen["cada_s"] < config.SFX_DENSIDAD_PRESETS["normal"]:
+            avisos.append({
+                "tipo": "densidad", "t": 0.0,
+                "texto": f"{resumen['n']} efectos en {resumen['duracion']:.1f}s "
+                         f"(uno cada {resumen['cada_s']:.1f}s) — más denso que lo recomendado "
+                         f"(uno cada {config.SFX_DENSIDAD_PRESETS['normal']}s)",
+            })
     return avisos
+
+
+def resumen_densidad(eventos: list, duracion: float) -> dict:
+    """Cuántos SFX hay y cada cuánto caen, para el contador del editor y la hoja
+    de sonido. `cada_s` es None sin eventos, para no dividir por cero."""
+    n = len(eventos)
+    return {"n": n, "duracion": round(duracion, 2),
+            "cada_s": round(duracion / n, 2) if n else None}
+
+
+# Prioridad para el TOPE GLOBAL de densidad (`aplicar_tope_densidad`), distinta
+# de la que usa `construir_eventos_sfx` para resolver colisiones ENTRE TIPOS al
+# generar. Se indexa por la `razon` final del evento, que en los automáticos
+# coincide con el tipo (hook/corte/punch-in/pip-producto/sticker/cta) y en los
+# del guion es "guion_N" o "hook_fisico" (ver f13_guion.py).
+PRIORIDAD_SFX_POR_RAZON = {
+    "hook": 100, "hook_fisico": 100,
+    "pip-producto": 90, "sticker": 90, "cta": 90,
+    "corte": 50,
+    "punch-in": 10,
+}
+# Un SFX colocado a mano en el panel del guion ("guion_N") es una decisión
+# editorial explícita, no ruido automático — por eso pesa más que un corte o
+# un punch-in genérico, aunque menos que un overlay o el hook.
+PRIORIDAD_SFX_DEFECTO = 80
+
+
+def aplicar_tope_densidad(eventos: list, separacion_s: float) -> list:
+    """Cupo global de SFX: como máximo uno cada `separacion_s`, sin importar el
+    tipo. Se aplica DESPUÉS de resolver colisiones por tipo/evento — hoy solo
+    los punch-ins tenían un tope (`config.SFX_MAX_PUNCH_INS`); esto lo extiende
+    a la lista completa, respetando prioridad (gana el más importante, no el
+    primero en el tiempo).
+    """
+    def prioridad(ev):
+        return PRIORIDAD_SFX_POR_RAZON.get(ev.get("razon", ""), PRIORIDAD_SFX_DEFECTO)
+
+    ordenados = sorted(eventos, key=lambda e: (-prioridad(e), e["t"]))
+    aceptados = []
+    for ev in ordenados:
+        if any(abs(ev["t"] - a["t"]) < separacion_s for a in aceptados):
+            continue
+        aceptados.append(ev)
+    aceptados.sort(key=lambda e: e["t"])
+    return aceptados
 
 
 def construir_eventos_sfx(plan_retencion: dict, eventos_overlay: list = None) -> list:
@@ -300,10 +358,12 @@ def escribir_hoja_sonido(eventos: list, palabras: list, ruta: Path, duracion: fl
     todos = sorted(p.name for p in dir_sfx.glob("*.mp3")) if dir_sfx.exists() else []
     sin_usar = [a for a in todos if a not in disponibles]
 
+    resumen = resumen_densidad(eventos, duracion)
+    cada_s = f" · uno cada {resumen['cada_s']:.1f}s" if resumen["cada_s"] is not None else ""
     L = [
         "# Hoja de sonido",
         "",
-        f"Video de {duracion:.1f}s · {len(eventos)} efectos colocados.",
+        f"Video de {duracion:.1f}s · {len(eventos)} efectos colocados{cada_s}.",
         "",
         "Para ajustar: dile al agente qué cambiar (mover, quitar, agregar o cambiar",
         "el sonido de un momento). Los cambios se guardan en un JSON y se vuelven a",
@@ -326,7 +386,7 @@ def escribir_hoja_sonido(eventos: list, palabras: list, ruta: Path, duracion: fl
         L.append(f"| {t:.2f}s | {ev['razon']} | `{ev['archivo']}` | {ev['volumen']} | "
                  f"{ancla} | {frase} |")
 
-    avisos = avisos_sfx(eventos)
+    avisos = avisos_sfx(eventos, duracion)
     if avisos:
         L += [
             "",
@@ -560,11 +620,19 @@ def main():
         # su `pop` se mueve con él sin que José tenga que arrastrar las dos cosas.
         reanclar_sfx(eventos, eventos_overlay)
     else:
+        # Sin --sfx-manual (video improvisado sin --guion): el tope global se
+        # aplica ACÁ, porque construir_eventos_sfx() por sí sola solo resuelve
+        # colisiones DENTRO de cada tipo (bloque 3 del plan de mejoras). Los
+        # SFX que sí vienen de --sfx-manual (guion.sfx.json) ya llegan topados
+        # desde f13_guion.py — no se vuelven a topar acá para no deshacer un
+        # ajuste que José ya guardó a mano en el editor (ajustes.sfx.json).
         eventos = construir_eventos_sfx(plan, eventos_overlay)
+        eventos = aplicar_tope_densidad(eventos, config.SFX_DENSIDAD_PRESETS["normal"])
 
+    duracion_video = _duracion_video(ruta_video)
     if args.hoja_sonido and args.transcripcion and Path(args.transcripcion).exists():
         palabras = json.loads(Path(args.transcripcion).read_text(encoding="utf-8"))["palabras"]
-        escribir_hoja_sonido(eventos, palabras, Path(args.hoja_sonido), _duracion_video(ruta_video))
+        escribir_hoja_sonido(eventos, palabras, Path(args.hoja_sonido), duracion_video)
         _log(f"Hoja de sonido: {args.hoja_sonido}")
     conteo = {}
     for e in eventos:
@@ -575,7 +643,7 @@ def main():
         ancla = f"  -> sigue a {e['ancla']}" if e.get("ancla") else ""
         _log(f"  {e['t']:6.2f}s  {e['razon']:<13} {e['archivo']}{ancla}")
 
-    for aviso in avisos_sfx(eventos):
+    for aviso in avisos_sfx(eventos, duracion_video):
         _log(f"  AVISO [{aviso['tipo']}] {aviso['t']:.2f}s: {aviso['texto']}")
 
     mezclar_audio(ruta_video, eventos, ruta_salida, usar_musica=not args.sin_musica, musica_archivo=args.musica)

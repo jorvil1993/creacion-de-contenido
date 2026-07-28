@@ -416,7 +416,11 @@ SFX_POR_EVENTO = {
 # Cuántos punch-ins llevan sonido como máximo. Los demás hacen el zoom en
 # silencio. Con 17 picos en 37s sonaba uno cada 2 segundos: saturado. Se
 # priorizan los picos de mayor energía, que son los énfasis reales.
-SFX_MAX_PUNCH_INS = 6
+#
+# Bajado de 6 a 2 (bloque 3 del plan de mejoras, 2026-07-28): el zoom del
+# punch-in YA es el énfasis visual; un whoosh en cada uno de los 6 lo subraya
+# dos veces y es la fuente más grande de sonidos de relleno.
+SFX_MAX_PUNCH_INS = 2
 
 # Pico al que se lleva CADA sonido antes de aplicarle su volumen artístico.
 # El pack trae 20 dB de dispersión entre archivos (medido), así que sin esto
@@ -660,8 +664,34 @@ ANIMACIONES_POR_PALABRA = {
 SFX_DURACION_MAX_S = 1.6
 
 # Distancia mínima entre dos SFX cualesquiera. Evita que se amontonen cuando
-# un corte, un overlay y un punch-in caen casi juntos.
-SFX_SEPARACION_MIN_S = 1.2
+# un corte, un overlay y un punch-in caen casi juntos. Subida de 1.2 a 1.8
+# (bloque 3, 2026-07-28) — 1.2s todavía dejaba pasar sonidos pegados que se
+# emborronaban entre sí.
+SFX_SEPARACION_MIN_S = 1.8
+
+# Tope GLOBAL de densidad (bloque 3 del plan de mejoras, 2026-07-28):
+# separación mínima entre CUALQUIER par de SFX aceptados, aplicada DESPUÉS de
+# resolver colisiones por tipo (`f5_audio.aplicar_tope_densidad`). Hasta ahora
+# solo los punch-ins tenían un tope global (SFX_MAX_PUNCH_INS); el resto de
+# tipos podía acumularse sin límite.
+#
+# Medido antes de tocar nada: `Guion-7` (guion.sfx.json, lo que se escucha en
+# un render real con `--guion 7`) traía 11 SFX en 24.8s = uno cada 2.25s.
+# `Guion-7-automatico` (construir_eventos_sfx sin guion) traía 10 en 24.8s =
+# uno cada 2.48s. Los dos caminos rondaban "uno cada 2.5s", que es justo el
+# "tic de editor" que reportó José. El objetivo (5-8 sonidos en 30-40s) da
+# más o menos uno cada 4.5-6.5s — de ahí sale "normal".
+#
+# El editor deja elegir entre los tres; "normal" es el que se aplica sin
+# tocar nada (al generar `guion.sfx.json` en f13_guion.py y en el automático
+# puro de f5_audio.py). Los valores de "sobrio" y "cargado" no están medidos
+# contra una corrida real todavía — son el doble/mitad de "normal" a ojo;
+# ajustar con lo que se escuche.
+SFX_DENSIDAD_PRESETS = {
+    "sobrio": 6.5,
+    "normal": 4.5,
+    "cargado": 2.5,
+}
 
 # ---------------------------------------------------------------------------
 # Generación en GPU (Fase 6) — ComfyUI + Flux.1-schnell GGUF

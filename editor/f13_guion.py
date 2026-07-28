@@ -18,6 +18,7 @@ import unicodedata
 from pathlib import Path
 
 import config
+import f5_audio
 
 
 def normalize_text(txt: str) -> list[str]:
@@ -737,7 +738,17 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
     encuadre = plan_encuadre(guion_dict, palabras, beats_alineados)
 
     ordenes_sfx = espaciar_sfx(ordenes_sfx)
-    ruta_sfx.write_text(json.dumps({"sfx": ordenes_sfx}, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Tope global de densidad (bloque 3 del plan de mejoras): la celda "Sonido"
+    # del panel suele traer un SFX por beat, sin mirar cuántos van a caer
+    # juntos en el video entero — medido en Guion-7, 11 en 24.8s (uno cada
+    # 2.25s). `candidatos` guarda el pool COMPLETO antes del tope, para que el
+    # editor pueda ofrecer un preset más "cargado" sin tener que regenerar el
+    # guion; `sfx` es lo que de verdad usa el render si nadie lo toca.
+    candidatos_sfx = ordenes_sfx
+    ordenes_sfx = f5_audio.aplicar_tope_densidad(candidatos_sfx, config.SFX_DENSIDAD_PRESETS["normal"])
+    ruta_sfx.write_text(
+        json.dumps({"sfx": ordenes_sfx, "candidatos": candidatos_sfx}, ensure_ascii=False, indent=2),
+        encoding="utf-8")
     ruta_anim.write_text(json.dumps({"animaciones": ordenes_animaciones}, ensure_ascii=False, indent=2), encoding="utf-8")
     ruta_eventos.write_text(json.dumps({"eventos": ordenes_eventos}, ensure_ascii=False, indent=2), encoding="utf-8")
     ruta_broll.write_text(json.dumps({"broll": ordenes_broll}, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -749,7 +760,9 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
         "",
         f"- **Beats totales en guion:** {len(guion_dict['tl'])}",
         f"- **Beats alineados exitosamente:** {len([r for r in beats_alineados if r['matched']])}",
-        f"- **SFX ordenados:** {len(ordenes_sfx)}",
+        f"- **SFX ordenados:** {len(ordenes_sfx)}"
+        + (f" (de {len(candidatos_sfx)} candidatos antes del tope de densidad)"
+           if len(candidatos_sfx) != len(ordenes_sfx) else ""),
         f"- **Animaciones ordenadas:** {len(ordenes_animaciones)}",
         f"- **Insertos PIP ordenados:** {len(ordenes_eventos)}",
         f"- **B-Rolls fullscreen ordenados:** {len(ordenes_broll)}",
