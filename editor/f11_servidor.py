@@ -572,12 +572,33 @@ header { padding: 14px 20px; border-bottom: 1px solid var(--linea); display: fle
          align-items: baseline; gap: 12px; flex-wrap: wrap; }
 header h1 { font-size: 16px; margin: 0; }
 header .sub { color: var(--fg-2); font-size: 13px; }
-main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px; padding: 20px;
-       max-width: 1200px; margin: 0 auto; }
-@media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+/* Ancho completo, no 1200px: con el video ocupando una columna fija a la
+   derecha, encajonar el resto dejaba la rejilla del catalogo y las lineas de
+   tiempo demasiado apretadas. */
+main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
+       max-width: 100%; margin: 0 auto; }
+@media (max-width: 1000px) {
+  /* En pantalla estrecha no hay sitio para dos columnas: el video vuelve
+     arriba, pero se queda pegado al borde superior al hacer scroll. */
+  main { flex-direction: column; }
+  .lienzo-wrap { order: 0; flex: none; align-self: stretch; top: 0;
+                 background: var(--bg); padding-bottom: 8px; z-index: 5; }
+  .columna-izq { align-self: stretch; }
+}
 
-.lienzo-wrap { display: flex; flex-direction: column; gap: 10px; align-items: center; }
-.lienzo { position: relative; width: 100%; max-width: 380px; aspect-ratio: 1080 / 1920;
+/* El video se queda quieto a la derecha mientras se recorre el editor: los
+   paneles son largos y, con el video arriba del todo, ajustar un B-roll o una
+   animacion se hacia a ciegas — habia que subir a mirar y volver a bajar. */
+.lienzo-wrap { display: flex; flex-direction: column; gap: 10px; align-items: center;
+               order: 2; flex: 0 0 340px; position: sticky; top: 14px;
+               max-height: calc(100vh - 28px); }
+.columna-izq { order: 1; flex: 1 1 auto; min-width: 0;
+               display: flex; flex-direction: column; gap: 20px; }
+/* max-height ademas del ancho: el video es 9:16, y a 340px de ancho mide 604
+   de alto. Sin el tope, en una pantalla baja la mitad inferior quedaba fuera
+   justo despues de fijarlo. */
+.lienzo { position: relative; width: 100%; max-width: 340px; aspect-ratio: 1080 / 1920;
+          max-height: calc(100vh - 150px); margin: 0 auto;
           background: #000; overflow: hidden; border-radius: 10px; border: 1px solid var(--linea); }
 .lienzo video { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
 .lienzo .overlay-img { position: absolute; top: 0; left: 0; transform-origin: 0 0;
@@ -702,7 +723,11 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
                     display: flex; flex-direction: column; gap: 4px; }
 .inventario-item:hover { border-color: var(--acento); }
 .inventario-item .nombre { font-weight: 600; }
-.inventario-item .detalle { font-size: 11px; color: var(--fg-2); }
+.inventario-item .detalle { font-size: 11px; color: var(--fg-2); display: block; }
+.fila-variantes { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.fila-variantes button { background: var(--panel); color: var(--fg); border: 1px solid var(--linea);
+                          border-radius: 5px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
+.fila-variantes button:hover { border-color: var(--acento); color: var(--acento); }
 </style>
 </head>
 <body>
@@ -733,7 +758,8 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
       render final. Puedes preescuchar todo el audio (voz + música + SFX) directamente en la vista previa.</p>
   </div>
 
-  <div class="panel" style="grid-column: 1 / -1;">
+  <div class="columna-izq">
+  <div class="panel">
     <h2>Línea de tiempo multipista (Estilo CapCut)</h2>
     <p class="hint">Haz clic o arrastra sobre cualquier pista para mover la aguja o ajustar el tiempo de B-rolls, PiPs, animaciones y sonidos.</p>
     <div class="pista" id="pista">
@@ -742,7 +768,7 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
     </div>
   </div>
 
-  <div class="panel" style="grid-column: 1 / -1;">
+  <div class="panel">
     <h2>Efectos de sonido</h2>
     <p class="hint">Arrastrá los marcadores para moverlos en el tiempo. El sonido de un PiP se
       mueve solo cuando movés el inserto (Fase 4: "el sonido acompaña al evento visual").</p>
@@ -763,7 +789,7 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
     </div>
   </div>
 
-  <div class="panel" style="grid-column: 1 / -1;">
+  <div class="panel">
     <h2>Colección de PiP y B-Rolls <span class="hint" id="dominanteInfo"></span></h2>
     <p class="hint">Sustituí, añadí o quitá los insertos de producto y B-rolls. Arrastrá los bloques en la línea de tiempo para moverlos o estirar sus bordes.</p>
     <div class="pista-enc" id="pistaPipTimeline" style="margin-bottom:12px;">
@@ -784,7 +810,7 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
     </div>
   </div>
 
-  <div class="panel" style="grid-column: 1 / -1;">
+  <div class="panel">
     <h2>Hook y CTA</h2>
     <p class="hint">El hook (primeros segundos) y el CTA (cierre) son tarjetas de Hyperframes —
       no se ven animadas acá (ningún navegador reproduce ProRes 4444), solo un fotograma
@@ -799,7 +825,7 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
     </div>
   </div>
 
-  <div class="panel" style="grid-column: 1 / -1;">
+  <div class="panel">
     <h2>Animaciones</h2>
     <p class="hint">Batería, splash, moto y sol — Hyperframes. Se ven como un fotograma
       representativo (al 45% del clip, no el primero: todas entran con fade). Quitar, mover o
@@ -819,7 +845,7 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
     </div>
   </div>
 
-  <div class="panel" style="grid-column: 1 / -1;">
+  <div class="panel">
     <h2>Encuadre <span class="hint" id="encOrigen"></span></h2>
     <p class="hint">Dos cosas distintas. Un <b>punch-in</b> es un acercamiento corto que subraya
       una palabra. Un <b>plano cerrado</b> es un tramo entero más íntimo: entra, se queda y sale.
@@ -842,7 +868,7 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
     <div class="hint" id="leyendaZoom"></div>
   </div>
 
-  <div class="panel" style="grid-column: 1 / -1;">
+  <div class="panel">
     <p class="hint">
       <button class="btn-primario" id="btnGuardar" type="button">Guardar cambios</button>
       <button class="btn-primario" id="btnRender" type="button">Re-renderizar</button>
@@ -854,6 +880,7 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
       </div>
       <p class="hint" id="textoProgreso"></p>
     </div>
+  </div>
   </div>
 </main>
 
@@ -1002,6 +1029,12 @@ function renderPipsLista() {
   edicionPip.forEach((ev, i) => {
     const div = document.createElement("div");
     div.className = "pip-card" + (editandoIdx === i ? " editando" : "");
+    div.title = "Clic para ver este inserto en el video";
+    div.addEventListener("click", (e) => {
+      // No robar el clic a los controles de la tarjeta.
+      if (e.target.closest("button, input, select")) return;
+      irAlInicio(ev);
+    });
     const img = document.createElement("img");
     let srcImg = ev.tarjeta;
     if (!srcImg && ev.miniatura) {
@@ -1021,13 +1054,43 @@ function renderPipsLista() {
     const info = document.createElement("div");
     info.className = "info";
     const badges = (avisos[i] || []).map(a => `<span class="badge aviso">${a}</span>`).join("");
-    const esVideo = ev.medio === "video" || ev.tipo === "broll";
-    const tipoTag = esVideo ? `<span class="badge" style="background:#8b5cf6;color:#fff">B-Roll Video</span>` : `<span class="badge">PiP Imagen</span>`;
-    
+    // El badge miraba `medio === "video"` y llamaba B-Roll a CUALQUIER video,
+    // incluido un PiP de video: decia una cosa y se guardaba otra. Ahora sale
+    // de lo mismo que decide dónde se guarda el evento.
+    const esVideo = ev.medio === "video";
+    const tipoTag = esBroll(ev)
+      ? `<span class="badge" style="background:#8b5cf6;color:#fff">B-Roll pantalla completa</span>`
+      : (esVideo ? `<span class="badge" style="background:#0ea5e9;color:#fff">PiP video</span>`
+                 : `<span class="badge">PiP imagen</span>`);
+
     info.innerHTML = `<b>${tipoTag} ${badges}</b><br>` +
       `ini: <input type="number" step="0.1" min="0" max="${DATA.duracion}" value="${ev.ini.toFixed(1)}" data-idx="${i}" class="in-ini-pip" style="width:55px;">s · ` +
       `fin: <input type="number" step="0.1" min="0" max="${DATA.duracion}" value="${ev.fin.toFixed(1)}" data-idx="${i}" class="in-fin-pip" style="width:55px;">s<br>` +
-      `<small style="color:var(--fg-2);">${ev.asset_id || ev.archivo?.split(/[\\/]/).pop() || "sin asset"}</small>`;
+      `<small style="color:var(--fg-2);">${ev.asset || ev.asset_id || ev.archivo?.split(/[\\/]/).pop() || "sin asset"}</small>`;
+
+    // Solo los VIDEOS pueden ser las dos cosas. Una foto no puede ir a pantalla
+    // completa: el pipeline la compone como tarjeta y punto.
+    if (esVideo) {
+      const sel = document.createElement("select");
+      sel.className = "sel-modo-video";
+      for (const [val, txt] of [["broll", "A pantalla completa"], ["pip", "Como tarjeta PiP"]]) {
+        const o = document.createElement("option");
+        o.value = val; o.textContent = txt;
+        if ((val === "broll") === esBroll(ev)) o.selected = true;
+        sel.appendChild(o);
+      }
+      sel.addEventListener("change", () => {
+        const aBroll = sel.value === "broll";
+        ev.broll_fullscreen = aBroll;
+        ev.tipo = aBroll ? "broll" : "pip-producto";
+        // Un B-roll ocupa el cuadro entero: su posición no significa nada.
+        // Al volverlo tarjeta hay que darle un sitio, o se compone en 0,0.
+        if (aBroll) { ev.x = 0; ev.y = 0; }
+        else if (!ev.x && !ev.y) { ev.x = 620; ev.y = 134; }
+        renderPipsLista(); construirOverlays(); construirTimeline();
+      });
+      info.appendChild(sel);
+    }
     div.appendChild(info);
     
     const btnSust = document.createElement("button");
@@ -1067,6 +1130,14 @@ function renderPipsLista() {
   pintarPipTimeline();
 }
 
+// Poner la aguja justo donde empieza un bloque (con un pelo de aire antes, para
+// ver la entrada y no el fotograma exacto del corte).
+function irAlInicio(ev) {
+  if (!DATA) return;
+  const t = Math.max(0, (ev.ini ?? 0) - 0.15);
+  video.currentTime = Math.min(t, DATA.duracion);
+}
+
 function pintarPipTimeline() {
   const cont = document.getElementById("franjasPipTimeline");
   const pista = document.getElementById("pistaPipTimeline");
@@ -1104,6 +1175,9 @@ function pintarPipTimeline() {
     barra.addEventListener("pointerdown", (e) => {
       if (e.target.classList.contains("enc-tirador")) return;
       e.preventDefault();
+      // Llevar el video al principio del bloque: al tocar un B-roll lo que se
+      // quiere ver es ese B-roll, no el segundo en el que quedo la aguja.
+      irAlInicio(ev);
       const t0 = tiempoDesdeEvento(e, pista);
       const ini0 = ev.ini, fin0 = ev.fin;
       arrastrar((mv) => {
@@ -1438,10 +1512,20 @@ function renderAnimGrid() {
   edicionAnimaciones.forEach((a, i) => {
     const card = document.createElement("div");
     card.className = "anim-card";
+    card.title = "Clic para ver esta animación en el video";
+    card.addEventListener("click", (e) => {
+      if (e.target.closest("button, input, select")) return;
+      irAlInicio(a);
+    });
     card.appendChild(medioAnimacion(a));
     const info = document.createElement("div");
     info.className = "info";
-    info.innerHTML = `<b>${a.nombre}</b>${a.palabra ? ` · "${a.palabra}"` : ""}<br>` +
+    // La variante va en la etiqueta: `anim-apps` son DOS animaciones distintas
+    // (una enseña TikTok/WhatsApp/Facebook y la otra Instagram/YouTube) y con
+    // el mismo nombre las dos tarjetas parecian repetidas.
+    const vtag = (a.variante !== null && a.variante !== undefined)
+      ? ` <span class="badge">v${a.variante + 1}</span>` : "";
+    info.innerHTML = `<b>${a.nombre}</b>${vtag}${a.palabra ? ` · "${a.palabra}"` : ""}<br>` +
       `ini: <input type="number" step="0.1" min="0" max="${DATA.duracion}" value="${a.ini.toFixed(1)}" data-idx="${i}" class="in-ini-anim" style="width:60px;">s`;
     card.appendChild(info);
     const botones = document.createElement("div");
@@ -1494,6 +1578,7 @@ function pintarAnimTimeline() {
 
     barra.addEventListener("pointerdown", (e) => {
       e.preventDefault();
+      irAlInicio(a);
       const t0 = tiempoDesdeEvento(e, pista);
       const ini0 = a.ini;
       arrastrar((mv) => {
@@ -1538,16 +1623,37 @@ async function abrirInventarioAnim(idx) {
       `<span class="detalle">${a.nombre} · ${a.duracion.toFixed(1)}s · ${a.motor}` +
       `${a.preview ? "" : " (sin render todavía)"}</span>`;
     item.appendChild(txt);
+
+    // Con varias variantes hay que poder decir CUÁL: `anim-apps` v1 y v2
+    // enseñan redes distintas. Sin elegir, la escoge el pipeline por la
+    // semilla del video, que es lo de antes y sigue valiendo.
+    if (a.variantes > 1) {
+      const fila = document.createElement("div");
+      fila.className = "fila-variantes";
+      for (let v = 0; v < a.variantes; v++) {
+        const b = document.createElement("button");
+        b.type = "button"; b.textContent = "v" + (v + 1);
+        b.title = `Añadir la variante ${v + 1} de ${a.nombre}`;
+        b.addEventListener("click", (e) => { e.stopPropagation(); elegirAnimacion(a, v); });
+        fila.appendChild(b);
+      }
+      const cual = document.createElement("span");
+      cual.className = "detalle";
+      cual.textContent = "o elegí variante:";
+      txt.appendChild(cual);
+      item.appendChild(fila);
+    }
+
     item.addEventListener("click", () => elegirAnimacion(a));
     grid.appendChild(item);
   }
 }
 
-function elegirAnimacion(a) {
+function elegirAnimacion(a, variante = null) {
   const nueva = {
     nombre: a.nombre, ini: video.currentTime, fin: video.currentTime + a.duracion,
     dur: a.duracion,
-    variante: null, palabra: "", miniatura_archivo: null,
+    variante, palabra: "", miniatura_archivo: null,
   };
   if (editandoAnimIdx === -1) {
     edicionAnimaciones.push(nueva);
