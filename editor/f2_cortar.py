@@ -47,7 +47,9 @@ def _es_conector_ambiguo(palabra_texto: str) -> bool:
     return _normalizar(palabra_texto) in PERFIL["conectores_ambiguos"]
 
 
-def detectar_cortes_silencio(silencios: list, conservar_inicio_s: float = 0.0) -> tuple:
+def detectar_cortes_silencio(silencios: list, conservar_inicio_s: float = 0.0,
+                              conservar_fin_s: float = 0.0,
+                              duracion_total: float = None) -> tuple:
     """Silencios > umbral -> se recorta el centro, dejando margen a cada lado.
 
     `conservar_inicio_s` protege el HOOK FÍSICO: los segundos de silencio que
@@ -60,8 +62,15 @@ def detectar_cortes_silencio(silencios: list, conservar_inicio_s: float = 0.0) -
     es la entrada, no los segundos de silla vacía de antes, que se siguen
     cortando igual que siempre.
 
-    Devuelve (cortes, segundos_realmente_conservados). Lo segundo lo necesita
-    f13_guion para saber que hay una ventana de hook donde colocar sus sonidos.
+    `conservar_fin_s` es lo mismo en la otra punta: protege los segundos de
+    silencio que quedan JUSTO DESPUÉS de la última palabra (levantarte, bajar
+    el aparato). Ahí se protege el INICIO de ese silencio, no el final: lo que
+    hay que salvar es la salida, no los segundos de silla vacía de después, que
+    se siguen cortando igual que siempre. Necesita `duracion_total` para saber
+    cuál es el silencio final (el que termina pegado al fin del archivo).
+
+    Devuelve (cortes, hook_conservado_s, cierre_conservado_s). f13_guion usa el
+    segundo para saber que hay una ventana de hook donde colocar sus sonidos.
     """
     umbral_s = PERFIL["silencio_umbral_ms"] / 1000
     margen_s = config.SILENCIO_MARGEN_MS / 1000
@@ -75,7 +84,16 @@ def detectar_cortes_silencio(silencios: list, conservar_inicio_s: float = 0.0) -
     if conservar_inicio_s > 0 and silencios and silencios[0]["inicio"] <= 0.05:
         inicio_protegido = silencios[0]
 
-    conservado = 0.0
+    # Simétrico: el silencio final es el que termina pegado a la duración total
+    # del archivo. Solo ese es el cierre; una pausa larga a mitad del video no
+    # lleva protección por más que se acerque al final.
+    fin_protegido = None
+    if (conservar_fin_s > 0 and silencios and duracion_total is not None
+            and abs(silencios[-1]["fin"] - duracion_total) <= 0.05):
+        fin_protegido = silencios[-1]
+
+    conservado_inicio = 0.0
+    conservado_fin = 0.0
     for s in silencios:
         duracion = s["duracion"]
         if duracion <= umbral_s:
@@ -89,13 +107,26 @@ def detectar_cortes_silencio(silencios: list, conservar_inicio_s: float = 0.0) -
             # silencio es más corto que eso, no se corta nada.
             inicio_corte = 0.0
             fin_corte = s["fin"] - conservar_inicio_s
-            conservado = min(conservar_inicio_s, duracion)
+            conservado_inicio = min(conservar_inicio_s, duracion)
             if fin_corte <= inicio_corte:
                 print(f"  hook físico: el silencio inicial dura {duracion:.2f}s y se pidieron "
                       f"{conservar_inicio_s:.2f}s — se conserva entero, sin corte.")
                 continue
             razon = (f"silencio inicial de {duracion:.2f}s "
-                     f"(se conservan {conservado:.2f}s de hook físico)")
+                     f"(se conservan {conservado_inicio:.2f}s de hook físico)")
+        elif s is fin_protegido:
+            # Se corta desde `conservar_fin_s` después de la última palabra
+            # hasta el final del archivo. Si el silencio es más corto que eso,
+            # no se corta nada.
+            inicio_corte = s["inicio"] + conservar_fin_s
+            fin_corte = s["fin"]
+            conservado_fin = min(conservar_fin_s, duracion)
+            if fin_corte <= inicio_corte:
+                print(f"  cierre físico: el silencio final dura {duracion:.2f}s y se pidieron "
+                      f"{conservar_fin_s:.2f}s — se conserva entero, sin corte.")
+                continue
+            razon = (f"silencio final de {duracion:.2f}s "
+                     f"(se conservan {conservado_fin:.2f}s de cierre físico)")
         else:
             inicio_corte = s["inicio"] + margen_s
             fin_corte = s["fin"] - margen_s
@@ -107,7 +138,7 @@ def detectar_cortes_silencio(silencios: list, conservar_inicio_s: float = 0.0) -
                 "fin": round(fin_corte, 3),
                 "razon": razon,
             })
-    return cortes, round(conservado, 3)
+    return cortes, round(conservado_inicio, 3), round(conservado_fin, 3)
 
 
 def detectar_cortes_muletillas(palabras: list, segmentos: list) -> list:
@@ -291,6 +322,10 @@ def main():
                         help="Segundos de silencio a conservar justo antes de la primera "
                              "palabra: el hook físico (entrar al cuadro, sentarse). Con "
                              "--guion N el valor sale del campo `hooksegs` del panel")
+    parser.add_argument("--conservar-fin", type=float, default=None, metavar="SEGS",
+                        help="Segundos de silencio a conservar justo después de la última "
+                             "palabra: el cierre físico (levantarte, bajar el aparato). Con "
+                             "--guion N el valor sale del campo `cierresegs` del panel")
     parser.add_argument("--tomas", type=str, default=None, metavar="JSON",
                         help="Lista de segundos donde empieza cada toma real, en la línea de "
                              "tiempo del archivo de entrada (la escribe editor.py al unir "
@@ -320,8 +355,15 @@ def main():
         print(f"Hook físico: se conservan {conservar_inicio:.2f}s de silencio antes de la "
               f"primera palabra.")
 
+    conservar_fin = (args.conservar_fin if args.conservar_fin is not None
+                     else config.HOOK_CONSERVAR_FIN_S)
+    if conservar_fin > 0:
+        print(f"Cierre físico: se conservan {conservar_fin:.2f}s de silencio después de la "
+              f"última palabra.")
+
     cortes = []
-    cortes_silencio, hook_conservado_s = detectar_cortes_silencio(silencios, conservar_inicio)
+    cortes_silencio, hook_conservado_s, cierre_conservado_s = detectar_cortes_silencio(
+        silencios, conservar_inicio, conservar_fin, duracion_total)
     cortes += cortes_silencio
     cortes += detectar_cortes_muletillas(palabras, segmentos)
     cortes += detectar_tomas_repetidas(segmentos)
@@ -351,6 +393,7 @@ def main():
     # primer beat, que por definición no puede alinear contra la transcripción
     # (no se dice nada mientras se entra al cuadro).
     salida_datos["hook_conservado_s"] = hook_conservado_s
+    salida_datos["cierre_conservado_s"] = cierre_conservado_s
 
     if args.tomas:
         tomas_orig = json.loads(Path(args.tomas).read_text(encoding="utf-8"))

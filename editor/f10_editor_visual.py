@@ -36,19 +36,25 @@ def _b64(ruta: Path, mime: str) -> str:
 
 
 def _duracion(ruta: Path) -> float:
-    r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
-                        "-of", "default=nw=1:nk=1", str(ruta)],
-                       capture_output=True, text=True, check=True)
-    return float(r.stdout.strip())
+    try:
+        r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                            "-of", "default=nw=1:nk=1", str(ruta)],
+                           capture_output=True, text=True, check=True)
+        return float(r.stdout.strip())
+    except Exception:
+        return 0.0
 
 
 def _resolucion(ruta: Path) -> tuple[int, int]:
-    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
-                        "-show_entries", "stream=width,height",
-                        "-of", "csv=s=x:p=0", str(ruta)],
-                       capture_output=True, text=True, check=True)
-    w, h = r.stdout.strip().split("x")
-    return int(w), int(h)
+    try:
+        r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
+                            "-show_entries", "stream=width,height",
+                            "-of", "csv=s=x:p=0", str(ruta)],
+                           capture_output=True, text=True, check=True)
+        w, h = r.stdout.strip().split("x")
+        return int(w), int(h)
+    except Exception:
+        return (config.ANCHO, config.ALTO)
 
 
 def muestras_encuadre(dir_trabajo: Path, duracion: float,
@@ -62,14 +68,15 @@ def muestras_encuadre(dir_trabajo: Path, duracion: float,
     arrastra. Se calcula acá, en Python, a propósito: reimplementar la fórmula
     en JavaScript para la vista previa es exactamente la forma de que el editor
     y el render terminen enseñando cosas distintas."""
-    plan = json.loads((dir_trabajo / "03_retencion.plan.json").read_text(encoding="utf-8"))
+    f_plan = dir_trabajo / "03_retencion.plan.json"
+    plan = json.loads(f_plan.read_text(encoding="utf-8")) if f_plan.exists() else {}
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import f4_retencion as f4
 
     encuadre = encuadre or {}
-    track_rostro = plan["track_rostro"]
-    planos = plan["planos"]
-    picos = encuadre.get("punch_ins") or plan["picos_energia"]
+    track_rostro = plan.get("track_rostro", [])
+    planos = plan.get("planos", [])
+    picos = encuadre.get("punch_ins") or plan.get("picos_energia", [])
     # Los tramos de plano cerrado también forman parte del encuadre: sin
     # pasarlos, el preview del editor mostraría un zoom distinto al del render.
     cerrados = encuadre.get("planos_cerrados", plan.get("planos_cerrados", []))
@@ -115,12 +122,12 @@ def _miniatura(video: Path, t: float, ancho: int = 270) -> str | None:
 
 def generar_proxy(video: Path, dir_trabajo: Path) -> Path:
     """Copia liviana (540x960, faststart) de `video` para que arrastrar la
-    línea de tiempo del editor sea instantáneo — `02_cortado.mp4` pesa 75 MB.
+    línea de tiempo del editor sea instantáneo.
     El render final SIEMPRE usa el original; esto es solo para scrubbing en
-    el navegador (sección 3 del plan v2)."""
+    el navegador."""
     dir_proxy = dir_trabajo / "_editor"
     dir_proxy.mkdir(parents=True, exist_ok=True)
-    proxy = dir_proxy / "proxy.mp4"
+    proxy = dir_proxy / f"proxy_{video.stem}.mp4"
     if proxy.exists() and proxy.stat().st_mtime >= video.stat().st_mtime:
         return proxy
     subprocess.run([
@@ -271,20 +278,55 @@ def _plan_encuadre_editable(dir_trabajo: Path, plan: dict) -> dict:
 def recolectar(dir_trabajo: Path) -> dict:
     """Junta todo lo que el editor necesita desde la carpeta de trabajo."""
     dir_trabajo = Path(dir_trabajo)
-    transcripcion = json.loads((dir_trabajo / "02_cortado.json").read_text(encoding="utf-8"))
-    eventos = json.loads((dir_trabajo / "05_overlays.eventos.json").read_text(encoding="utf-8"))
-    plan = json.loads((dir_trabajo / "03_retencion.plan.json").read_text(encoding="utf-8"))
+    f_cortado = dir_trabajo / "02_cortado.json"
+    transcripcion = json.loads(f_cortado.read_text(encoding="utf-8")) if f_cortado.exists() else {"palabras": []}
+    
+    # Cargar eventos (priorizar ajustes guardados a mano si no están vacíos)
+    eventos = []
+    f_eventos = dir_trabajo / "ajustes.eventos.json"
+    if f_eventos.exists():
+        try:
+            raw_evt = json.loads(f_eventos.read_text(encoding="utf-8"))
+            eventos = raw_evt.get("eventos", raw_evt) if isinstance(raw_evt, dict) else raw_evt
+        except Exception:
+            eventos = []
 
-    video = dir_trabajo / "06_video.mp4"
+    if not eventos:
+        f_auto = dir_trabajo / "05_overlays.eventos.json"
+        if f_auto.exists():
+            try:
+                raw_evt = json.loads(f_auto.read_text(encoding="utf-8"))
+                eventos = raw_evt.get("eventos", raw_evt) if isinstance(raw_evt, dict) else raw_evt
+            except Exception:
+                eventos = []
+        if not eventos:
+            f_guion = dir_trabajo / "guion.eventos.json"
+            if f_guion.exists():
+                try:
+                    raw_evt = json.loads(f_guion.read_text(encoding="utf-8"))
+                    eventos = raw_evt.get("eventos", raw_evt) if isinstance(raw_evt, dict) else raw_evt
+                except Exception:
+                    eventos = []
+
+    f_plan = dir_trabajo / "03_retencion.plan.json"
+    plan = json.loads(f_plan.read_text(encoding="utf-8")) if f_plan.exists() else {}
+
+    video = dir_trabajo / "07_FINAL.mp4"
+    if not video.exists():
+        video = dir_trabajo / "06_video.mp4"
     if not video.exists():
         video = dir_trabajo / "02_cortado.mp4"
     duracion = _duracion(video)
 
-    # SFX: se reconstruyen igual que en la corrida real, para que el editor
-    # arranque exactamente con lo que suena hoy.
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import f5_audio
-    sfx = f5_audio.construir_eventos_sfx(plan, eventos)
+    # SFX: Cargar ajustes guardados o reconstruir como en el pipeline
+    f_sfx = dir_trabajo / "ajustes.sfx.json"
+    if f_sfx.exists():
+        raw_sfx = json.loads(f_sfx.read_text(encoding="utf-8"))
+        sfx = raw_sfx.get("sfx", raw_sfx) if isinstance(raw_sfx, dict) else raw_sfx
+    else:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import f5_audio
+        sfx = f5_audio.construir_eventos_sfx(plan, eventos)
 
     # Vocabulario completo de sonidos, embebido para poder escucharlos
     dir_sfx = config.DIR_ASSETS / "sfx"
@@ -292,24 +334,48 @@ def recolectar(dir_trabajo: Path) -> dict:
     for p in sorted(dir_sfx.glob("*.mp3")):
         sonidos[p.name] = _b64(p, "audio/mpeg")
 
-    # Solo se pueden mover los overlays que tienen posición propia; las
-    # composiciones de Hyperframes ocupan el lienzo entero y se posicionan
-    # dentro de su HTML, así que moverlas desde aquí no tendría efecto.
+    # Incluir TODOS los eventos de superposición e insertos (tanto imágenes como videos/b-rolls)
     movibles = []
+    overlays_list = []
     for i, ev in enumerate(eventos):
-        if ev.get("medio") == "video":
-            continue
+        archivo_path = Path(ev["archivo"]) if ev.get("archivo") else None
+        overlay_b64 = None
+        if archivo_path and archivo_path.suffix.lower() == ".png" and archivo_path.exists():
+            overlay_b64 = _b64(archivo_path, "image/png")
+        
+        ini_t = float(ev.get("ini", 0.0))
+        fin_t = float(ev.get("fin", 0.0))
+        tipo_t = str(ev.get("tipo", "pip-producto"))
+        medio_t = str(ev.get("medio", "imagen"))
+
+        miniatura = None
+        if ev.get("miniatura") and Path(ev["miniatura"]).exists():
+            miniatura = str(Path(ev["miniatura"]).resolve())
+        elif video.exists():
+            miniatura = _miniatura(video, ini_t + 0.2)
+
         movibles.append({
             "idx": i,
-            "tipo": ev["tipo"],
-            "ini": ev["ini"], "fin": ev["fin"],
+            "tipo": tipo_t,
+            "medio": medio_t,
+            "ini": ini_t, "fin": fin_t,
             "x": ev.get("x", 0), "y": ev.get("y", 0),
             "palabra": ev.get("palabra", ""),
             "asset": ev.get("asset", ""),
-            "archivo": str(Path(ev["archivo"]).resolve()) if ev.get("archivo") else None,
-            "miniatura": _miniatura(video, ev["ini"] + 0.2),
-            "overlay": _b64(Path(ev["archivo"]), "image/png")
-            if Path(ev["archivo"]).suffix.lower() == ".png" and Path(ev["archivo"]).exists() else None,
+            "archivo": str(archivo_path.resolve()) if archivo_path else None,
+            "miniatura": miniatura,
+            "overlay": overlay_b64,
+        })
+
+        overlays_list.append({
+            "idx": i, "tipo": tipo_t, "ini": ini_t, "fin": fin_t,
+            "x": ev.get("x", 0), "y": ev.get("y", 0),
+            "medio": medio_t,
+            "archivo": str(archivo_path.resolve()) if archivo_path else None,
+            "miniatura_archivo": miniatura,
+            "texto": ev.get("texto"), "eco": ev.get("eco"),
+            "anim": ev.get("anim"), "variante": ev.get("variante"), "motor": ev.get("motor"),
+            "palabra": ev.get("palabra", ""),
         })
 
     ruta_cortado = dir_trabajo / "02_cortado.mp4"
@@ -318,12 +384,10 @@ def recolectar(dir_trabajo: Path) -> dict:
     return {
         "nombre": dir_trabajo.name,
         "duracion": round(duracion, 3),
+        "es_renderizado": video.name != "02_cortado.mp4",
         "ancho": config.ANCHO, "alto": config.ALTO, "fps": config.FPS,
         "resolucion_origen": list(resolucion_origen),  # w_in/h_in reales del recorte de f4_retencion
         "encuadre": muestras_encuadre(dir_trabajo, duracion),
-        # Lo EDITABLE del encuadre, separado de las muestras ya calculadas: los
-        # acercamientos puntuales y los tramos sostenidos, tal como los dejó el
-        # guion (o el ajuste manual anterior, si ya lo hubo).
         "plan_encuadre": _plan_encuadre_editable(dir_trabajo, plan),
         "limites_zoom": {
             "punch_in": config.PUNCH_IN_ZOOM,
@@ -337,19 +401,7 @@ def recolectar(dir_trabajo: Path) -> dict:
         "limites": {"insertos_max": config.INSERTOS_MAX,
                     "separacion_min_s": config.INSERTO_SEPARACION_MIN_S},
         "sfx": sfx,
-        "overlays": [{
-            "idx": i, "tipo": ev["tipo"], "ini": ev["ini"], "fin": ev["fin"],
-            "x": ev.get("x", 0), "y": ev.get("y", 0),
-            "medio": ev.get("medio", "imagen"),
-            # ruta absoluta: f11_servidor la sirve por /archivo con lista blanca de raíces
-            "archivo": str(Path(ev["archivo"]).resolve()) if ev.get("archivo") else None,
-            "miniatura_archivo": str(Path(ev["miniatura"]).resolve())
-            if ev.get("miniatura") and Path(ev["miniatura"]).exists() else None,
-            # metadatos §3c: solo presentes en hook/cta/animaciones
-            "texto": ev.get("texto"), "eco": ev.get("eco"),
-            "anim": ev.get("anim"), "variante": ev.get("variante"), "motor": ev.get("motor"),
-            "palabra": ev.get("palabra", ""),
-        } for i, ev in enumerate(eventos)],
+        "overlays": overlays_list,
         "movibles": movibles,
         "sonidos": sonidos,
         "volumenes": {k: v["volumen"] for k, v in config.SFX_POR_EVENTO.items()},

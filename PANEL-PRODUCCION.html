@@ -78,6 +78,13 @@ h4{margin:20px 0 9px;font-size:13px;text-transform:uppercase;letter-spacing:1.1p
 .descchip{color:#9d8ab5}
 .flecha{color:#4a3550;transition:.15s;font-weight:700}
 .notaflow{font-size:12px;color:var(--txt2);margin:8px 0 0;font-style:italic}
+.hooksegs-editor{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.hooksegs-editor input{width:66px;font:inherit;background:#0d2330;color:var(--txt);
+  border:1px solid var(--linea);border-radius:6px;padding:6px 8px}
+.hooksegs-editor input:focus{outline:none;border-color:var(--cian)}
+.hookseg-estado{font-size:12px;color:var(--txt2)}
+.hookseg-estado.ok{color:var(--ok)}
+.hookseg-estado.mal{color:var(--mal)}
 .pr.destacado{border-color:var(--cian);box-shadow:0 0 0 3px #4fd1d94a;
   animation:late 1.6s ease-out}
 @keyframes late{0%,100%{box-shadow:0 0 0 3px #4fd1d94a}50%{box-shadow:0 0 0 9px #4fd1d900}}
@@ -615,7 +622,7 @@ document.addEventListener('mouseout',e=>{
 
 /* ═══════════ LOS 10 GUIONES ═══════════ */
 const G=[
-{n:7,t:'No es que no te guste leer',rum:90,bloque:'Atención',hook:'fisico',hooksegs:3.0,
+{n:7,t:'No es que no te guste leer',rum:90,bloque:'Atención',hook:'fisico',hooksegs:3.0,cierresegs:0,
  hooktxt:'Entras al plano y te sientas de golpe',
  utileria:['Kindle Paperwhite — lo levantas en la toma 4','Silla que se vea al sentarte'],
  set:['Ventana a 45° a tu izquierda','2 m de separación de la pared','Cámara ya grabando antes de que entres al plano'],
@@ -640,7 +647,7 @@ const G=[
   ['26–29s','Si te pasa, mándale esto a alguien','YO','Vuelves a la postura del segundo 3','transicion_corte_2','—'],
   ['29–32s','que también dejó un libro a medias.','ANIM','tarjeta-cta con el hook repetido','tada_cierre','fade out']]},
 
-{n:1,t:'El celular te está robando el sueño',rum:89,bloque:'Sueño y vista',hook:'fisico',hooksegs:2.0,
+{n:1,t:'El celular te está robando el sueño',rum:89,bloque:'Sueño y vista',hook:'fisico',hooksegs:2.0,cierresegs:0,
  hooktxt:'Arrancas mirando el celular en la cara y lo bajas de golpe',
  utileria:['Tu celular — tomas 1 y 2','Kindle Paperwhite — tomas 4 y 5'],
  set:['De noche, o con la persiana baja','Lámpara cálida detrás tuyo','La cama o un sillón oscuro de fondo'],
@@ -666,7 +673,7 @@ const G=[
   ['32–35s','Si quieres que te explique cuál te conviene, escríbeme.','YO','Vuelves a la postura inicial, con el Kindle','—','—'],
   ['35–38s','Y deja de dormir con el celular en la cara.','ANIM','tarjeta-cta + WhatsApp','tada_cierre','fade out']]},
 
-{n:18,t:'Tu hijo no lee por esta razón',rum:88,bloque:'Hijos',hook:'talking',hooksegs:0,
+{n:18,t:'Tu hijo no lee por esta razón',rum:88,bloque:'Hijos',hook:'talking',hooksegs:0,cierresegs:0,
  hooktxt:'Directo a cámara, sin preámbulo. La frase sola es el gancho',
  utileria:['Kindle Kids o Paperwhite — toma 4'],
  set:['Living o comedor, no dormitorio','Luz natural de día','Arrancas con las manos vacías'],
@@ -692,7 +699,7 @@ const G=[
   ['31–34s','Mándale esto a la mamá o al papá','YO','Vuelves a la postura del arranque','—','—'],
   ['34–37s','que dice que su hijo no lee.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
 
-{n:13,t:'El error al regalar libros a quien ama leer',rum:86,bloque:'Regalo',hook:'objeto',hooksegs:1.5,
+{n:13,t:'El error al regalar libros a quien ama leer',rum:86,bloque:'Regalo',hook:'objeto',hooksegs:1.5,cierresegs:0,
  hooktxt:'Arrancas sosteniendo un libro envuelto para regalo',
  utileria:['Un libro envuelto o con moño — toma 1','Kindle con moño — tomas 4 y 5'],
  set:['Mesa despejada','Luz cálida lateral'],
@@ -717,7 +724,7 @@ const G=[
   ['26–29s','Mándale esto a quien','ANIM','H07 bandera mientras sostienes el Kindle','—','—'],
   ['29–32s','te va a regalar algo.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
 
-{n:28,t:'Lo metí al agua a propósito',rum:86,bloque:'Comparación',hook:'accion',hooksegs:2.0,
+{n:28,t:'Lo metí al agua a propósito',rum:86,bloque:'Comparación',hook:'accion',hooksegs:2.0,cierresegs:0,
  hooktxt:'Muestras el aparato y lo hundes en el agua mientras hablas',
  utileria:['Kindle resistente al agua — Paperwhite o superior, NUNCA el Basic','Fuente, balde transparente o lavaplatos lleno','Toalla a mano — toma 3'],
  set:['Luz fuerte para que se vean las gotas','La toma del agua grabala 3 veces: es LA toma del video'],
@@ -742,7 +749,7 @@ const G=[
   ['26–29s','Sin cuidarlo como un huevo.','YO','Plano medio, aparato seco','—','baja a −21 dB'],
   ['29–32s','Etiqueta a quien lee en la tina.','ANIM','tarjeta-cta + repetición del hook','tada_cierre','fade out']]},
 
-{n:19,t:'Esta pantalla sí se la doy',rum:84,bloque:'Hijos',hook:'objeto',hooksegs:1.5,
+{n:19,t:'Esta pantalla sí se la doy',rum:84,bloque:'Hijos',hook:'objeto',hooksegs:1.5,cierresegs:0,
  hooktxt:'Sostienes el Kindle Kids y lo giras hacia cámara',
  utileria:['Kindle Kids o Paperwhite — tomas 1, 3 y 5','Un celular para el contraste — toma 2'],
  set:['Living con luz de día','Sofá o mesa de comedor'],
@@ -767,7 +774,7 @@ const G=[
   ['26–29s','Y no le tira luz a los ojos antes de dormir.','B-ROLL','F05 a pantalla completa','reverso_whoosh','—'],
   ['29–32s','Si peleas por las pantallas en tu casa, escríbeme.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
 
-{n:14,t:'Ese regalo va a quedar guardado',rum:83,bloque:'Regalo',hook:'fisico',hooksegs:2.5,
+{n:14,t:'Ese regalo va a quedar guardado',rum:83,bloque:'Regalo',hook:'fisico',hooksegs:2.5,cierresegs:0,
  hooktxt:'Abres un cajón lleno de regalos sin usar y lo cierras',
  utileria:['Un cajón o caja con cosas sin usar — toma 1','Perfume, taza y un adorno — toma 2','Kindle con moño — tomas 4 y 5'],
  set:['Mesa o cómoda','Luz cálida lateral'],
@@ -792,7 +799,7 @@ const G=[
   ['25–28s','Escríbeme y te ayudo','ANIM','H06 anim-moto: te llega a la puerta','—','—'],
   ['28–31s','a elegir según la persona.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
 
-{n:8,t:'¿Cuántos libros dejaste a medias?',rum:82,bloque:'Atención',hook:'objeto',hooksegs:1.5,
+{n:8,t:'¿Cuántos libros dejaste a medias?',rum:82,bloque:'Atención',hook:'objeto',hooksegs:1.5,cierresegs:0,
  hooktxt:'Levantas un libro con el separador clavado en la página 30',
  utileria:['Un libro con separador clavado a un tercio — tomas 1, 2 y 5','Kindle — toma 4'],
  set:['Mesa de luz o repisa','Luz suave de tarde'],
@@ -817,7 +824,7 @@ const G=[
   ['28–30s','Ahí sí se termina.','ANIM','H07 destello sobre el aparato','riser_reveal','—'],
   ['30–33s','Comenta en qué página quedó el tuyo.','ANIM','tarjeta-cta + "comenta 👇"','tada_cierre','fade out']]},
 
-{n:27,t:'Los saqué al sol. Mira.',rum:82,bloque:'Comparación',hook:'accion',hooksegs:2.0,
+{n:27,t:'Los saqué al sol. Mira.',rum:82,bloque:'Comparación',hook:'accion',hooksegs:2.0,cierresegs:0,
  hooktxt:'Exterior, sol fuerte: muestras celular y e-reader lado a lado',
  utileria:['Tu celular con el brillo al máximo','Kindle','Trípode o alguien que sostenga la cámara'],
  set:['Al mediodía, sol directo, sin sombra','La comparación grabala 3 veces: es LA toma del video'],
@@ -841,7 +848,7 @@ const G=[
   ['24–26s','como a una hoja.','YO','Primer plano: sostienes el aparato plano, como una hoja','whoosh_metal','—'],
   ['26–29s','Escríbeme si lees afuera.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
 
-{n:32,t:'Vendo estos y no te vendo el caro',rum:81,bloque:'Rompe-creencias',hook:'talking',hooksegs:0,
+{n:32,t:'Vendo estos y no te vendo el caro',rum:81,bloque:'Rompe-creencias',hook:'talking',hooksegs:0,cierresegs:0,
  hooktxt:'Directo a cámara. La frase contradice lo que se espera de un vendedor',
  utileria:['Dos modelos sobre la mesa: uno de gama alta y uno medio — toma 3'],
  set:['Fondo limpio, tu setup habitual','Luz a 45°','Arrancas con las manos vacías'],
@@ -924,13 +931,19 @@ function renderGuiones(){
         <div class="tdesc"><b>${t[1]}</b><p>${t[2]}</p><p class="dice">"${t[3]}"</p></div>
       </div>`).join('')}
 
-     ${g.hooksegs>0?`<h4>⏱️ Hook físico · lo único que el corte NO se lleva</h4>
+     ${g.hook!=='talking'?`<h4>⏱️ Hook físico · lo único que el corte NO se lleva</h4>
      <p class="notaflow" style="margin:0 0 8px">El pipeline corta todos los silencios, así que
      el gesto de entrada se perdía y el video arrancaba contigo ya hablando. Ahora conserva
-     <b>${g.hooksegs}s</b> de silencio justo antes de tu primera palabra — lo justo para que se
+     el silencio justo antes de tu primera palabra — lo justo para que se
      vea "${g.hooktxt.toLowerCase()}". Lo anterior (la silla vacía, acomodarte) se corta igual.
-     Si el gesto sale mocho o sobra silencio, cambia <code>hooksegs:${g.hooksegs}</code> en este
-     mismo archivo, en la línea del guion ${g.n}, y vuelve a correr.</p>`:''}
+     Si el gesto sale mocho o sobra silencio, ajusta los segundos aquí abajo y guarda: se
+     escribe directo en este archivo, así que la próxima corrida ya lo usa.</p>
+     <div class="hooksegs-editor" onclick="event.stopPropagation()">
+       <label class="notaflow" style="margin:0" for="hooksegs-${g.n}">Segundos de hook a conservar</label>
+       <input type="number" id="hooksegs-${g.n}" min="0" max="8" step="0.5" value="${g.hooksegs}">
+       <button class="btn sec" onclick="guardarSegundosGuion(${g.n},'hooksegs')">💾 Guardar en el archivo</button>
+       <span class="hookseg-estado" id="hooksegs-estado-${g.n}"></span>
+     </div>`:''}
 
      <h4>Línea de tiempo · esto es 100% automático</h4>
      <p class="notaflow" style="margin:0 0 8px">Nada de esta tabla lo haces tú: son las
@@ -944,6 +957,19 @@ function renderGuiones(){
         <td>${r[3].replace(/\b(F\d\d|P\d\d|H\d\d)\b/g,m=>c(m))}</td>
         <td class="sfx">${r[4]}</td><td class="sfx">${r[5]}</td></tr>`).join('')}
      </table></div>
+
+     <h4>⏱️ Cierre físico · lo único que el corte NO se lleva (al final)</h4>
+     <p class="notaflow" style="margin:0 0 8px">Lo mismo que el hook, pero en la otra punta: el
+     pipeline corta todos los silencios, así que el gesto de salida (levantarte, bajar el
+     aparato, lo que sea que hagas apenas terminás de hablar) se perdía justo después de tu
+     última palabra. Ajustá los segundos a conservar después de eso y guarda: se escribe
+     directo en este archivo, así que la próxima corrida ya lo usa.</p>
+     <div class="hooksegs-editor" onclick="event.stopPropagation()">
+       <label class="notaflow" style="margin:0" for="cierresegs-${g.n}">Segundos de cierre a conservar</label>
+       <input type="number" id="cierresegs-${g.n}" min="0" max="8" step="0.5" value="${g.cierresegs}">
+       <button class="btn sec" onclick="guardarSegundosGuion(${g.n},'cierresegs')">💾 Guardar en el archivo</button>
+       <span class="hookseg-estado" id="cierresegs-estado-${g.n}"></span>
+     </div>
    </div></div>`}).join('');
 }
 
@@ -1262,6 +1288,80 @@ function renderLotes(){
  </div>`;
  document.getElementById('lotes').innerHTML=h;
 }
+/* ═══════════ EDITAR hooksegs / cierresegs Y GUARDAR EN EL ARCHIVO ═══════════ */
+// showOpenFilePicker escribe directo en disco (Chrome/Edge, incluso abierto
+// como file://). No hay forma de que el navegador sepa solo "este mismo
+// archivo que ya tengo abierto" — José tiene que elegirlo una vez con el
+// selector nativo; después el handle queda en memoria para el resto de la
+// sesión y no se vuelve a pedir.
+let panelFileHandle=null;
+
+async function conseguirManejoArchivo(){
+  if(panelFileHandle) return panelFileHandle;
+  if(!window.showOpenFilePicker){
+    alert('Este navegador no puede guardar directo en el archivo (hace falta Chrome o Edge). '
+      +'Cambia el número a mano en PANEL-PRODUCCION.html y vuelve a correr el pipeline.');
+    return null;
+  }
+  try{
+    const [h]=await window.showOpenFilePicker({
+      types:[{description:'Panel de producción',accept:{'text/html':['.html']}}]
+    });
+    if(h.name!=='PANEL-PRODUCCION.html'
+       && !confirm(`Elegiste "${h.name}", pero se esperaba "PANEL-PRODUCCION.html". ¿Es el archivo correcto?`)){
+      return null;
+    }
+    const permiso=await h.queryPermission({mode:'readwrite'});
+    if(permiso!=='granted' && await h.requestPermission({mode:'readwrite'})!=='granted'){
+      alert('Sin permiso de escritura no puedo guardar.');
+      return null;
+    }
+    panelFileHandle=h;
+    return h;
+  }catch(e){
+    if(e.name!=='AbortError') alert('No se pudo abrir el archivo: '+e.message);
+    return null;
+  }
+}
+
+// `campo` es 'hooksegs' o 'cierresegs' — mismo mecanismo para el silencio
+// que se conserva al principio (hook) y al final (cierre) del video.
+async function guardarSegundosGuion(n,campo){
+  const input=document.getElementById(`${campo}-${n}`);
+  const estado=document.getElementById(`${campo}-estado-${n}`);
+  const val=parseFloat(input.value);
+  if(isNaN(val)||val<0){
+    estado.textContent='Valor inválido';estado.className='hookseg-estado mal';return;
+  }
+  estado.textContent='Guardando…';estado.className='hookseg-estado';
+  const handle=await conseguirManejoArchivo();
+  if(!handle){estado.textContent='';estado.className='hookseg-estado';return;}
+  try{
+    const file=await handle.getFile();
+    const texto=await file.text();
+    // hooksegs y cierresegs siempre van en la misma línea que "{n:N," (ver los
+    // G del archivo), así que basta con no cruzar el salto de línea para no
+    // tocar otro guion.
+    const re=new RegExp(`(\\{n:${n},[^\\n]*?${campo}:)([0-9.]+)`);
+    if(!re.test(texto)){
+      estado.textContent=`No encontré "${campo}" del guion ${n} en ese archivo — ¿es PANEL-PRODUCCION.html?`;
+      estado.className='hookseg-estado mal';return;
+    }
+    const nuevo=texto.replace(re,(_,pre)=>pre+val);
+    const writable=await handle.createWritable();
+    await writable.write(nuevo);
+    await writable.close();
+    const g=G.find(x=>x.n===n);
+    if(g) g[campo]=val;
+    estado.textContent='✓ Guardado';estado.className='hookseg-estado ok';
+    setTimeout(()=>{
+      if(estado.textContent==='✓ Guardado'){estado.textContent='';estado.className='hookseg-estado';}
+    },2500);
+  }catch(e){
+    estado.textContent='Error al guardar: '+e.message;estado.className='hookseg-estado mal';
+  }
+}
+
 function cpIdx(b,i){const p=P[i];cp(b,p.length>6?p[6]:p[5]);}
 function cpTanda(b,i){const g=P.slice(i,i+4);
  cp(b,g.map((p,j)=>`━━━ ${j+1}. GUARDAR COMO: ${p[0]}.mp4 ━━━\n${p.length>6?'[Frames to Video · foto: assets/productos/'+p[5]+']\n':''}${p.length>6?p[6]:p[5]}`).join('\n\n\n'));}

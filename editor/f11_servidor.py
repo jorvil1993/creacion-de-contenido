@@ -130,6 +130,16 @@ def _estado_render() -> dict:
     }
 
 
+def _listar_proyectos() -> list:
+    raiz = config.DIR_SALIDA
+    proyectos = []
+    if raiz.exists():
+        for d in sorted(raiz.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+            if d.is_dir() and not d.name.startswith("_") and (d / "02_cortado.json").exists():
+                proyectos.append(d.name)
+    return proyectos
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass  # silencioso: un GET por frame de scrubbing ensuciaría la consola
@@ -208,10 +218,20 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if ruta == "/":
                 self._html(PAGINA)
+            elif ruta == "/proyectos":
+                self._json({
+                    "actual": DIR_TRABAJO.name if DIR_TRABAJO else "",
+                    "proyectos": _listar_proyectos()
+                })
             elif ruta == "/datos":
                 self._json(f10.recolectar(DIR_TRABAJO))
             elif ruta == "/video":
-                proxy = f10.generar_proxy(DIR_TRABAJO / "02_cortado.mp4", DIR_TRABAJO)
+                v_target = DIR_TRABAJO / "07_FINAL.mp4"
+                if not v_target.exists():
+                    v_target = DIR_TRABAJO / "06_video.mp4"
+                if not v_target.exists():
+                    v_target = DIR_TRABAJO / "02_cortado.mp4"
+                proxy = f10.generar_proxy(v_target, DIR_TRABAJO)
                 self._archivo(proxy, "video/mp4")
             elif ruta == "/archivo":
                 valores = qs.get("ruta")
@@ -265,6 +285,20 @@ class Handler(BaseHTTPRequestHandler):
             datos = json.loads(cuerpo.decode("utf-8")) if cuerpo else {}
         except Exception as e:
             self.send_error(400, f"JSON inválido: {e}")
+            return
+
+        if partes.path == "/cambiar-proyecto":
+            nombre = datos.get("nombre")
+            if not nombre:
+                self.send_error(400, "falta 'nombre'")
+                return
+            cand = config.DIR_SALIDA / nombre
+            if not cand.exists() or not cand.is_dir():
+                self.send_error(404, f"No existe el proyecto {nombre}")
+                return
+            global DIR_TRABAJO
+            DIR_TRABAJO = cand
+            self._json({"ok": True, "nombre": DIR_TRABAJO.name})
             return
 
         if partes.path == "/guardar":
@@ -338,7 +372,10 @@ class Handler(BaseHTTPRequestHandler):
             # editor.py solo necesita que "entrada" exista — en --reaplicar no
             # se lee: la transcripción/corte/análisis ya están en dir_trabajo.
             dummy_entrada = DIR_TRABAJO / "02_cortado.mp4"
-            cmd = [sys.executable, "editor.py", str(dummy_entrada),
+            py_bin = sys.executable
+            if Path(r"C:\ai-video\venv312\Scripts\python.exe").exists():
+                py_bin = r"C:\ai-video\venv312\Scripts\python.exe"
+            cmd = [py_bin, "editor.py", str(dummy_entrada),
                    "--nombre", DIR_TRABAJO.name, "--reaplicar", "--sin-editor-visual"]
             if ajustes is not None:
                 cmd += ["--eventos-manual", str(ajustes)]
@@ -506,28 +543,36 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
 </style>
 </head>
 <body>
-<header>
-  <h1>Editor visual v2 <span id="nombre"></span></h1>
-  <span class="sub" id="resumen"></span>
+<header style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+  <div>
+    <h1 style="margin:0;">Editor visual v2 <span id="nombre"></span></h1>
+    <span class="sub" id="resumen"></span>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center; background:var(--panel); padding:6px 12px; border-radius:8px; border:1px solid var(--linea);">
+    <label for="selProyecto" class="hint" style="font-weight:600; color:var(--fg);">🎬 Seleccionar Video:</label>
+    <select id="selProyecto" style="font:inherit; background:var(--bg); color:var(--fg); border:1px solid var(--linea); border-radius:6px; padding:5px 8px; min-width:180px;"></select>
+    <button id="btnCargarProyecto" class="btn-primario" type="button" style="margin-bottom:0;">📁 Cargar</button>
+  </div>
 </header>
 <main>
   <div class="lienzo-wrap">
     <div class="lienzo" id="lienzo">
-      <video id="video" muted playsinline preload="auto"></video>
+      <video id="video" playsinline preload="auto"></video>
     </div>
     <div class="controles">
       <button id="btnPlay" type="button">▶ Reproducir</button>
+      <button id="btnSound" type="button">🔊 Desactivar Sonido</button>
+      <input type="range" id="volumenVideo" min="0" max="1" step="0.05" value="1" title="Volumen del video">
       <span class="t" id="tActual">0.00s</span>
       <span class="t">/ <span id="tTotal">0.00s</span></span>
     </div>
     <p class="hint">El encuadre (zoom + paneo) se calcula con la misma función que usa el
-      render final — lo que ves aquí es lo que sale en el video, no una aproximación.
-      Los overlays con animación (Hyperframes) todavía no se ven aquí — se agregan en la
-      Fase 3 del plan.</p>
+      render final. Puedes preescuchar todo el audio (voz + música + SFX) directamente en la vista previa.</p>
   </div>
 
-  <div class="panel">
-    <h2>Línea de tiempo</h2>
+  <div class="panel" style="grid-column: 1 / -1;">
+    <h2>Línea de tiempo multipista (Estilo CapCut)</h2>
+    <p class="hint">Haz clic o arrastra sobre cualquier pista para mover la aguja o ajustar el tiempo de B-rolls, PiPs, animaciones y sonidos.</p>
     <div class="pista" id="pista">
       <div class="franjas" id="franjas"></div>
       <div class="palabras" id="palabras"></div>
@@ -556,10 +601,13 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
   </div>
 
   <div class="panel" style="grid-column: 1 / -1;">
-    <h2>Colección de PiP <span class="hint" id="dominanteInfo"></span></h2>
-    <p class="hint">Sustituí, añadí o quitá los insertos de producto.</p>
+    <h2>Colección de PiP y B-Rolls <span class="hint" id="dominanteInfo"></span></h2>
+    <p class="hint">Sustituí, añadí o quitá los insertos de producto y B-rolls. Arrastrá los bloques en la línea de tiempo para moverlos o estirar sus bordes.</p>
+    <div class="pista-enc" id="pistaPipTimeline" style="margin-bottom:12px;">
+      <div class="franjas-enc" id="franjasPipTimeline"></div>
+    </div>
     <div class="pips-lista" id="pipsLista"></div>
-    <button class="btn-primario" id="btnAñadirPip" type="button">+ Añadir PiP en el segundo actual</button>
+    <button class="btn-primario" id="btnAñadirPip" type="button">+ Añadir PiP / B-Roll en el segundo actual</button>
 
     <div class="editor-caja" id="cajaCatalogo">
       <div class="filtros">
@@ -680,13 +728,15 @@ async function cargar() {
     `${DATA.duracion.toFixed(1)}s · ${DATA.overlays.length} overlays · ${DATA.palabras.length} palabras`;
   document.getElementById("tTotal").textContent = DATA.duracion.toFixed(2) + "s";
 
-  video.src = "/video";
+  video.src = "/video?t=" + Date.now();
   construirTimeline();
 
-  edicionPip = DATA.movibles.filter(m => m.tipo === "pip-producto").map(m => ({
+  edicionPip = DATA.movibles.filter(m => 
+    m.tipo !== "hook" && m.tipo !== "cta" && !m.tipo.startsWith("anim-")
+  ).map(m => ({
     ini: m.ini, fin: m.fin, x: m.x, y: m.y,
     asset_id: (m.asset && !m.asset.startsWith("generado:") && !m.asset.startsWith("manual")) ? m.asset : null,
-    archivo: m.archivo, tarjeta: m.overlay,
+    archivo: m.archivo, tarjeta: m.overlay, miniatura: m.miniatura, medio: m.medio, tipo: m.tipo,
   }));
   renderPipsLista();
   construirOverlays(); // depende de edicionPip: tiene que ir después de poblarlo
@@ -703,8 +753,6 @@ async function cargar() {
   encCerrados = (pe.planos_cerrados || []).map(c => ({
     ini: c.ini, fin: c.fin, zoom: c.zoom || DATA.limites_zoom.plano_cerrado, razon: c.razon || "",
   }));
-  // Arrancar "modificado" cuando el origen ya es manual: si no, guardar sin
-  // tocar nada volveria a lo automatico y se perderia el ajuste anterior.
   encModificado = pe.origen === "manual";
   encSeleccion = null;
   document.getElementById("encOrigen").textContent = {
@@ -719,10 +767,10 @@ async function cargar() {
   const cta = DATA.overlays.find(o => o.tipo === "cta");
   document.getElementById("hookTexto").value = hook?.texto || "";
   document.getElementById("hookFin").textContent = hook ? hook.fin.toFixed(1) : "?";
-  document.getElementById("hookMiniatura").src = hook?.miniatura_archivo
-    ? `/archivo?ruta=${encodeURIComponent(hook.miniatura_archivo)}` : "";
-  document.getElementById("ctaMiniatura").src = cta?.miniatura_archivo
-    ? `/archivo?ruta=${encodeURIComponent(cta.miniatura_archivo)}` : "";
+  const hookImg = hook?.miniatura_archivo || hook?.archivo;
+  document.getElementById("hookMiniatura").src = hookImg ? `/archivo?ruta=${encodeURIComponent(hookImg)}` : "";
+  const ctaImg = cta?.miniatura_archivo || cta?.archivo;
+  document.getElementById("ctaMiniatura").src = ctaImg ? `/archivo?ruta=${encodeURIComponent(ctaImg)}` : "";
   document.getElementById("ctaEco").textContent = cta?.eco || "";
 
   edicionAnimaciones = DATA.overlays.filter(o => o.tipo.startsWith("anim-")).map(o => ({
@@ -765,31 +813,136 @@ function renderPipsLista() {
   const cont = document.getElementById("pipsLista");
   cont.innerHTML = "";
   if (edicionPip.length === 0) {
-    cont.innerHTML = '<p class="hint">No hay insertos de producto en este video.</p>';
+    cont.innerHTML = '<p class="hint">No hay insertos de producto o B-rolls en este video.</p>';
   }
   const avisos = avisosPip();
   edicionPip.forEach((ev, i) => {
     const div = document.createElement("div");
     div.className = "pip-card" + (editandoIdx === i ? " editando" : "");
     const img = document.createElement("img");
-    img.src = ev.tarjeta || (ev.asset_id ? `/tarjeta?asset_id=${encodeURIComponent(ev.asset_id)}` : "");
+    let srcImg = ev.tarjeta;
+    if (!srcImg && ev.miniatura) {
+      srcImg = ev.miniatura.startsWith("data:") ? ev.miniatura : `/archivo?ruta=${encodeURIComponent(ev.miniatura)}`;
+    }
+    if (!srcImg && ev.asset_id) {
+      srcImg = `/miniatura?asset_id=${encodeURIComponent(ev.asset_id)}`;
+    }
+    if (!srcImg && ev.archivo && (ev.archivo.endsWith(".png") || ev.archivo.endsWith(".jpg") || ev.archivo.endsWith(".jpeg"))) {
+      srcImg = `/archivo?ruta=${encodeURIComponent(ev.archivo)}`;
+    }
+    img.src = srcImg || "";
+    img.alt = ev.tipo;
+    img.onerror = () => { img.style.display = "none"; };
     div.appendChild(img);
+    
     const info = document.createElement("div");
     info.className = "info";
-    const badges = avisos[i].map(a => `<span class="badge aviso">${a}</span>`).join("");
-    info.innerHTML = `<b>${ev.ini.toFixed(1)}s - ${ev.fin.toFixed(1)}s</b> ${badges}<br>${ev.asset_id || ev.archivo?.split(/[\\/]/).pop() || "sin asset"}`;
+    const badges = (avisos[i] || []).map(a => `<span class="badge aviso">${a}</span>`).join("");
+    const esVideo = ev.medio === "video" || ev.tipo === "broll";
+    const tipoTag = esVideo ? `<span class="badge" style="background:#8b5cf6;color:#fff">B-Roll Video</span>` : `<span class="badge">PiP Imagen</span>`;
+    
+    info.innerHTML = `<b>${tipoTag} ${badges}</b><br>` +
+      `ini: <input type="number" step="0.1" min="0" max="${DATA.duracion}" value="${ev.ini.toFixed(1)}" data-idx="${i}" class="in-ini-pip" style="width:55px;">s · ` +
+      `fin: <input type="number" step="0.1" min="0" max="${DATA.duracion}" value="${ev.fin.toFixed(1)}" data-idx="${i}" class="in-fin-pip" style="width:55px;">s<br>` +
+      `<small style="color:var(--fg-2);">${ev.asset_id || ev.archivo?.split(/[\\/]/).pop() || "sin asset"}</small>`;
     div.appendChild(info);
+    
     const btnSust = document.createElement("button");
     btnSust.className = "sustituir"; btnSust.textContent = "Sustituir";
     btnSust.addEventListener("click", () => abrirCatalogo(i));
     div.appendChild(btnSust);
+    
     const btnQuitar = document.createElement("button");
     btnQuitar.className = "quitar"; btnQuitar.textContent = "Quitar";
-    btnQuitar.addEventListener("click", () => { edicionPip.splice(i, 1); renderPipsLista(); construirOverlays(); });
+    btnQuitar.addEventListener("click", () => { edicionPip.splice(i, 1); renderPipsLista(); construirOverlays(); construirTimeline(); });
     div.appendChild(btnQuitar);
     cont.appendChild(div);
   });
+
+  cont.querySelectorAll(".in-ini-pip").forEach(inp => {
+    inp.addEventListener("change", () => {
+      const i = parseInt(inp.dataset.idx, 10);
+      edicionPip[i].ini = parseFloat(inp.value) || 0;
+      construirTimeline();
+      pintarPipTimeline();
+    });
+  });
+  cont.querySelectorAll(".in-fin-pip").forEach(inp => {
+    inp.addEventListener("change", () => {
+      const i = parseInt(inp.dataset.idx, 10);
+      edicionPip[i].fin = parseFloat(inp.value) || 0;
+      construirTimeline();
+      pintarPipTimeline();
+    });
+  });
+  pintarPipTimeline();
 }
+
+function pintarPipTimeline() {
+  const cont = document.getElementById("franjasPipTimeline");
+  const pista = document.getElementById("pistaPipTimeline");
+  if (!cont || !pista || !DATA) return;
+  cont.innerHTML = "";
+  const dur = DATA.duracion;
+
+  edicionPip.forEach((ev, i) => {
+    const esVideo = ev.medio === "video" || ev.tipo === "broll";
+    const barra = document.createElement("div");
+    barra.className = "enc-cerrado" + (editandoIdx === i ? " sel" : "");
+    barra.style.left = (ev.ini / dur * 100) + "%";
+    barra.style.width = Math.max(0.6, (ev.fin - ev.ini) / dur * 100) + "%";
+    barra.style.background = esVideo ? "rgba(139, 92, 246, 0.35)" : "rgba(79, 209, 217, 0.25)";
+    barra.style.borderColor = esVideo ? "#8b5cf6" : "var(--acento)";
+    barra.textContent = (esVideo ? "B-Roll: " : "PiP: ") + (ev.asset_id || ev.archivo?.split(/[\\/]/).pop() || ev.tipo);
+    barra.title = `${ev.ini.toFixed(1)}s - ${ev.fin.toFixed(1)}s`;
+
+    for (const lado of ["izq", "der"]) {
+      const tir = document.createElement("div");
+      tir.className = "enc-tirador " + lado;
+      tir.addEventListener("pointerdown", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        arrastrar((mv) => {
+          const t = tiempoDesdeEvento(mv, pista);
+          if (lado === "izq") ev.ini = Math.min(t, ev.fin - 0.2);
+          else ev.fin = Math.max(t, ev.ini + 0.2);
+          renderPipsLista();
+          construirTimeline();
+        });
+      });
+      barra.appendChild(tir);
+    }
+
+    barra.addEventListener("pointerdown", (e) => {
+      if (e.target.classList.contains("enc-tirador")) return;
+      e.preventDefault();
+      const t0 = tiempoDesdeEvento(e, pista);
+      const ini0 = ev.ini, fin0 = ev.fin;
+      arrastrar((mv) => {
+        const d = tiempoDesdeEvento(mv, pista) - t0;
+        const largo = fin0 - ini0;
+        ev.ini = Math.max(0, Math.min(dur - largo, ini0 + d));
+        ev.fin = ev.ini + largo;
+        renderPipsLista();
+        construirTimeline();
+      });
+    });
+
+    cont.appendChild(barra);
+  });
+
+  const phPip = document.createElement("div");
+  phPip.className = "playhead";
+  phPip.id = "playheadPip";
+  cont.appendChild(phPip);
+}
+
+document.getElementById("pistaPipTimeline").addEventListener("click", (ev) => {
+  if (!DATA || ev.target.closest(".enc-cerrado")) return;
+  const pista = document.getElementById("pistaPipTimeline");
+  const r = pista.getBoundingClientRect();
+  const frac = (ev.clientX - r.left) / r.width;
+  video.currentTime = Math.max(0, Math.min(DATA.duracion, frac * DATA.duracion));
+});
 
 function construirSelectorSonidos() {
   const sel = document.getElementById("selSonido");
@@ -836,7 +989,20 @@ function pintarSfx() {
   });
   document.getElementById("infoSfx").textContent =
     `${edicionSfx.length} efecto(s)` + (sfxModificado ? " · editado a mano" : " · automático");
+
+  const phSfx = document.createElement("div");
+  phSfx.className = "playhead";
+  phSfx.id = "playheadSfx";
+  cont.appendChild(phSfx);
 }
+
+document.getElementById("pistaSfx").addEventListener("click", (ev) => {
+  if (!DATA || ev.target.closest(".marca-sfx")) return;
+  const pista = document.getElementById("pistaSfx");
+  const r = pista.getBoundingClientRect();
+  const frac = (ev.clientX - r.left) / r.width;
+  video.currentTime = Math.max(0, Math.min(DATA.duracion, frac * DATA.duracion));
+});
 
 // ---- Encuadre: punch-ins y planos cerrados ---------------------------------
 // La curva NO se calcula aca. Se le pide al servidor, que la saca con la misma
@@ -927,6 +1093,11 @@ function pintarEncuadre() {
   document.getElementById("infoEnc").textContent =
     `${encPunch.length} punch-in(s) · ${encCerrados.length} plano(s) cerrado(s)` +
     (encModificado ? " · editado a mano" : "");
+
+  const phEnc = document.createElement("div");
+  phEnc.className = "playhead";
+  phEnc.id = "playheadEnc";
+  cont.appendChild(phEnc);
 }
 
 function dibujarCurva(muestras) {
@@ -1359,20 +1530,30 @@ function iniciarArrastrePip(ev) {
   window.addEventListener("pointerup", soltar);
 }
 
+let sfxDisparados = new Set();
+
+video.addEventListener("play", () => { sfxDisparados.clear(); });
+video.addEventListener("seeking", () => { sfxDisparados.clear(); });
+
 function construirTimeline() {
   const franjas = document.getElementById("franjas");
   const palabrasEl = document.getElementById("palabras");
   franjas.innerHTML = "";
   palabrasEl.innerHTML = "";
   const dur = DATA.duracion;
-  for (const ov of DATA.overlays) {
+
+  // Renderizar B-rolls y PiPs en la pista de eventos
+  for (const ov of edicionPip) {
     const div = document.createElement("div");
-    div.className = "franja" + (ov.medio === "video" ? " video" : "");
+    const esVideo = ov.medio === "video" || ov.tipo === "broll";
+    div.className = "franja" + (esVideo ? " video" : "");
+    if (esVideo) div.style.background = "#8b5cf6";
     div.style.left = (ov.ini / dur * 100) + "%";
     div.style.width = Math.max(0.5, (ov.fin - ov.ini) / dur * 100) + "%";
-    div.textContent = ov.tipo;
+    div.textContent = (esVideo ? "B-Roll: " : "PiP: ") + (ov.asset_id || ov.archivo?.split(/[\\/]/).pop() || ov.tipo);
     franjas.appendChild(div);
   }
+
   const playhead = document.createElement("div");
   playhead.className = "playhead";
   playhead.id = "playhead";
@@ -1405,6 +1586,12 @@ function muestraEn(t) {
 }
 
 function aplicarEncuadre(cx, cy, zoom) {
+  if (DATA && DATA.es_renderizado) {
+    video.style.width = "100%";
+    video.style.height = "100%";
+    video.style.transform = "none";
+    return;
+  }
   const [wIn, hIn] = DATA.resolucion_origen;
   const s = lienzo.clientWidth / wIn;
   video.style.width = (wIn * s) + "px";
@@ -1442,10 +1629,17 @@ function actualizarOverlays(t) {
 function actualizarUI(t) {
   document.getElementById("tActual").textContent = t.toFixed(2) + "s";
   const dur = DATA.duracion;
+  const pct = (Math.min(1, t / dur) * 100) + "%";
+
   const ph = document.getElementById("playhead");
-  if (ph) ph.style.left = (Math.min(1, t / dur) * 100) + "%";
-  // Cursor sobre la curva de zoom: sin el no se sabe que parte de la curva
-  // corresponde al fotograma que se esta mirando.
+  if (ph) ph.style.left = pct;
+
+  const phSfx = document.getElementById("playheadSfx");
+  if (phSfx) phSfx.style.left = pct;
+
+  const phEnc = document.getElementById("playheadEnc");
+  if (phEnc) phEnc.style.left = pct;
+
   const cur = document.getElementById("curvaCursor");
   if (cur) {
     const x = Math.min(1, t / dur) * 1000;
@@ -1464,8 +1658,32 @@ function loop() {
     aplicarEncuadre(cx, cy, zoom);
     actualizarOverlays(t);
     actualizarUI(t);
+
+    // Disparar efectos SFX en tiempo real si el video está reproduciéndose
+    if (!video.paused) {
+      edicionSfx.forEach(e => {
+        if (!sfxDisparados.has(e.id) && Math.abs(t - e.t) < 0.22) {
+          sfxDisparados.add(e.id);
+          escucharSfx(e.archivo, e.volumen || 1.0);
+        }
+      });
+    }
   }
   requestAnimationFrame(loop);
+}
+
+const btnSound = document.getElementById("btnSound");
+const volumenVideo = document.getElementById("volumenVideo");
+if (btnSound && volumenVideo) {
+  btnSound.addEventListener("click", () => {
+    video.muted = !video.muted;
+    btnSound.textContent = video.muted ? "🔇 Activar Sonido" : "🔊 Desactivar Sonido";
+  });
+  volumenVideo.addEventListener("input", (e) => {
+    video.volume = parseFloat(e.target.value);
+    video.muted = (video.volume === 0);
+    btnSound.textContent = video.muted ? "🔇 Activar Sonido" : "🔊 Desactivar Sonido";
+  });
 }
 
 document.getElementById("btnPlay").addEventListener("click", () => {
@@ -1473,10 +1691,53 @@ document.getElementById("btnPlay").addEventListener("click", () => {
   else { video.pause(); document.getElementById("btnPlay").textContent = "▶ Reproducir"; }
 });
 
-window.addEventListener("resize", () => {
-  if (DATA) { const [, cx, cy, zoom] = muestraEn(video.currentTime); aplicarEncuadre(cx, cy, zoom); }
-});
+async function cargarProyectos() {
+  try {
+    const r = await fetch("/proyectos");
+    const data = await r.json();
+    const sel = document.getElementById("selProyecto");
+    if (!sel) return;
+    sel.innerHTML = "";
+    (data.proyectos || []).forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p; opt.textContent = p;
+      if (p === data.actual) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    console.error("Error al cargar lista de proyectos:", e);
+  }
+}
 
+const btnCargarProyecto = document.getElementById("btnCargarProyecto");
+if (btnCargarProyecto) {
+  btnCargarProyecto.addEventListener("click", async () => {
+    const sel = document.getElementById("selProyecto");
+    const nombre = sel ? sel.value : "";
+    if (!nombre) return;
+    btnCargarProyecto.disabled = true;
+    btnCargarProyecto.textContent = "Cargando...";
+    try {
+      const r = await fetch("/cambiar-proyecto", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre }),
+      });
+      const res = await r.json();
+      if (res.ok) {
+        await cargar();
+        video.src = "/video?t=" + Date.now();
+        video.load();
+      }
+    } catch (err) {
+      alert("Error al cargar proyecto: " + err);
+    } finally {
+      btnCargarProyecto.disabled = false;
+      btnCargarProyecto.textContent = "📁 Cargar";
+    }
+  });
+}
+
+cargarProyectos();
 cargar();
 </script>
 </body>

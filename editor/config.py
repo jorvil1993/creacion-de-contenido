@@ -188,6 +188,13 @@ SILENCIO_MARGEN_MS = 150       # margen que se deja a cada lado del corte
 # Este es solo el default cuando se corre sin --guion.
 HOOK_CONSERVAR_INICIO_S = 0.0
 
+# Simétrico a HOOK_CONSERVAR_INICIO_S pero en la otra punta: segundos de
+# silencio que se conservan JUSTO DESPUÉS de la última palabra — el gesto de
+# salida (levantarte, bajar el aparato) también es silencio puro y el corte
+# se lo comía igual que el hook. El valor real sale del campo `cierresegs` de
+# cada guion en PANEL-PRODUCCION.html; este es solo el default sin --guion.
+HOOK_CONSERVAR_FIN_S = 0.0
+
 # Punto de partida — calibrado una primera vez con grabación real de José (2026-07-26)
 MULETILLAS = [
     "eh", "ehh", "mmm", "o sea", "digamos",
@@ -221,7 +228,7 @@ SUB_COLOR_RESALTADO = "&H00D9D14F"   # cian de marca #4FD1D9 en formato ASS (BGR
 # (ver editor.py) en vez de depender de que Windows la tenga instalada.
 SUB_FUENTE = "Poppins"               # familia; el peso Bold lo aplica el estilo ASS (Bold=-1)
 DIR_FUENTES = DIR_ASSETS / "fuentes"
-SUB_TAMANO_PX = 72
+SUB_TAMANO_PX = 88                   # subido de 72 (pedido de José, 2026-07-28: se leían chicos)
 SUB_PALABRAS_POR_BLOQUE_MIN = 2
 SUB_PALABRAS_POR_BLOQUE_MAX = 4
 SUB_POSICION_ALTURA_PCT = 0.77       # 77% de ALTO = 1478px sobre lienzo 1920

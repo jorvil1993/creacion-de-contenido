@@ -89,8 +89,8 @@ def leer_parametros_guion(numero_guion: int, ruta_html: Path = None) -> dict:
     tiene que saber de antemano cuánto hook físico conservar, así que ese dato se
     lee aparte y temprano. Es barato: solo parsea el HTML del panel.
 
-    `hooksegs` es el campo que José edita en PANEL-PRODUCCION.html para calibrar
-    cada guion sin tocar código.
+    `hooksegs` y `cierresegs` son los campos que José edita en
+    PANEL-PRODUCCION.html para calibrar cada guion sin tocar código.
     """
     datos_html = cargar_datos_html(ruta_html)
     g = obtener_guion(numero_guion, datos_html)
@@ -100,8 +100,15 @@ def leer_parametros_guion(numero_guion: int, ruta_html: Path = None) -> dict:
         print(f"AVISO: `hooksegs` del guion {numero_guion} no es un número "
               f"({g.get('hooksegs')!r}) — se ignora.", file=sys.stderr)
         hooksegs = 0.0
+    try:
+        cierresegs = float(g.get("cierresegs") or 0.0)
+    except (TypeError, ValueError):
+        print(f"AVISO: `cierresegs` del guion {numero_guion} no es un número "
+              f"({g.get('cierresegs')!r}) — se ignora.", file=sys.stderr)
+        cierresegs = 0.0
     return {
         "hooksegs": max(0.0, hooksegs),
+        "cierresegs": max(0.0, cierresegs),
         "titulo": g.get("t", ""),
         "tipo_hook": g.get("hook", ""),
     }
@@ -515,6 +522,9 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
     # Segundos de hook físico que f2_cortar dejó sin cortar al principio (0 si
     # el guion no lo pide en su campo `hooksegs`).
     hook_conservado_s = float(trans_data.get("hook_conservado_s") or 0.0)
+    # Simétrico, al final: segundos de cierre físico que f2_cortar dejó sin
+    # cortar después de la última palabra (0 si `cierresegs` es 0).
+    cierre_conservado_s = float(trans_data.get("cierre_conservado_s") or 0.0)
 
     print(f"\n======================================================================")
     print(f"  PROCESANDO GUION {numero_guion}: \"{guion_dict.get('t')}\"")
@@ -751,6 +761,8 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
            if encuadre["planos_cerrados"] else ""),
         f"- **Hook físico conservado:** {hook_conservado_s:.2f}s"
         if hook_conservado_s else "- **Hook físico conservado:** no (hooksegs = 0)",
+        f"- **Cierre físico conservado:** {cierre_conservado_s:.2f}s"
+        if cierre_conservado_s else "- **Cierre físico conservado:** no (cierresegs = 0)",
         "",
         "| Beat | Tipo | Texto Guion | Estado | Inicio | Fin | Detalles |",
         "|---|---|---|---|---|---|---|",

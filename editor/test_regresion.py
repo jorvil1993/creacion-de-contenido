@@ -65,15 +65,15 @@ def pruebas_corte():
         {"inicio": 20.0, "fin": 20.3, "duracion": 0.30},   # corta, no se toca
     ]
 
-    cortes, cons = f2_cortar.detectar_cortes_silencio(silencios, 0.0)
+    cortes, cons_ini, cons_fin = f2_cortar.detectar_cortes_silencio(silencios, 0.0)
     chk("sin hook: el silencio inicial se corta entero",
-        cons == 0.0 and abs(cortes[0]["fin"] - 7.75) < 1e-6,
-        f"corte {cortes[0]['inicio']:.2f}->{cortes[0]['fin']:.2f}s, conservado {cons}s")
+        cons_ini == 0.0 and abs(cortes[0]["fin"] - 7.75) < 1e-6,
+        f"corte {cortes[0]['inicio']:.2f}->{cortes[0]['fin']:.2f}s, conservado {cons_ini}s")
 
-    cortes, cons = f2_cortar.detectar_cortes_silencio(silencios, 3.0)
+    cortes, cons_ini, cons_fin = f2_cortar.detectar_cortes_silencio(silencios, 3.0)
     chk("con hook=3s: quedan exactamente 3s antes de la primera palabra",
-        cons == 3.0 and abs(cortes[0]["fin"] - 4.90) < 1e-6 and cortes[0]["inicio"] == 0.0,
-        f"corte {cortes[0]['inicio']:.2f}->{cortes[0]['fin']:.2f}s, conservado {cons}s")
+        cons_ini == 3.0 and abs(cortes[0]["fin"] - 4.90) < 1e-6 and cortes[0]["inicio"] == 0.0,
+        f"corte {cortes[0]['inicio']:.2f}->{cortes[0]['fin']:.2f}s, conservado {cons_ini}s")
 
     # El hook protege SOLO al silencio inicial: una pausa larga a mitad del
     # video se sigue cortando igual por mas hook que se pida.
@@ -85,10 +85,45 @@ def pruebas_corte():
     # Un silencio inicial mas corto que lo pedido se conserva entero y no se
     # inventa un corte de duracion negativa.
     cortos = [{"inicio": 0.0, "fin": 1.20, "duracion": 1.20}]
-    cortes_c, cons_c = f2_cortar.detectar_cortes_silencio(cortos, 3.0)
+    cortes_c, cons_ini_c, cons_fin_c = f2_cortar.detectar_cortes_silencio(cortos, 3.0)
     chk("hook mayor que el silencio disponible -> no corta nada",
-        cortes_c == [] and cons_c == 1.20,
-        f"cortes={len(cortes_c)}, conservado={cons_c}s")
+        cortes_c == [] and cons_ini_c == 1.20,
+        f"cortes={len(cortes_c)}, conservado={cons_ini_c}s")
+
+    # --- simetrico: cierre fisico al final (levantarte, bajar el aparato) ---
+    silencios_cierre = [
+        {"inicio": 0.0,  "fin": 0.30,  "duracion": 0.30},   # muy corto, no se toca
+        {"inicio": 12.0, "fin": 13.5,  "duracion": 1.50},   # pausa a mitad
+        {"inicio": 21.0, "fin": 27.5,  "duracion": 6.50},   # cierre fisico
+    ]
+    duracion_total = 27.5
+
+    cortes, cons_ini, cons_fin = f2_cortar.detectar_cortes_silencio(
+        silencios_cierre, 0.0, 0.0, duracion_total)
+    chk("sin cierre: el silencio final se corta entero",
+        cons_fin == 0.0 and abs(cortes[-1]["fin"] - 27.35) < 1e-6,
+        f"corte {cortes[-1]['inicio']:.2f}->{cortes[-1]['fin']:.2f}s, conservado {cons_fin}s")
+
+    cortes, cons_ini, cons_fin = f2_cortar.detectar_cortes_silencio(
+        silencios_cierre, 0.0, 2.5, duracion_total)
+    chk("con cierre=2.5s: quedan exactamente 2.5s despues de la ultima palabra",
+        cons_fin == 2.5 and abs(cortes[-1]["inicio"] - 23.5) < 1e-6 and cortes[-1]["fin"] == duracion_total,
+        f"corte {cortes[-1]['inicio']:.2f}->{cortes[-1]['fin']:.2f}s, conservado {cons_fin}s")
+
+    # El cierre protege SOLO al silencio final: la pausa de en medio se sigue
+    # cortando igual por mas cierre que se pida.
+    inicios = ", ".join("{:.2f}".format(c["inicio"]) for c in cortes)
+    chk("el cierre no protege pausas de en medio",
+        any(abs(c["inicio"] - 12.15) < 1e-6 for c in cortes),
+        f"{len(cortes)} cortes, empiezan en {inicios}")
+
+    # Un silencio final mas corto que lo pedido se conserva entero.
+    colas_cortas = [{"inicio": 20.0, "fin": 21.20, "duracion": 1.20}]
+    cortes_cc, cons_ini_cc, cons_fin_cc = f2_cortar.detectar_cortes_silencio(
+        colas_cortas, 0.0, 3.0, 21.20)
+    chk("cierre mayor que el silencio disponible -> no corta nada",
+        cortes_cc == [] and cons_fin_cc == 1.20,
+        f"cortes={len(cortes_cc)}, conservado={cons_fin_cc}s")
 
     # --- el calculo mas delicado: que las palabras no se desincronicen ------
     duracion = 25.0
@@ -387,6 +422,11 @@ def pruebas_coherencia():
     chk("todos los guiones declaran hooksegs",
         not sin_hooksegs, f"faltan en {sin_hooksegs}" if sin_hooksegs
         else "los 10 lo traen; sin el, el corte se come el hook fisico")
+
+    sin_cierresegs = [g["n"] for g in datos["G"] if "cierresegs" not in g]
+    chk("todos los guiones declaran cierresegs",
+        not sin_cierresegs, f"faltan en {sin_cierresegs}" if sin_cierresegs
+        else "los 10 lo traen; sin el, el corte se come el cierre fisico")
 
     # La duracion declarada tiene que coincidir con el data-duration del HTML.
     # El comentario de config lo afirma, pero nada lo comprobaba: si alguien

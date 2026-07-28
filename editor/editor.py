@@ -36,6 +36,20 @@ import config
 AQUI = Path(__file__).resolve().parent
 
 
+def _ruta_versionada(dir_destino: Path, nombre_base: str) -> Path:
+    """Si `nombre.mp4` ya existe en dir_destino, genera `nombre_v2.mp4`, `nombre_v3.mp4`, etc.
+    para evitar sobreescribir versiones anteriores."""
+    cand = dir_destino / f"{nombre_base}.mp4"
+    if not cand.exists():
+        return cand
+    v = 2
+    while True:
+        cand_v = dir_destino / f"{nombre_base}_v{v}.mp4"
+        if not cand_v.exists():
+            return cand_v
+        v += 1
+
+
 def paso(descripcion, cmd):
     print(f"\n{'='*70}\n{descripcion}\n{'='*70}")
     resultado = subprocess.run([sys.executable, *cmd], cwd=str(AQUI))
@@ -210,11 +224,12 @@ def main():
             sys.exit(1)
         print(f"\n--reaplicar: reutilizando transcripción, corte y plan de retención de {dir_trabajo}")
         if args.guion is not None:
-            # Trampa fácil de pisar: `hooksegs` lo aplica f2_cortar, que con
-            # --reaplicar no se vuelve a ejecutar. Sin este aviso, cambiar el
-            # valor en el panel y volver a correr parece "no hacer nada".
-            print("  OJO: `hooksegs` se aplica al cortar. Si lo cambiaste en el panel, "
-                  "corré SIN --reaplicar para que tenga efecto.")
+            # Trampa fácil de pisar: `hooksegs`/`cierresegs` los aplica
+            # f2_cortar, que con --reaplicar no se vuelve a ejecutar. Sin este
+            # aviso, cambiar el valor en el panel y volver a correr parece "no
+            # hacer nada".
+            print("  OJO: `hooksegs`/`cierresegs` se aplican al cortar. Si los cambiaste en "
+                  "el panel, corré SIN --reaplicar para que tenga efecto.")
     else:
         # El hook físico (entrar al cuadro, sentarse) es silencio puro, así que
         # el corte de silencios se lo llevaba entero. Cuánto conservar sale del
@@ -229,6 +244,10 @@ def main():
                 cortar_extra += ["--conservar-inicio", str(params["hooksegs"])]
                 print(f"\nGuion {args.guion} ({params['tipo_hook']}): se conservarán "
                       f"{params['hooksegs']}s de hook físico al inicio.")
+            if params["cierresegs"] > 0:
+                cortar_extra += ["--conservar-fin", str(params["cierresegs"])]
+                print(f"Guion {args.guion}: se conservarán {params['cierresegs']}s de "
+                      f"cierre físico al final.")
         if tomas_json.exists():
             cortar_extra += ["--tomas", str(tomas_json)]
 
@@ -336,9 +355,9 @@ def main():
         cmd_audio += ["--sfx-manual", args.sfx_manual]
     paso("FASE 4: Audio (música + ducking + SFX + loudnorm; el video se copia sin recomprimir)", cmd_audio)
 
-    # Publicación: solo el final viaja a OneDrive (sección 3 del plan).
+    # Publicación: solo el final viaja a OneDrive con versión incremental si ya existe.
     config.DIR_PUBLICADOS.mkdir(parents=True, exist_ok=True)
-    publicado = config.DIR_PUBLICADOS / f"{nombre}.mp4"
+    publicado = _ruta_versionada(config.DIR_PUBLICADOS, nombre)
     shutil.copy2(video_final, publicado)
 
     # Editor visual: se genera siempre al final para que José pueda retocar los

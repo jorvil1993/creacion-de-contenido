@@ -163,7 +163,7 @@ El dolor más universal de 2026. Ninguno menciona el producto antes del segundo 
 |---|---|---|
 | 0-3s | "No es que no te guste leer." | 🎬 `[F16]` libro abandonado, polvo |
 | 3-14s | "Es que compites contra una app diseñada por mil ingenieros para que no puedas soltarla." | 🎬 `[F14]` scroll infinito |
-| 14-24s | "No es falta de disciplina. Es una pelea injusta. Tú con tu fuerza de voluntad contra un algoritmo." | 🎬 `[F17]` notificaciones |
+| 14-24s | "No es falta de disciplina. Es una pelea injusta. Tú con tu fuerza de voluntad contra un algoritmo." | 🎬 `[F33]` se rinde: suelta el libro por el celular |
 | 24-34s | "La única forma de ganarla es no pelearla: leer en algo que no tenga apps, ni notificaciones, ni nada más que la página." | 📌 `[P02]` |
 | 34-40s | "Si te pasa, mándale esto a alguien que también dejó un libro a medias." | ✨ CTA + loop |
 

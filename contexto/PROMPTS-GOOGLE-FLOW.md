@@ -35,6 +35,51 @@ La reserva es alta a propósito: con los fallos que ya viste, se descarta cerca 
 No usar Quality: cuesta 5× y este material sale como PiP pequeño o B-roll de 2-3
 segundos, donde no se nota. Conviene más variedad que resolución.
 
+## Regla del primer frame — se generan 8s pero solo se ven 2 o 3
+
+**Esta es la restricción que manda sobre todas las demás.** El pipeline inserta
+el clip con `-itsoffset` y `setpts=PTS-STARTPTS` (`f6_overlays.componer_overlays`):
+**el mp4 siempre arranca en su propio segundo 0** y se corta cuando termina la
+ventana. La ventana la calcula el pipeline desde la palabra hasta el fin de la
+frase, con mínimo 1,0s y tope 5,0s. De los 171 tramos declarados en el panel,
+131 son de 2 o 3 segundos.
+
+Consecuencia: **de cada clip de 8 segundos solo se ven los primeros 2 o 3**, y
+los primeros 0,2s son fundido de entrada. Todo lo que pase después del segundo 3
+no existe. Pasó con `silencio`: el apagado terminaba al final del clip, así que
+en el video solo se veían notificaciones.
+
+Cómo se escribe un prompt con esto en la cabeza:
+
+1. **El primer frame ya tiene que ser el concepto.** No *"una lámpara que se
+   enciende en un cuarto a oscuras"* (los primeros segundos serían negro puro),
+   sino *"una lámpara ya encendida, la luz ya cayendo sobre las sábanas"*.
+2. **Anclar con `in the very first frame`.** Es la fórmula que Veo respeta:
+   *"already calm and almost empty in the very first frame"*, *"the book already
+   slipping in the very first frame"*, *"already packed with them in the very
+   first frame"*.
+3. **Si hay movimiento, que termine antes del segundo 2** y el resto del clip sea
+   la cola sostenida. *"Within the first second… by the second second… from there
+   it stays like that for the rest of the clip."*
+4. **Prohibir explícitamente el arranque lento**, que es el prior del modelo:
+   *"the video never opens in darkness, never fades up from black and never shows
+   the lamp being switched on"*, *"the video never opens on a closed untouched box
+   and never waits for the tape to be cut"*.
+5. **Afirmar la dirección y después prohibir la contraria** (misma técnica que el
+   blindaje del logo): *"the shapes only ever disappear: nothing new ever appears,
+   no shape is ever added, and none of them ever return, multiply or refill the
+   frame."*
+
+**Cómo se verifica un clip:** mirar solo los primeros 3 segundos. Si ahí no se lee
+el concepto, el clip no sirve por bueno que sea el resto.
+
+Ojo especial con los pares opuestos que comparten escena de partida
+(`notificaciones` ↔ `silencio`): si el prompt no separa bien el estado inicial,
+Veo entrega el otro clip del par.
+
+Prompts reescritos con esta regla: `silencio`, `rendicion`, `lampara`,
+`notificaciones`, `bateria`, `caja`.
+
 ---
 
 # AMBIENTE 1 — imprescindibles (Cuenta A)
@@ -71,7 +116,7 @@ Vertical 9:16. A closed paper book lying forgotten on a bedside table with a boo
 
 ### `notificaciones` — el bombardeo · 4 guiones
 ```
-Vertical 9:16. Abstract visualization of relentless digital interruption: dozens of soft glowing rounded rectangles rising and multiplying in dark empty space like a swarm, blurred and out of focus, cool blue and white light, overwhelming and claustrophobic. Cinematic, elegant, minimal, shallow depth of field. Camera slowly pulls back as the swarm grows. The shapes are completely blank: no text, no icons, no symbols, no letters, no numbers, no logos, no watermark. No dialogue, no voiceover, subtle rising hum only.
+Vertical 9:16. Abstract visualization of relentless digital interruption: dozens of soft glowing rounded rectangles crowding the frame like a swarm, blurred and out of focus, cool blue and white light, overwhelming and claustrophobic. The frame is already packed with them in the very first frame: the swarm starts at its densest and never builds up from an empty or nearly empty screen, and more keep pouring in from the edges the whole time. Cinematic, elegant, minimal, shallow depth of field. Camera slowly pulls back as more of them pour in. The shapes are completely blank: no text, no icons, no symbols, no letters, no numbers, no logos, no watermark. No dialogue, no voiceover, subtle rising hum only.
 ```
 
 ### `insomnio` — las 3:47 de la mañana · 3 guiones
@@ -90,7 +135,7 @@ Vertical 9:16. A small elegant gift box with a satin ribbon resting on a table, 
 
 ### `caja` — el desempaque · 4 guiones
 ```
-Vertical 9:16. Close-up of a clean plain cardboard box on a table, hands slicing the tape and lifting the flap, revealing soft protective foam inside, warm daylight from a side window, satisfying unboxing mood. Shot on a 50mm lens, shallow depth of field, natural editorial photography. Slow overhead push in. Nothing is taken out of the box. The cardboard is completely blank with no printing, no text, no lettering, no labels, no logos, no watermark. No dialogue, no voiceover, cardboard and tape sounds only.
+Vertical 9:16. Close-up of a clean plain cardboard box on a table, its tape already cut and hands already lifting the flap open in the very first frame, revealing soft protective foam inside, warm daylight from a side window, satisfying unboxing mood. The box is already being opened when the clip starts: the video never opens on a closed untouched box and never waits for the tape to be cut. Shot on a 50mm lens, shallow depth of field, natural editorial photography. Slow overhead push in. Nothing is taken out of the box. The cardboard is completely blank with no printing, no text, no lettering, no labels, no logos, no watermark. No dialogue, no voiceover, cardboard and tape sounds only.
 ```
 
 ### `vitrina` — no saber qué regalar · 4 guiones
@@ -105,7 +150,7 @@ Vertical 9:16. Extreme close-up of fine sand streaming through the narrow waist 
 
 ### `bateria` — el 1% · 3 guiones
 ```
-Vertical 9:16. Close-up of a smartphone lying on a bedside table with its screen almost black, showing only a faint dying glow before going dark, a tangled charging cable just out of reach beside it. Dim warm bedroom light, night mood. Shot on an 85mm lens, very shallow depth of field, natural editorial photography. Slow push in as the screen fades. The phone body is completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving. The screen is a flat rigid glass surface, blurred and unreadable, and it stays perfectly flat at all times: nothing ever lifts, peels, curls, flies or emerges from it. No paper, no sheets, no physical pages, no icons, no text, no watermark. No dialogue, no voiceover, silence with faint room tone.
+Vertical 9:16. Close-up of a smartphone lying on a bedside table, its screen already almost black in the very first frame, showing only a faint dying glow, a tangled charging cable just out of reach beside it. The phone is already dying when the clip starts: the video never opens on a bright screen. Dim warm bedroom light, night mood. Shot on an 85mm lens, very shallow depth of field, natural editorial photography. Slow push in as the last of the glow fades. The phone body is completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving. The screen is a flat rigid glass surface, blurred and unreadable, and it stays perfectly flat at all times: nothing ever lifts, peels, curls, flies or emerges from it. No paper, no sheets, no physical pages, no icons, no text, no watermark. No dialogue, no voiceover, silence with faint room tone.
 ```
 
 ### `entrega` — la moto en la ciudad · 3 guiones
@@ -177,9 +222,31 @@ Vertical 9:16. A cup of coffee steaming on a small café table by a window, warm
 Vertical 9:16. An open suitcase on a bed being packed, hands placing folded clothes inside, warm morning light from a window, travel anticipation mood, plain unbranded luggage. Shot on a 35mm lens, shallow depth of field, natural editorial photography. Slow overhead push in. No text, no tags, no labels, no lettering, no logos, no watermark. No dialogue, no voiceover, fabric and zipper sounds only.
 ```
 
+### `silencio` — el silencio digital · 3 guiones
+> **Ojo:** hermano opuesto de `notificaciones`, comparte casi la misma escena de
+> partida. La primera versión describía el enjambre y metía el apagado como frase
+> secundaria: Veo generó el enjambre y nunca lo apagó. La segunda escalonaba el
+> apagado a lo largo de los 8s, lo cual tampoco sirve — el pipeline solo muestra
+> los primeros 2 o 3 segundos. Esta versión **arranca ya casi vacía** y apaga las
+> últimas burbujas dentro del primer par de segundos.
+> **Verifica los primeros 3 segundos: si ahí la pantalla está llena, no sirve.**
+```
+Vertical 9:16. Abstract visualization of digital silence, already calm and almost empty in the very first frame. The video opens on dark quiet space with only four or five soft glowing rounded rectangles left, drifting slowly and dimly, and one small warm amber glow already resting in the centre. Within the first second they start going out: one dims, shrinks and blinks out into the darkness, then another, then another, so that by the second second only one faint shape is still lit. From there the frame stays as calm empty darkness with the single warm amber glow breathing gently in the centre for the rest of the clip. This is the quiet after the noise, never the noise itself: the frame is never crowded and never full, and the shapes only ever disappear. Nothing new ever appears, no shape is ever added, and none of them ever return, multiply or refill the frame. Cinematic, elegant, minimal, shallow depth of field, warm amber calm over deep black. Camera almost still, a very slow push in. The shapes are completely blank: no text, no icons, no symbols, no letters, no numbers, no logos, no watermark. No dialogue, no voiceover, a faint hum already fading into silence.
+```
+
+### `lluvia` — lluvia en la ventana · 2 guiones
+```
+Vertical 9:16. Heavy rain running down a window pane at dusk, the world outside blurred into soft bokeh lights, warm lamp light from inside reflecting on the wet glass, cozy and calm reading mood. Shot on an 85mm lens, very shallow depth of field, natural editorial photography. Camera almost static, drifting slowly along the glass. No text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, gentle rain ambience only.
+```
+
 ### `lampara` — la luz que despierta al otro · guion 6
 ```
-Vertical 9:16. A bedside lamp switching on in a pitch-dark bedroom, the sudden warm light spilling harshly across rumpled sheets and a wall. The contrast between total darkness and the intrusive glow is the subject. Shot on a 35mm lens, shallow depth of field, cinematic natural editorial photography. Camera static, the light does the movement. No text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, a soft click and room tone only.
+Vertical 9:16. A bedside lamp already switched on in a dark bedroom in the very first frame, its harsh warm light spilling across rumpled sheets and a wall while the rest of the room stays in deep shadow. The intrusive glow is there immediately and at full strength from the first frame, and it stays on for the whole clip: the video never opens in darkness, never fades up from black and never shows the lamp being switched on. The light only flickers and settles very slightly. The contrast between the harshly lit sheets and the black room is the subject. Shot on a 35mm lens, shallow depth of field, cinematic natural editorial photography, high contrast. Camera static, a very slow push in, nobody in frame. No text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, quiet room tone only.
+```
+
+### `rendicion` — se rinde: suelta el libro por el celular · guion 7
+```
+Vertical 9:16. Close-up on a person's hands giving up on a paperback, the book already slipping in the very first frame. The video opens with the fingers gone loose and the half-closed book sliding out of the hand, while just beside them a smartphone lies face-up with its screen glowing and flickering insistently. Within the first second the book drops away onto the table and the same hand is already drifting over to the phone; by the second second the hand has reached it and is picking it up, and it stays there with the phone for the rest of the clip. The video never opens on someone reading calmly and it never waits: the hand is already losing the book when the clip starts. Shot on a 50mm lens, shallow depth of field, natural editorial photography, warm room light contrasted with a cool blue glow from the screen. Slow quiet camera push in, the hands doing all the movement. Face and body kept out of frame or in soft shadow, not a recognizable person. The book has a plain cover with no readable title, no text, no lettering, no logos, no watermark. The phone body is completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving anywhere on it. Its screen is a flat rigid glass surface showing only a soft indistinct blur of coloured light, and it stays perfectly flat at all times: nothing ever lifts, peels, curls, flies or emerges from it. No dialogue, no voiceover, quiet room tone with a faint phone vibration only.
 ```
 
 ---
@@ -188,6 +255,38 @@ Vertical 9:16. A bedside lamp switching on in a pitch-dark bedroom, the sudden w
 
 Subir la foto indicada y pegar el prompt. **Nunca generar el producto con
 `Text to Video`**: sin la foto real, Veo inventa el aparato y vuelve el logo falso.
+
+## Dos fallos nuevos, medidos en P02 (julio 2026)
+
+El resultado de P02 fue malo por dos razones distintas, y ninguna de las dos la
+cubría el blindaje viejo. Las correcciones ya están aplicadas en los 10 prompts
+de dispositivo del panel:
+
+**1. Pantalla quemada tipo LCD.** El blindaje describía el *contenido* de la
+pantalla (párrafos en español, sin color) pero nunca la *superficie*. Veo, con
+prior de tablet, la renderizó blanca y brillante, iluminando la mano. E-ink es
+mate y no emite luz como un LCD. Bloque nuevo, va en todo prompt con pantalla:
+
+```
+The screen is a matte, non-reflective, paper-like electronic ink surface, not a glossy backlit tablet display: its page background is a soft light warm tone, never pure white and never blown out. Any light on it is a low, soft, perfectly even warm frontlight that leaves the text crisp, dark and readable at all times: no bright white glare, no harsh backlight bloom, no halo, no glowing hotspot, no specular highlight and no mirror reflections on it.
+```
+
+**2. Pantalla en los dos lados.** El prompt pedía `Slow smooth camera orbit` y el
+aparato rotando. Cualquier movimiento que revele el dorso obliga al modelo a
+inventarlo, y su prior — entrenado con fotos de producto que solo muestran la
+cara frontal — es poner otra pantalla atrás. Dos correcciones, hay que hacer
+las dos:
+
+- **Eliminar la órbita.** Ningún prompt de dispositivo debe decir `camera orbit`
+  ni pedir que el aparato rote o se dé vuelta. Se reemplaza por `push in` recto,
+  luz que se mueve sobre el objeto quieto, o una inclinación mínima que mantenga
+  la pantalla hacia cámara. Se agrega explícito: `no orbit and no arc around the
+  device`. (Las cajas de `P11` sí pueden orbitar: no tienen pantalla.)
+- **Blindar el dorso** por si el encuadre lo roza:
+
+```
+The device has exactly one screen and it is on the front face only: its back is a plain matte solid panel with no screen, no glass and no display of any kind. Only that front face is ever visible: the device never turns around, never flips and never shows its back, and the camera never travels behind it.
+```
 
 ## La pantalla va según el modelo
 
@@ -202,7 +301,7 @@ tan falso como un logo inventado.
 | ID | Foto a subir | Pantalla | Para qué |
 |---|---|---|---|
 | `P01` | `kindle-paperwhite/frontal-negro.jpg` | B/N | Lectura en cama, noche |
-| `P02` | `kindle-paperwhite-16-gb/frontal.png` | B/N | Plano en mano |
+| `P02` | *(no aplica — metraje real)* | B/N | Plano en mano · usa `pagina-real.mp4`, no se genera |
 | `P03` | `kindle-paperwhite/frontal-negro.jpg` | B/N | Al sol |
 | `P04` | `kindle-paperwhite/frontal-jade.jpg` | B/N | Luz cálida a oscuras · verde matcha |
 | `P05` | `kindle-basic/frontal.png` | B/N | Liviano, una mano |
@@ -229,7 +328,19 @@ aplica a los aparatos, no a las cajas.
 Animate this image. The device rests on a bed in a dark bedroom, lit only by its own soft warm screen glow. A hand enters frame and taps the glass surface once with a fingertip. Very subtle camera push in, shallow depth of field, cinematic low-key lighting, natural editorial photography. Keep the device exactly as shown: do not alter its shape, proportions, colour or body. Its frame stays completely smooth, blank and unmarked, with no brand name, no logo, no lettering and no engraving anywhere on it. Its screen is a black and white electronic ink display showing a page of a Spanish-language novel: several justified paragraphs of small dark grey Spanish body text on a light warm grey background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. No added text outside the screen, no logos, no watermark. No dialogue, no voiceover, quiet night room tone only.
 ```
 
-### `P02` — en la mano, plano limpio
+### `P02` — en la mano, plano limpio · YA NO SE GENERA
+> **José tiene metraje real que cubre exactamente este plano** — un unboxing de
+> MySmartPrice (con permiso): el Paperwhite 16GB sostenido en una mano con una
+> página legible. Está en
+> `assets/generado/video/manual/pagina-real.mp4`. En el panel, `CLIPS.P02` ahora
+> apunta a `pagina-real` en vez de a `P02`, así que el pipeline lo resuelve solo
+> — no hay nada que generar en Flow para este código. Cero créditos, cero riesgo
+> de logo falso o pantalla quemada.
+>
+> El prompt de abajo queda solo como referencia histórica de lo que se pedía
+> antes de tener el metraje real (y tenía además los dos fallos de
+> [[veo-pantalla-eink-y-dorso]]: pantalla quemada y `camera orbit` dando vuelta
+> el aparato — no se corrigieron porque ya no hace falta generarlo).
 ```
 Animate this image. The device is held in one hand against a softly blurred warm interior background, rotating slightly to catch the light on its edge. Slow smooth camera orbit, shallow depth of field, natural editorial photography, clean minimal composition. Keep the device exactly as shown: do not alter its shape, proportions, colour or body. Its frame stays completely smooth, blank and unmarked, with no brand name, no logo, no lettering and no engraving anywhere on it. Its screen is a black and white electronic ink display showing a page of a Spanish-language novel: several justified paragraphs of small dark grey Spanish body text on a light warm grey background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. No added text outside the screen, no logos, no watermark. No dialogue, no voiceover, subtle room tone only.
 ```
@@ -333,6 +444,7 @@ ninos-leyendo.mp4   sol.mp4            cama.mp4
 agua.mp4            tina.mp4           piscina.mp4
 mama.mp4            pareja.mp4         mochila.mp4
 cafe.mp4            viaje.mp4          lampara.mp4
+rendicion.mp4
 P01.mp4 … P11.mp4
 ```
 

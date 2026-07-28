@@ -618,8 +618,14 @@ def render_pip_video(ruta_clip: Path, ruta_salida: Path, ancho=400, alto=520):
         cola = log.read_text(encoding="utf-8", errors="replace")[-1200:]
         raise RuntimeError(f"ffmpeg no pudo armar la tarjeta de video:\n{cola}")
 
-    ruta_marco.unlink(missing_ok=True)
-    log.unlink(missing_ok=True)
+    try:
+        ruta_marco.unlink(missing_ok=True)
+    except Exception:
+        pass
+    try:
+        log.unlink(missing_ok=True)
+    except Exception:
+        pass
     return w_tarjeta, h_tarjeta
 
 
