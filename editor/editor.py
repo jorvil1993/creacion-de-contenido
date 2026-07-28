@@ -168,6 +168,11 @@ def main():
                              "esté en True")
     parser.add_argument("--sin-editor-visual", action="store_true",
                         help="No generar el editor visual HTML al terminar")
+    parser.add_argument("--preview", action="store_true",
+                        help="Render de prueba: misma composición exacta pero a media resolución "
+                             "y sin publicar. Sale en 07_PREVIEW.mp4 y NO toca 07_FINAL.mp4 ni "
+                             "copia nada a OneDrive. Para comprobar un ajuste antes de gastar el "
+                             "render bueno")
     parser.add_argument("--abrir-editor", action="store_true",
                         help="Al terminar, abrir el editor visual v2 (f11_servidor) con esta "
                              "corrida ya cargada, en vez de tener que lanzarlo aparte. Es el "
@@ -218,8 +223,11 @@ def main():
     plan_retencion = dir_trabajo / "03_retencion.plan.json"
     subtitulos_ass = dir_trabajo / "04_subtitulos.ass"
     eventos_overlays = dir_trabajo / "05_overlays.eventos.json"
-    video_compuesto = dir_trabajo / "06_video.mp4"
-    video_final = dir_trabajo / "07_FINAL.mp4"
+    # El preview escribe en sus propios archivos: si compartiera nombre con el
+    # render bueno, una prueba a media resolución dejaría el 07_FINAL.mp4 en
+    # baja y no habría forma de notarlo hasta subirlo.
+    video_compuesto = dir_trabajo / ("06_preview.mp4" if args.preview else "06_video.mp4")
+    video_final = dir_trabajo / ("07_PREVIEW.mp4" if args.preview else "07_FINAL.mp4")
 
     json_cortado = video_cortado.with_suffix(".json")
 
@@ -359,6 +367,7 @@ def main():
         # anterior y puede no traer los planos cerrados. Pasando el encuadre
         # recién calculado, iterar sobre el guion no obliga a re-analizar.
         "--final", *perfil, *encuadre_guion,
+        *(["--escala", str(config.PREVIEW_ESCALA)] if args.preview else []),
     ])
 
     cmd_audio = ["f5_audio.py", str(video_compuesto), str(plan_retencion), "--salida", str(video_final),
@@ -373,10 +382,13 @@ def main():
         cmd_audio += ["--sfx-manual", args.sfx_manual]
     paso("FASE 4: Audio (música + ducking + SFX + loudnorm; el video se copia sin recomprimir)", cmd_audio)
 
-    # Publicación: solo el final viaja a OneDrive con versión incremental si ya existe.
-    config.DIR_PUBLICADOS.mkdir(parents=True, exist_ok=True)
-    publicado = _ruta_versionada(config.DIR_PUBLICADOS, nombre)
-    shutil.copy2(video_final, publicado)
+    # Publicación: solo el final viaja a OneDrive con versión incremental si ya
+    # existe. Un preview no se publica nunca — es de prueba y está en baja.
+    publicado = None
+    if not args.preview:
+        config.DIR_PUBLICADOS.mkdir(parents=True, exist_ok=True)
+        publicado = _ruta_versionada(config.DIR_PUBLICADOS, nombre)
+        shutil.copy2(video_final, publicado)
 
     # Editor visual: se genera siempre al final para que José pueda retocar los
     # sonidos y las posiciones de los insertos arrastrando, en vez de leyendo
@@ -386,8 +398,12 @@ def main():
             "f10_editor_visual.py", str(dir_trabajo)
         ])
 
-    print(f"\nVideo final (trabajo):   {video_final}")
-    print(f"Video final (OneDrive):  {publicado}")
+    if args.preview:
+        print(f"\nPREVIEW (media resolución, sin publicar): {video_final}")
+        print("Cuando esté bien, corré lo mismo SIN --preview para el archivo de subir.")
+    else:
+        print(f"\nVideo final (trabajo):   {video_final}")
+        print(f"Video final (OneDrive):  {publicado}")
     if not args.sin_editor_visual:
         # Se aclara que este es el HTML suelto (v1: solo sonidos y posiciones).
         # Sin la aclaración parecía ser "el editor" a secas, y el que sirve para

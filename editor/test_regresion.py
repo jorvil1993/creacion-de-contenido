@@ -607,6 +607,24 @@ def pruebas_round_trip():
         "00_corrida.json" in fuente_editor,
         "sin ese archivo el editor no sabe que era un video dirigido por guion")
 
+    # --- el preview no puede pisar el render bueno --------------------------
+    chk("una previsualizacion escribe en sus propios archivos",
+        "07_PREVIEW.mp4" in fuente_editor and "06_preview.mp4" in fuente_editor,
+        "compartiendo nombre, una prueba a media resolucion dejaria el "
+        "07_FINAL.mp4 en baja sin que se notara hasta subirlo")
+    chk("una previsualizacion no publica a OneDrive",
+        re.search(r"if not args\.preview:\s*\n\s*config\.DIR_PUBLICADOS", fuente_editor)
+        is not None,
+        "solo el render bueno viaja a la carpeta de publicados")
+
+    # Los overlays vienen medidos en pixeles de 1080x1920: si el lienzo se
+    # encoge y ellos no, salen al doble y fuera de sitio, y el preview no sirve
+    # para decidir nada.
+    fuente_f4 = (AQUI / "f4_retencion.py").read_text(encoding="utf-8")
+    chk("al previsualizar, los overlays se encogen con el lienzo",
+        "int(ev[\"x\"] * escala)" in fuente_f4 and "scale=iw*" in fuente_f4,
+        "posicion y tamaño escalan con el mismo factor que la salida")
+
     # --- guardar y recargar la pagina no puede perder los B-roll -----------
     # Los insertos y los B-roll se guardan en DOS archivos porque el pipeline
     # los recibe por banderas distintas. El editor los enseña en una sola tira,

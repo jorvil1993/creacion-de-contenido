@@ -970,3 +970,11 @@ def abrir_imagen(ruta):
         im.load()
         corregida = ImageOps.exif_transpose(im)
         return corregida if corregida is not im else im.copy()
+
+
+# Resolución del render de previsualización (`editor.py --preview`), como
+# fracción de 1080x1920. A 0.5 son 540x960: la cuarta parte de los píxeles, que
+# es donde está el tiempo — el render genera los frames en Python y los pasa
+# crudos por tubería. La composición no cambia: mismos overlays, mismas
+# posiciones y los mismos subtítulos, que escalan solos por el PlayRes del .ass.
+PREVIEW_ESCALA = 0.5

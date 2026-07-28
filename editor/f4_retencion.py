@@ -357,7 +357,7 @@ def detectar_huecos_regla_5s(duracion_total: float, planos: list, picos: list,
 # ---------------------------------------------------------------------------
 def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list, planos: list, picos: list,
                         eventos_overlay: list = None, ruta_subs: Path = None, final: bool = False,
-                        cerrados: list = None):
+                        cerrados: list = None, escala: float = 1.0):
     """Aplica zoom/pan frame a frame y codifica en UNA sola pasada.
 
     Los frames procesados se mandan crudos por tubería a ffmpeg, que codifica
@@ -383,7 +383,14 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     duracion_total = total_frames / fps if fps else 0
 
-    w_out, h_out = config.ANCHO, config.ALTO
+    # `escala` < 1 es el modo previsualización: se compone EXACTAMENTE igual
+    # (mismos overlays, mismas posiciones, mismos subtítulos) pero a media
+    # resolución. El grueso del tiempo de render es esta función generando
+    # frames y pasándolos crudos por tubería —a 1080x1920 son 6 MB por frame—,
+    # así que bajar la resolución es lo único que lo mueve de verdad.
+    # Los píxeles se dividen por 4; la composición no cambia.
+    w_out = int(config.ANCHO * escala) // 2 * 2      # par: NVENC no acepta impares
+    h_out = int(config.ALTO * escala) // 2 * 2
 
     eventos_overlay = eventos_overlay or []
     # los streams de PNG deben durar al menos hasta el fin del último overlay
@@ -411,18 +418,24 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
 
     filtro_partes = []
     etiqueta = "0:v"
+    # En previsualización el lienzo es más chico, así que los overlays —que
+    # vienen medidos en píxeles de 1080x1920— hay que encogerlos con él y mover
+    # su posición en la misma proporción. Sin esto saldrían al doble de tamaño
+    # y fuera de sitio, y el preview no valdría para decidir nada.
+    reducir = f"scale=iw*{escala:.4f}:ih*{escala:.4f}," if escala != 1.0 else ""
     for i, ev in enumerate(eventos_overlay):
         idx_input = 2 + i
+        ev_x, ev_y = int(ev["x"] * escala), int(ev["y"] * escala)
         if ev.get("broll_fullscreen"):
-            # B-roll a pantalla completa: escala el clip a 1080×1920 (cubre y
+            # B-roll a pantalla completa: escala el clip al lienzo (cubre y
             # recorta al centro, sin barras), con fade más largo y suave.
             # format=rgba le agrega alfa al clip opaco para que el fade por
             # alpha funcione — no es por transparencia del contenido.
             dur_fade = config.BROLL_FADE_S
             filtro_partes.append(
-                f"[{idx_input}:v]scale={config.ANCHO}:{config.ALTO}:"
+                f"[{idx_input}:v]scale={w_out}:{h_out}:"
                 f"force_original_aspect_ratio=increase,"
-                f"crop={config.ANCHO}:{config.ALTO},"
+                f"crop={w_out}:{h_out},"
                 f"setpts=PTS-STARTPTS+{ev['ini']:.3f}/TB,"
                 f"format=rgba,"
                 f"fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
@@ -433,18 +446,18 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
             # La animación ya trae su propio movimiento y ya está desplazada en
             # el tiempo por -itsoffset; solo se le suaviza la entrada y salida.
             filtro_partes.append(
-                f"[{idx_input}:v]format=rgba,setpts=PTS-STARTPTS+{ev['ini']:.3f}/TB,"
+                f"[{idx_input}:v]{reducir}format=rgba,setpts=PTS-STARTPTS+{ev['ini']:.3f}/TB,"
                 f"fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
                 f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
             )
         else:
             dur_fade = 0.15
             filtro_partes.append(
-                f"[{idx_input}:v]format=rgba,fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
+                f"[{idx_input}:v]{reducir}format=rgba,fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
                 f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
             )
         filtro_partes.append(
-            f"[{etiqueta}][ov{i}]overlay={ev['x']}:{ev['y']}:"
+            f"[{etiqueta}][ov{i}]overlay={ev_x}:{ev_y}:"
             f"enable='between(t,{ev['ini']:.3f},{ev['fin']:.3f})'[v{i}]"
         )
         etiqueta = f"v{i}"
@@ -574,6 +587,10 @@ def main():
     parser.add_argument("--presentador", type=str, default=None,
                         choices=sorted(config.PRESENTADORES),
                         help="Perfil de retención (suavizado de rostro y umbral de punch-ins)")
+    parser.add_argument("--escala", type=float, default=1.0, metavar="F",
+                        help="Factor de resolución del render. 0.5 = previsualización a media "
+                             "resolución: misma composición exacta (mismos overlays, mismas "
+                             "posiciones, mismos subtítulos), la cuarta parte de los píxeles")
     parser.add_argument("--encuadre", type=str, default=None, metavar="JSON",
                         help="Plan de encuadre del guion (guion.encuadre.json de f13_guion): "
                              "punch-ins y tramos de plano cerrado marcados en el panel. "
@@ -690,10 +707,13 @@ def main():
             eventos_overlay = json.loads(Path(args.overlays).read_text(encoding="utf-8"))
         ruta_subs = Path(args.subs) if args.subs else None
 
-        _log("\nRenderizando video con zoom/face-tracking (puede tardar varios minutos)...")
+        if args.escala != 1.0:
+            _log(f"\nPrevisualización a {args.escala:g}x: misma composición, menos píxeles.")
+        else:
+            _log("\nRenderizando video con zoom/face-tracking (puede tardar varios minutos)...")
         renderizar_con_zoom(ruta_video, ruta_salida, track_rostro, planos, picos,
                             eventos_overlay=eventos_overlay, ruta_subs=ruta_subs, final=args.final,
-                            cerrados=cerrados)
+                            cerrados=cerrados, escala=args.escala)
         _log(f"Video con retención: {ruta_salida}")
 
 

@@ -172,6 +172,7 @@ def _estado_render() -> dict:
     return {
         "activo": activo,
         "corrio_alguna_vez": True,
+        "es_preview": bool(ESTADO_RENDER.get("es_preview")),
         "ok": (not activo) and proceso.returncode == 0,
         "error": (not activo) and proceso.returncode != 0,
         "progreso": {"actual": int(ultimo[0]), "total": int(ultimo[1])} if ultimo else None,
@@ -275,11 +276,15 @@ class Handler(BaseHTTPRequestHandler):
             elif ruta == "/datos":
                 self._json(f10.recolectar(DIR_TRABAJO))
             elif ruta == "/video":
-                v_target = DIR_TRABAJO / "07_FINAL.mp4"
-                if not v_target.exists():
-                    v_target = DIR_TRABAJO / "06_video.mp4"
-                if not v_target.exists():
-                    v_target = DIR_TRABAJO / "02_cortado.mp4"
+                # Tras una previsualización hay que mirar el 07_PREVIEW, no el
+                # 07_FINAL, o el editor enseñaría el render anterior y parecería
+                # que los cambios no se aplicaron.
+                candidatos = ["07_FINAL.mp4", "06_video.mp4", "02_cortado.mp4"]
+                if (qs.get("fuente") or [""])[0] == "preview":
+                    candidatos = ["07_PREVIEW.mp4", "06_preview.mp4"] + candidatos
+                v_target = next((DIR_TRABAJO / n for n in candidatos
+                                 if (DIR_TRABAJO / n).exists()),
+                                DIR_TRABAJO / "02_cortado.mp4")
                 proxy = f10.generar_proxy(v_target, DIR_TRABAJO)
                 self._archivo(proxy, "video/mp4")
             elif ruta == "/archivo":
@@ -536,6 +541,14 @@ class Handler(BaseHTTPRequestHandler):
                 _guardar_hook(hook)
             if hook:
                 cmd += ["--hook", hook]
+
+            # Previsualización: media resolución, sin publicar y a sus propios
+            # archivos, para comprobar un ajuste sin gastar el render bueno ni
+            # pisar el que ya estaba listo para subir.
+            es_preview = bool(datos.get("preview"))
+            if es_preview:
+                cmd.append("--preview")
+            ESTADO_RENDER["es_preview"] = es_preview
 
             dir_log = DIR_TRABAJO / "_editor"
             dir_log.mkdir(exist_ok=True)
@@ -871,8 +884,12 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
   <div class="panel">
     <p class="hint">
       <button class="btn-primario" id="btnGuardar" type="button">Guardar cambios</button>
-      <button class="btn-primario" id="btnRender" type="button">Re-renderizar</button>
-      Guarda siempre antes de renderizar. El video final tarda ~34s en actualizarse.
+      <button class="btn-primario" id="btnPreview" type="button">👁 Previsualizar</button>
+      <button class="btn-primario" id="btnRender" type="button">🎬 Renderizar final</button>
+      <br><span class="hint">Se guarda siempre antes de renderizar.
+      <b>Previsualizar</b> compone exactamente igual pero a media resolución, no toca el archivo
+      final y no publica nada — para comprobar un ajuste. <b>Renderizar final</b> hace el bueno
+      y lo copia a OneDrive listo para subir.</span>
     </p>
     <div id="cajaProgreso" style="display:none;">
       <div style="background:var(--linea); border-radius:6px; height:8px; overflow:hidden; margin-bottom:6px;">
@@ -923,7 +940,7 @@ async function cargar() {
     `${DATA.duracion.toFixed(1)}s · ${DATA.overlays.length} overlays · ${DATA.palabras.length} palabras`;
   document.getElementById("tTotal").textContent = DATA.duracion.toFixed(2) + "s";
 
-  video.src = "/video?t=" + Date.now();
+  video.src = "/video?t=" + Date.now() + (fuenteVideo ? "&fuente=" + fuenteVideo : "");
   construirTimeline();
 
   edicionPip = DATA.movibles.filter(m =>
@@ -1868,17 +1885,22 @@ document.getElementById("btnGuardar").addEventListener("click", async () => {
   setTimeout(() => { btn.textContent = original; }, 2000);
 });
 
+// Que archivo esta mirando el reproductor: "" = el render bueno, "preview" = el
+// de prueba a media resolucion.
+let fuenteVideo = "";
+
 let sondeoRender = null;
 
-async function iniciarRender() {
+async function iniciarRender(preview = false) {
   const btn = document.getElementById("btnRender");
+  const btnP = document.getElementById("btnPreview");
   const caja = document.getElementById("cajaProgreso");
   const barra = document.getElementById("barraProgreso");
   const texto = document.getElementById("textoProgreso");
 
   const r = await fetch("/render", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(cuerpoAjustes()),
+    body: JSON.stringify({ ...cuerpoAjustes(), preview }),
   });
   const resp = await r.json();
   if (!resp.ok) {
@@ -1888,9 +1910,10 @@ async function iniciarRender() {
   }
 
   btn.disabled = true;
+  btnP.disabled = true;
   caja.style.display = "";
   barra.style.width = "0%";
-  texto.textContent = "Renderizando...";
+  texto.textContent = preview ? "Previsualizando (media resolución)..." : "Renderizando el final...";
 
   sondeoRender = setInterval(async () => {
     const er = await fetch("/render/estado");
@@ -1903,12 +1926,19 @@ async function iniciarRender() {
     if (!est.activo) {
       clearInterval(sondeoRender);
       btn.disabled = false;
+      btnP.disabled = false;
       if (est.ok) {
         barra.style.width = "100%";
-        texto.textContent = "Listo — recargando preview...";
+        texto.textContent = "Listo — recargando...";
+        // El preview vive en sus propios archivos, asi que hay que pedir esa
+        // fuente: si no, el reproductor seguiria con el render anterior y
+        // pareceria que los cambios no se aplicaron.
+        fuenteVideo = preview ? "preview" : "";
         await cargar(); // recarga /datos y el <video src> con los cambios ya aplicados
         video.load();
-        texto.textContent = "Listo. El preview ya muestra el resultado nuevo.";
+        texto.textContent = preview
+          ? "Previsualización lista (media resolución, sin publicar)."
+          : "Render final listo y copiado a OneDrive.";
       } else {
         texto.textContent = "Error en el render — revisar " + (est.cola_log ? "el log" : "");
         console.error("Render falló:", est.cola_log);
@@ -1917,7 +1947,8 @@ async function iniciarRender() {
   }, 1000);
 }
 
-document.getElementById("btnRender").addEventListener("click", iniciarRender);
+document.getElementById("btnRender").addEventListener("click", () => iniciarRender(false));
+document.getElementById("btnPreview").addEventListener("click", () => iniciarRender(true));
 
 function construirOverlays() {
   // Se reconstruye desde `edicionPip` (el estado editable), no desde
@@ -2160,7 +2191,7 @@ if (btnCargarProyecto) {
       const res = await r.json();
       if (res.ok) {
         await cargar();
-        video.src = "/video?t=" + Date.now();
+        video.src = "/video?t=" + Date.now() + (fuenteVideo ? "&fuente=" + fuenteVideo : "");
         video.load();
       } else {
         alert(res.error || "No se pudo cambiar de video.");
