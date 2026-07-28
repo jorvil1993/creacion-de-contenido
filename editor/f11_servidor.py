@@ -499,8 +499,14 @@ class Handler(BaseHTTPRequestHandler):
             py_bin = sys.executable
             if Path(r"C:\ai-video\venv312\Scripts\python.exe").exists():
                 py_bin = r"C:\ai-video\venv312\Scripts\python.exe"
+            # --sin-abrir-editor es imprescindible aquí: el editor se abre solo
+            # al terminar una corrida, y sin esto el render lanzado DESDE el
+            # editor levantaría un segundo servidor que nunca termina — el
+            # proceso se quedaría vivo para siempre y la barra de progreso no
+            # llegaría jamás al final.
             cmd = [py_bin, "editor.py", str(dummy_entrada),
-                   "--nombre", DIR_TRABAJO.name, "--reaplicar", "--sin-editor-visual"]
+                   "--nombre", DIR_TRABAJO.name, "--reaplicar",
+                   "--sin-editor-visual", "--sin-abrir-editor"]
 
             # Los parámetros de la corrida original van PRIMERO y los ajustes
             # del editor después: editor.py solo deja que el guion rellene lo

@@ -617,6 +617,14 @@ def pruebas_round_trip():
         is not None,
         "solo el render bueno viaja a la carpeta de publicados")
 
+    # El editor se abre solo al terminar una corrida. El render que lanza el
+    # PROPIO editor tiene que desactivarlo o levanta un segundo servidor que no
+    # termina nunca: el proceso queda vivo para siempre y la barra de progreso
+    # no llega jamas al final.
+    chk("el render lanzado desde el editor no abre otro editor",
+        "--sin-abrir-editor" in fuente_srv,
+        "si no, el subproceso se queda sirviendo una pagina y nunca acaba")
+
     # Los overlays vienen medidos en pixeles de 1080x1920: si el lienzo se
     # encoge y ellos no, salen al doble y fuera de sitio, y el preview no sirve
     # para decidir nada.
