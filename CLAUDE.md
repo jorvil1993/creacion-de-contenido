@@ -27,11 +27,19 @@ Dos cosas que se olvidan y salen caras:
 - **`--sin-abrir-editor`** en cualquier corrida que no vaya a mirar una persona
   en ese momento. El editor es un servidor y ocupa la terminal hasta Ctrl+C.
 
+Si el que va a hacer el video es José y no un agente, el camino es
+`editor/Preparar grabación.bat`: elige los clips, los recorta, los ordena y
+arranca el pipeline sin escribir nada. Deja un `<video>.preparado.json` al lado
+de la grabación, y **cualquier corrida posterior sobre ese material aplica esos
+recortes sola** — o sea que si un archivo de entrada tiene uno, no hace falta
+(ni conviene) pasar `--desde/--hasta` encima.
+
 ## Qué hay dónde
 
 - `PANEL-PRODUCCION.html` — los guiones, uno por fila. La fuente de la verdad
   de qué se dice, qué se ve y qué suena.
-- `editor/` — el pipeline (`editor.py` orquesta, `f1`…`f13` son las fases) y el
+- `editor/` — el pipeline (`editor.py` orquesta, `f0`…`f13` son las fases), la
+  pantalla de preparación (`f0_preparar.py` + `f0_servidor_preparar.py`) y el
   editor visual (`f11_servidor.py`).
 - `contexto/` — catálogo de assets, voz de marca, banco de hooks.
 - `assets/` — fotos, música, SFX, plantillas de animación y los clips de Google

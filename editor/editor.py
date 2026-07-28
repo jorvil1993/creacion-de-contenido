@@ -32,8 +32,17 @@ import sys
 from pathlib import Path
 
 import config
+import f0_preparar
 
 AQUI = Path(__file__).resolve().parent
+
+# `unir_tomas` y `_duracion` viven ahora en f0_preparar.py. Se re-exportan con
+# el nombre de siempre para no romper a nadie que los importe desde aquí: la
+# pantalla de preparación tiene que unir con la MISMA función que el pipeline,
+# y dos copias de la misma lógica es exactamente cómo la previa acabaría
+# mostrando algo distinto de lo que sale del render.
+unir_tomas = f0_preparar.unir_tomas
+_duracion = f0_preparar.duracion
 
 
 def _ruta_versionada(dir_destino: Path, nombre_base: str) -> Path:
@@ -58,59 +67,49 @@ def paso(descripcion, cmd):
         sys.exit(resultado.returncode)
 
 
-def _duracion(ruta: Path) -> float:
-    salida = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "default=nw=1:nk=1", str(ruta)],
-        capture_output=True, text=True, check=True).stdout.strip()
-    return float(salida)
+def _clips_de_entrada(rutas_entrada: list, desde: float, hasta: float) -> list:
+    """Decide qué recorte se aplica a cada archivo de entrada.
 
+    Tres orígenes, en este orden de prioridad:
 
-def unir_tomas(rutas: list, destino: Path) -> tuple:
-    """Une varias grabaciones en un solo archivo y devuelve (ruta, empalmes).
+      1. `--desde` / `--hasta` en la línea de comandos. Es el camino de agente:
+         un recorte simple, sin abrir ninguna pantalla. Solo vale con UN archivo
+         de entrada — con varios no habría forma de saber a cuál se refiere.
+      2. El `.preparado.json` que dejó la pantalla de preparación junto al
+         archivo de entrada. Es lo que hace que volver a correr el mismo
+         material se acuerde de los recortes y del orden de los clips.
+      3. Nada: los archivos enteros, tal como se pasaron. El comportamiento de
+         siempre.
 
-    Para cuando José graba el mismo guion en DOS PLANOS REALES — uno abierto y
-    uno cerrado, como pide la columna "Tomas" del panel ("Plano cerrado, acercá
-    la cámara. Cambio de distancia real, no zoom digital"). El pipeline entero
-    trabaja sobre un archivo, así que se unen antes de transcribir y se anotan
-    los segundos donde empalman: esos son los ÚNICOS cambios de plano de verdad
-    del video, y f4_retencion los usa para reiniciar ahí la rampa de zoom (y solo
-    ahí — un corte de silencio no es un cambio de plano).
-
-    Primero se intenta el demuxer `concat` con `-c copy`: son tomas de la misma
-    cámara con los mismos ajustes, así que copiar es instantáneo y no añade una
-    generación de compresión. Si ffmpeg se queja (parámetros distintos entre
-    archivos), se recodifica con el filtro concat, que sí normaliza.
+    El .preparado.json solo aporta su LISTA de clips cuando en la línea de
+    comandos vino un único archivo. Si se pasaron varios a mano, mandan los de
+    la línea de comandos: si no, pedir dos archivos y recibir tres (porque el
+    .preparado.json guardaba tres) sería imposible de entender.
     """
-    empalmes, acumulado = [], 0.0
-    for r in rutas[:-1]:
-        acumulado += _duracion(r)
-        empalmes.append(round(acumulado, 3))
+    if desde is not None or hasta is not None:
+        if len(rutas_entrada) > 1:
+            sys.exit("ERROR: --desde/--hasta solo valen con UN archivo de entrada. "
+                     "Para recortar varios clips usá la pantalla de preparación "
+                     "(«Preparar grabación.bat»).")
+        print(f"\nRecorte pedido por línea de comandos: "
+              f"{desde or 0.0:.2f}s -> {'fin' if hasta is None else f'{hasta:.2f}s'}")
+        return [{"ruta": rutas_entrada[0], "desde": desde or 0.0, "hasta": hasta}]
 
-    lista = destino.with_suffix(".txt")
-    lista.write_text(
-        "".join(f"file '{Path(r).as_posix()}'\n" for r in rutas), encoding="utf-8")
-    cmd_copia = ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
-                 "-i", str(lista), "-c", "copy", str(destino)]
-    if subprocess.run(cmd_copia, capture_output=True).returncode != 0:
-        print("  (las tomas no son copiables tal cual — se recodifican para unirlas)")
-        entradas, partes = [], []
-        for i, r in enumerate(rutas):
-            entradas += ["-i", str(r)]
-            partes.append(f"[{i}:v][{i}:a]")
-        filtro = f"{''.join(partes)}concat=n={len(rutas)}:v=1:a=1[v][a]"
-        cmd_recod = ["ffmpeg", "-y", "-loglevel", "error", *entradas,
-                     "-filter_complex", filtro, "-map", "[v]", "-map", "[a]",
-                     *config.args_video(), "-c:a", "aac", "-b:a", "192k", str(destino)]
-        r = subprocess.run(cmd_recod, capture_output=True, text=True)
-        if r.returncode != 0:
-            print(r.stderr[-2000:], file=sys.stderr)
-            sys.exit("ERROR: no se pudieron unir las tomas")
-    lista.unlink(missing_ok=True)
+    if len(rutas_entrada) == 1:
+        prep = f0_preparar.leer_preparado(rutas_entrada[0])
+        if prep:
+            clips = prep["clips"]
+            print(f"\nPreparación guardada ({f0_preparar.ruta_preparado(rutas_entrada[0]).name}): "
+                  f"{len(clips)} clip(s), {prep.get('total_s', '?')}s en total.")
+            for c in clips:
+                print(f"  {Path(c['ruta']).name}: {c['desde']:.2f}s -> {c['hasta']:.2f}s")
+            print("  (para ignorarla, borrá ese archivo o pasá --desde/--hasta)")
+            return clips
+    elif f0_preparar.leer_preparado(rutas_entrada[0]):
+        print("\nAVISO: hay un .preparado.json para este material, pero se pasaron "
+              "varios archivos a mano — mandan los de la línea de comandos.")
 
-    print(f"  {len(rutas)} tomas unidas en {destino.name}; "
-          f"empalmes en {', '.join(f'{t:.2f}s' for t in empalmes)}")
-    return destino, empalmes
+    return [{"ruta": r, "desde": 0.0, "hasta": None} for r in rutas_entrada]
 
 
 def main():
@@ -121,6 +120,13 @@ def main():
                              "pipeline los une antes de transcribir, marcando los empalmes "
                              "como los únicos cambios de plano del video")
     parser.add_argument("--nombre", type=str, default=None, help="Nombre base para los archivos de salida")
+    parser.add_argument("--desde", type=float, default=None, metavar="SEGS",
+                        help="Recortar la grabación desde este segundo. El recorte se aplica "
+                             "ANTES de transcribir, así que el resto del pipeline ni se entera. "
+                             "Solo con UN archivo de entrada; para varios clips está la pantalla "
+                             "de preparación («Preparar grabación.bat»)")
+    parser.add_argument("--hasta", type=float, default=None, metavar="SEGS",
+                        help="Recortar la grabación hasta este segundo (por defecto, el final)")
     parser.add_argument("--sin-musica", action="store_true", help="Omitir música de fondo en la Fase 4")
     parser.add_argument("--guion", type=int, default=None, metavar="N",
                         help="Número de guion (de PANEL-PRODUCCION.html) a ejecutar. Incursiona el "
@@ -211,14 +217,31 @@ def main():
         "sol_pip_video": bool(args.sol_pip_video),
     }, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    # FASE 0 — recortar y unir. Ocurre ANTES de transcribir, y eso es lo que la
+    # hace segura: a partir de aquí el pipeline entero mira un solo archivo y
+    # ninguna coordenada de tiempo de aguas abajo (palabras, SFX, overlays,
+    # encuadre, ajustes.*.json) sabe que hubo un recorte. Los empalmes que
+    # devuelve `preparar_entrada` ya están medidos sobre los clips RECORTADOS,
+    # que es lo que después remapea f2_cortar con `mapear_a_nueva_linea`.
+    #
+    # Con --reaplicar no se hace nada de esto: esa bandera reusa el 01/02/03 de
+    # la corrida anterior, así que ni f1 ni f2 llegan a mirar `ruta_entrada`.
+    # Recortar igual sería recodificar la grabación entera en cada
+    # re-renderizado del editor visual, que es el camino que más se usa.
     tomas_json = dir_trabajo / "00_tomas.json"
-    if len(rutas_entrada) > 1:
-        print(f"\n{'='*70}\nFASE 0: Unir {len(rutas_entrada)} planos reales\n{'='*70}")
-        ruta_entrada, empalmes = unir_tomas(rutas_entrada, dir_trabajo / "00_tomas.mp4")
-        tomas_json.write_text(json.dumps(empalmes), encoding="utf-8")
-    else:
-        ruta_entrada = rutas_entrada[0]
-        tomas_json.unlink(missing_ok=True)   # una sola toma: sin empalmes que marcar
+    ruta_entrada = rutas_entrada[0]
+    if not args.reaplicar:
+        clips = _clips_de_entrada(rutas_entrada, args.desde, args.hasta)
+        hay_trabajo = len(clips) > 1 or any(
+            c.get("desde") or c.get("hasta") is not None for c in clips)
+        if hay_trabajo:
+            print(f"\n{'='*70}\nFASE 0: Preparar la entrada ({len(clips)} clip(s))\n{'='*70}")
+        ruta_entrada, empalmes = f0_preparar.preparar_entrada(
+            clips, dir_trabajo / "00_tomas.mp4")
+        if empalmes:
+            tomas_json.write_text(json.dumps(empalmes), encoding="utf-8")
+        else:
+            tomas_json.unlink(missing_ok=True)   # una sola toma: sin empalmes que marcar
 
     transcripcion = dir_trabajo / "01_transcripcion.json"
     video_cortado = dir_trabajo / "02_cortado.mp4"

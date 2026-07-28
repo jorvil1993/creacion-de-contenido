@@ -91,3 +91,122 @@ reordenar ni tocar entradas que no sean tuyas.
 
 Ninguno pendiente de este bloque. Sigue el BLOQUE 2 (zona segura de TikTok
 sobre el reproductor).
+
+---
+
+## BLOQUE — Pantalla de preparación: elegir, recortar, unir y arrancar
+
+**Estado: hecho.**
+
+**Rama `mejoras-preparacion`** (no `mejoras-editor`), en un worktree aparte:
+`C:\ai-video\wt-preparacion`. Ver «Cómo se integra» al final.
+
+### Por qué así
+
+- **Módulo aparte, no dentro de f11_servidor.py.** f11 son 122 KB de servidor +
+  HTML + JS en un archivo y hay otra sesión editándolo. Un conflicto de merge
+  dentro del texto del JavaScript produce Python válido con JS roto: los tests
+  son de Python, pasan en verde, y el editor se rompe solo en el navegador.
+- **El recorte se aplica ANTES de transcribir.** Es la decisión que hace barato
+  todo lo demás: a partir de f1 el pipeline mira un solo archivo ya recortado y
+  ninguna coordenada de aguas abajo (palabras, SFX, overlays, encuadre,
+  `ajustes.*.json`) sabe que hubo un recorte. Hacerlo después habría obligado a
+  remapear media docena de listas.
+- **`unir_tomas` se MUDÓ de editor.py a f0_preparar.py**, y editor.py la
+  reexporta. No es cosmético: la previa de la pantalla tiene que unir con la
+  misma función que el pipeline o mostraría un montaje distinto del que sale.
+  Hay una prueba que comprueba la identidad de los dos objetos.
+- **La previa solo se diferencia por `escala`.** Mismo `preparar_entrada()`,
+  mismo recorte, misma unión. Verificado: da los mismos empalmes que la corrida
+  de verdad.
+- **Fase 0 se salta entera con `--reaplicar`.** Esa bandera reusa 01/02/03, así
+  que ni f1 ni f2 miran el archivo de entrada; recortar igual habría recodificado
+  la grabación completa en cada re-render del editor visual, que es el camino
+  más usado.
+- **Sin zoom en la pantalla, y sin cruces de audio en las uniones.** Las dos
+  cosas ya estaban decididas; quedan documentadas en el código y hay una prueba
+  que falla si alguien mete «zoom» en el HTML de la pantalla.
+
+### Lo que se descubrió midiendo (y cambió el diseño)
+
+- **El umbral de silencio no puede ser una constante.** Con -35 dBFS fijo, el
+  detector no encontró NI UN silencio en `entrada/video-crudo-kindle-paperwhite.mp4`
+  (49s): esa toma está muy caliente (mean_volume -15.7 dB, picos tocando 0) y su
+  ruido de sala vive por encima de -35. Ahora el umbral se mide del archivo con
+  `volumedetect` y se le restan 15 dB. Sobre esa grabación da -30.7 dB y
+  encuentra los 7 silencios reales.
+- **La grabación es HEVC 1920x1080 a 60 fps con etiqueta de rotación 90°.**
+  Servir el original al navegador era una pantalla en negro sin mensaje: Chrome
+  solo reproduce HEVC con las extensiones de pago de Windows y Firefox nunca. La
+  pantalla trabaja sobre un proxy H.264 540x960 (11 s la primera vez por archivo,
+  cacheado por mtime).
+- **Comparar rutas por cadena exacta falla en silencio.** La primera captura de
+  la pantalla mostró «Se recuperó la preparación guardada» con la lista vacía.
+  Arreglado en los dos lados: `listar_entrada()` resuelve las rutas igual que
+  `normalizar_clips()`, y el navegador cae a comparar por nombre de archivo si la
+  ruta no coincide. Si aun así no encuentra los archivos, ahora lo dice.
+
+### Qué se puede hacer ahora
+
+Doble clic en `editor/Preparar grabación.bat` → elegir clips de `entrada/`,
+recortarlos con dos manijas (Espacio reproduce y para en el punto de corte),
+ordenarlos, elegir guion, «Ver cómo quedan unidas» y «Empezar». La pantalla se
+apaga y el pipeline arranca en la misma terminal.
+
+Se guarda en `<video>.preparado.json`, al lado de la grabación. **Cualquier
+corrida posterior sobre ese material aplica esos recortes sola**, incluida la de
+un agente. `--desde N --hasta N` es el camino sin pantalla (solo con un archivo).
+
+Aviso propio: si el guion pide `hooksegs`, la pantalla avisa de que el recorte
+tiene que dejarle ese aire de silencio por delante, con un botón que lo hace.
+
+### Archivos tocados
+
+- `editor/f0_preparar.py` (nuevo) — lógica: listar, sondear, detectar bordes,
+  proxy, recortar, unir, memoria del `.preparado.json`, listar guiones.
+- `editor/f0_servidor_preparar.py` (nuevo) — servidor + página.
+- `editor/preparar.py` (nuevo) — lanzador; pantalla y después pipeline.
+- `editor/Preparar grabación.bat` (nuevo).
+- `editor/editor.py` — `--desde/--hasta`, lectura del `.preparado.json`,
+  `unir_tomas` reexportada, Fase 0 saltada con `--reaplicar`.
+- `editor/config.py` — `DIR_PREPARACION`.
+- `editor/test_regresion.py` — sección 11 (16 pruebas).
+- `editor/COMO-USAR.md`, `CLAUDE.md`.
+
+### Verificación hecha
+
+- `test_regresion.py` **109 pruebas en verde** (eran 93) y `test_align.py`
+  entero. La sección 11 comprueba con clips sintéticos de lavfi: el atajo sin
+  recorte no toca el archivo, el recorte es exacto al fotograma, **el empalme se
+  mide sobre la duración RECORTADA y no la original** (el fallo silencioso que
+  mandaría el reinicio del zoom al sitio equivocado), la previa da los mismos
+  empalmes que el render, y el empalme sigue cuadrando después de pasar por
+  `f2_cortar.mapear_a_nueva_linea`.
+- Servidor levantado de verdad y recorrido entero por HTTP: `/datos`, `/clip`,
+  `/proxy` con Range, `/previa`, `/guardar`, y una ruta fuera de `entrada/`
+  rebotando con 403.
+- **La página abierta de verdad** en Chrome headless, con captura y volcado del
+  DOM: el JS corre, el desplegable de guiones se llena, la preparación guardada
+  se recupera, el aviso de `hooksegs` aparece y las manijas caen en 10.1155% y
+  40.4621% del ancho — exactamente 5s y 20s de 49.43s.
+- **Lo que NO pude verificar**: que el video se REPRODUZCA y que las manijas se
+  ARRASTREN. Chrome headless no trae el decodificador H.264 (el recuadro sale
+  negro) y no hay puntero real. Falta que José abra la pantalla y compruebe con
+  los ojos y el ratón: que el clip se vea y se oiga, que Espacio reproduzca y
+  pare en el punto de corte, y que arrastrar una manija mueva el fotograma.
+
+### Siguiente paso
+
+Este bloque está cerrado. Los tres siguientes de esta tanda —**tira de capas
+apiladas**, **ver y deshacer el corte de silencios** y **arrastrar en la tira con
+imán**— NO se empezaron: los tres editan f11_servidor.py a fondo y hay otra
+sesión trabajando ahí. Esperan a que esa sesión termine y esté todo commiteado.
+
+**Cómo se integra:** la rama `mejoras-preparacion` sale de `36475b1` y toca
+archivos nuevos + `editor.py`, `config.py`, `test_regresion.py`, `COMO-USAR.md`
+y `CLAUDE.md`. El único solape real con la otra sesión es `test_regresion.py`
+(las dos añaden secciones al final): el conflicto, si sale, es Python visible y
+los tests lo cazan. Merge normal a `mejoras-editor` cuando la otra sesión cierre.
+El worktree `C:\ai-video\wt-preparacion` se puede borrar después con
+`git worktree remove` (antes hay que quitar los enlaces `entrada/`, `salida/` y
+`assets/` que se crearon ahí para tener un entorno fiel).
