@@ -485,6 +485,129 @@ def pruebas_duplicados():
         else f"{len(list(AQUI.glob('*.py')))} modulos revisados")
 
 
+# ===========================================================================
+# 7. Round-trip editor visual -> render
+# ===========================================================================
+# La clase de bug que ninguna de las secciones anteriores veia: el editor
+# guarda unos ajustes, el pipeline los vuelve a leer, y por el camino se
+# pierden. El video sale igual, solo que sin los B-roll. Paso de verdad en la
+# corrida `Guion-7-hook` del 2026-07-27: los 3 clips a pantalla completa y el
+# PiP de video se evaporaron y el log solo dijo "Overlays planificados: 3".
+def pruebas_round_trip():
+    import json
+    import tempfile
+
+    import f6_overlays
+    import f10_editor_visual as f10
+
+    seccion("7. Round-trip editor visual -> render")
+
+    ids_catalogo = {a["id"] for a in json.loads(
+        (config.DIR_CONTEXTO / "catalogo-assets.json").read_text(encoding="utf-8"))["assets"]}
+
+    # --- la mitad JS, replicada tal cual la escribe f11_servidor -------------
+    def js_asset_id(asset):
+        return asset if asset in ids_catalogo else None
+
+    def js_es_broll(ev):
+        return ev.get("broll_fullscreen") is True or ev.get("tipo") == "broll"
+
+    def js_evento_base(ev):
+        base = {"ini": ev["ini"], "fin": ev["fin"], "x": ev["x"], "y": ev["y"],
+                "tipo": ev.get("tipo"), "medio": ev.get("medio"),
+                "palabra": ev.get("palabra", ""), "tag": ev.get("tag", "")}
+        aid = js_asset_id(ev.get("asset", ""))
+        if aid:
+            base["asset_id"] = aid
+        if ev.get("asset"):
+            base["asset"] = ev["asset"]
+        if ev.get("archivo"):
+            base["archivo"] = ev["archivo"]
+        if ev.get("codigo"):
+            base["codigo"] = ev["codigo"]
+        return base
+
+    tmp = Path(tempfile.mkdtemp())
+    clip = tmp / "clip.mp4"
+    clip.write_bytes(b"no es un mp4 de verdad, pero existe y con eso basta")
+
+    entrada = [
+        {"tipo": "broll", "medio": "video", "broll_fullscreen": True, "archivo": str(clip),
+         "x": 0, "y": 0, "ini": 7.8, "fin": 11.0, "tag": "scroll",
+         "asset": "broll-manual:scroll", "codigo": "F14"},
+        {"tipo": "pip-producto", "medio": "video", "archivo": str(clip),
+         "x": 600, "y": 134, "ini": 18.7, "fin": 20.6, "tag": "pagina-real",
+         "asset": "video:pagina-real"},
+    ]
+
+    eventos_json = tmp / "ajustes.eventos.json"
+    broll_json = tmp / "ajustes.broll.json"
+    eventos_json.write_text(json.dumps(
+        {"eventos": [js_evento_base(e) for e in entrada if not js_es_broll(e)]}), encoding="utf-8")
+    broll_json.write_text(json.dumps(
+        {"broll": [dict(js_evento_base(e), broll_fullscreen=True, medio="video")
+                   for e in entrada if js_es_broll(e)]}), encoding="utf-8")
+
+    vueltos = (f6_overlays.cargar_eventos_manual(eventos_json, tmp) or []) \
+        + (f6_overlays.cargar_broll_manual(broll_json) or [])
+
+    chk("ningun inserto se pierde al volver del editor",
+        len(vueltos) == len(entrada),
+        f"{len(vueltos)} de {len(entrada)} sobreviven al viaje de ida y vuelta")
+
+    br = [e for e in vueltos if e.get("broll_fullscreen")]
+    chk("un B-roll vuelve siendo un B-roll a pantalla completa",
+        len(br) == 1 and br[0]["medio"] == "video"
+        and Path(str(br[0]["archivo"])).suffix == ".mp4",
+        "no convertido en tarjeta PiP de esquina" if br else "no volvio ningun B-roll")
+
+    pip_video = [e for e in vueltos if e.get("medio") == "video" and not e.get("broll_fullscreen")]
+    chk("un PiP de video conserva su clip, no se congela en PNG",
+        len(pip_video) == 1 and Path(str(pip_video[0]["archivo"])).suffix == ".mp4",
+        f"{len(pip_video)} PiP de video")
+
+    # Un asset_id que no resuelve ya no descarta el evento: se cae al archivo.
+    huerfano = tmp / "huerfano.json"
+    huerfano.write_text(json.dumps({"eventos": [
+        {"ini": 1.0, "fin": 2.0, "x": 0, "y": 0, "asset_id": "no-existe:nada",
+         "archivo": str(clip), "medio": "video"}]}), encoding="utf-8")
+    chk("un asset_id desconocido cae al archivo en vez de borrar el inserto",
+        len(f6_overlays.cargar_eventos_manual(huerfano, tmp) or []) == 1)
+
+    # --- encuadre: la lista vacia es una orden, no un dato que falte --------
+    plan = {"planos_cerrados": [{"ini": 5.0, "fin": 9.0, "zoom": 1.22, "razon": "auto"}],
+            "picos_energia": [{"t": 3.0, "energia": 1.0}]}
+    for clave, del_plan in (("planos_cerrados", plan["planos_cerrados"]),
+                            ("punch_ins", plan["picos_energia"])):
+        vacio = {clave: []}
+        leido = vacio[clave] if clave in vacio else del_plan
+        chk(f"borrar todos los '{clave}' en el editor manda sobre el automatico",
+            leido == [],
+            "una lista vacia ya no se confunde con 'sin dato'")
+
+    # Y el pipeline lo lee igual que la vista previa: las dos ramas usan `in`.
+    fuente_f4 = (AQUI / "f4_retencion.py").read_text(encoding="utf-8")
+    fuente_f10 = (AQUI / "f10_editor_visual.py").read_text(encoding="utf-8")
+    chk("ni el render ni la vista previa usan 'or' para el encuadre manual",
+        'encuadre_guion.get("planos_cerrados") or' not in fuente_f4
+        and 'encuadre.get("punch_ins") or' not in fuente_f10,
+        "con 'or' el editor enseñaba un zoom que el video no tenia")
+
+    # --- el re-render no puede perder los parametros de la corrida ----------
+    fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+    faltan = [b for b in ("--guion", "--presentador", "--musica", "--broll-manual")
+              if b not in fuente_srv]
+    chk("el re-render reenvia los parametros de la corrida original",
+        not faltan,
+        f"faltan: {', '.join(faltan)}" if faltan
+        else "guion, presentador, musica y B-roll viajan con el re-render")
+
+    fuente_editor = (AQUI / "editor.py").read_text(encoding="utf-8")
+    chk("editor.py deja constancia de con que se lanzo la corrida",
+        "00_corrida.json" in fuente_editor,
+        "sin ese archivo el editor no sabe que era un video dirigido por guion")
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -494,6 +617,7 @@ def main():
     pruebas_encuadre_guion()
     pruebas_coherencia()
     pruebas_duplicados()
+    pruebas_round_trip()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")

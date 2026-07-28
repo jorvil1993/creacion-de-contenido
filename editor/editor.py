@@ -186,6 +186,19 @@ def main():
     dir_trabajo = config.DIR_SALIDA / nombre
     dir_trabajo.mkdir(parents=True, exist_ok=True)
 
+    # Constancia de con qué se lanzó la corrida, para que el editor visual pueda
+    # re-renderizar en las MISMAS condiciones. Sin esto, f11_servidor llamaba a
+    # editor.py sin --guion y el re-render re-derivaba del automático todo lo
+    # que el guion había aportado: la hoja de sonido, las animaciones, la pista
+    # de música y el perfil del presentador.
+    (dir_trabajo / "00_corrida.json").write_text(json.dumps({
+        "guion": args.guion,
+        "presentador": args.presentador,
+        "musica": args.musica,
+        "sin_musica": bool(args.sin_musica),
+        "sol_pip_video": bool(args.sol_pip_video),
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
+
     tomas_json = dir_trabajo / "00_tomas.json"
     if len(rutas_entrada) > 1:
         print(f"\n{'='*70}\nFASE 0: Unir {len(rutas_entrada)} planos reales\n{'='*70}")

@@ -596,8 +596,14 @@ def main():
         # El --encuadre recién calculado manda sobre el que quedó guardado en el
         # plan: con --reaplicar el plan es de una corrida anterior y puede ser
         # de antes de tocar el guion.
-        cerrados = encuadre_guion.get("planos_cerrados") or plan.get("planos_cerrados", [])
-        if encuadre_guion.get("punch_ins"):
+        # `in` y no `or`: una lista VACÍA es una orden ("este video no lleva
+        # acercamientos"), no un dato ausente. Con `or`, borrar todos los
+        # punch-ins o todos los planos cerrados en el editor no hacía nada —
+        # volvían los automáticos y el render no coincidía con la vista previa.
+        cerrados = (encuadre_guion["planos_cerrados"]
+                    if "planos_cerrados" in encuadre_guion
+                    else plan.get("planos_cerrados", []))
+        if "punch_ins" in encuadre_guion:
             picos = [{"t": float(p["t"]), "energia": 1.0, "razon": p.get("razon", "guion")}
                      for p in encuadre_guion["punch_ins"]]
     else:
@@ -631,7 +637,7 @@ def main():
             _log(f"Planos cerrados pedidos por el guion: {detalle}")
 
         picos_guion = encuadre_guion.get("punch_ins")
-        if picos_guion:
+        if picos_guion is not None:
             # El guion marca los énfasis en la columna "Qué se ve" del panel.
             # Es un criterio editorial; el percentil de RMS solo mide cuándo
             # subió la voz, que no es lo mismo.

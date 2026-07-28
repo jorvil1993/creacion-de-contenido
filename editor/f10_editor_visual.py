@@ -76,10 +76,16 @@ def muestras_encuadre(dir_trabajo: Path, duracion: float,
     encuadre = encuadre or {}
     track_rostro = plan.get("track_rostro", [])
     planos = plan.get("planos", [])
-    picos = encuadre.get("punch_ins") or plan.get("picos_energia", [])
+    # `in` y no `or`, igual que en f4_retencion: una lista vacía es la orden
+    # "sin acercamientos", no un dato que falte. Los dos lados tienen que leerlo
+    # con el mismo criterio o la vista previa enseña un encuadre que el video no
+    # va a tener.
+    picos = (encuadre["punch_ins"] if "punch_ins" in encuadre
+             else plan.get("picos_energia", []))
     # Los tramos de plano cerrado también forman parte del encuadre: sin
     # pasarlos, el preview del editor mostraría un zoom distinto al del render.
-    cerrados = encuadre.get("planos_cerrados", plan.get("planos_cerrados", []))
+    cerrados = (encuadre["planos_cerrados"] if "planos_cerrados" in encuadre
+                else plan.get("planos_cerrados", []))
     tiempos_track = np.array([p["t"] for p in track_rostro]) if track_rostro else np.array([0.0])
     cx_track = np.array([p["cx"] for p in track_rostro]) if track_rostro else np.array([0.5])
     cy_track = np.array([p["cy"] for p in track_rostro]) if track_rostro else np.array([0.4])
@@ -318,21 +324,44 @@ def recolectar(dir_trabajo: Path) -> dict:
         video = dir_trabajo / "02_cortado.mp4"
     duracion = _duracion(video)
 
-    # SFX: Cargar ajustes guardados o reconstruir como en el pipeline
-    f_sfx = dir_trabajo / "ajustes.sfx.json"
-    if f_sfx.exists():
-        raw_sfx = json.loads(f_sfx.read_text(encoding="utf-8"))
-        sfx = raw_sfx.get("sfx", raw_sfx) if isinstance(raw_sfx, dict) else raw_sfx
-    else:
+    # SFX: lo ajustado a mano, si no lo que pidió el guion, y si no el
+    # automático. Sin el escalón del guion el editor enseñaba los 5 efectos
+    # derivados del plan cuando la columna «Sonido» del panel había pedido 13,
+    # y al re-renderizar se quedaban los 5: la hoja de sonido del guion se
+    # perdía sin que nada lo dijera.
+    sfx = None
+    for candidato in (dir_trabajo / "ajustes.sfx.json", dir_trabajo / "guion.sfx.json"):
+        if candidato.exists():
+            try:
+                raw_sfx = json.loads(candidato.read_text(encoding="utf-8"))
+                sfx = raw_sfx.get("sfx", raw_sfx) if isinstance(raw_sfx, dict) else raw_sfx
+                break
+            except Exception:
+                sfx = None
+    if sfx is None:
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         import f5_audio
         sfx = f5_audio.construir_eventos_sfx(plan, eventos)
+    # El desplegable de sonidos del editor se indexa por nombre de archivo;
+    # guion.sfx.json los trae con ruta absoluta.
+    for e in sfx:
+        e["archivo"] = Path(str(e.get("archivo", ""))).name
 
     # Vocabulario completo de sonidos, embebido para poder escucharlos
     dir_sfx = config.DIR_ASSETS / "sfx"
     sonidos = {}
     for p in sorted(dir_sfx.glob("*.mp3")):
         sonidos[p.name] = _b64(p, "audio/mpeg")
+
+    # Qué `asset` son de verdad un id del catálogo. El editor solo puede mandar
+    # `asset_id` de vuelta al pipeline para estos: los demás (`video:…`,
+    # `broll-manual:…`, los generados) no resuelven contra el catálogo y hay que
+    # devolverlos por su ruta de archivo, o el inserto desaparece del render.
+    try:
+        ids_catalogo = {a["id"] for a in json.loads(
+            (config.DIR_CONTEXTO / "catalogo-assets.json").read_text(encoding="utf-8"))["assets"]}
+    except Exception:
+        ids_catalogo = set()
 
     # Incluir TODOS los eventos de superposición e insertos (tanto imágenes como videos/b-rolls)
     movibles = []
@@ -362,6 +391,10 @@ def recolectar(dir_trabajo: Path) -> dict:
             "x": ev.get("x", 0), "y": ev.get("y", 0),
             "palabra": ev.get("palabra", ""),
             "asset": ev.get("asset", ""),
+            "asset_catalogo": ev.get("asset", "") in ids_catalogo,
+            "tag": ev.get("tag", ""),
+            "codigo": ev.get("codigo", ""),
+            "broll_fullscreen": bool(ev.get("broll_fullscreen")),
             "archivo": str(archivo_path.resolve()) if archivo_path else None,
             "miniatura": miniatura,
             "overlay": overlay_b64,
@@ -381,9 +414,22 @@ def recolectar(dir_trabajo: Path) -> dict:
     ruta_cortado = dir_trabajo / "02_cortado.mp4"
     resolucion_origen = _resolucion(ruta_cortado) if ruta_cortado.exists() else (config.ANCHO, config.ALTO)
 
+    # Hook escrito a mano: sobrevive a recargar la página. Antes el textarea se
+    # repoblaba desde el evento del último render y el texto tecleado se perdía.
+    hook_guardado = None
+    f_hook = dir_trabajo / "ajustes.hook.json"
+    if f_hook.exists():
+        try:
+            hook_guardado = json.loads(f_hook.read_text(encoding="utf-8")).get("hook")
+        except Exception:
+            hook_guardado = None
+
     return {
         "nombre": dir_trabajo.name,
         "duracion": round(duracion, 3),
+        "hook_guardado": hook_guardado,
+        "insertos_manuales": (dir_trabajo / "ajustes.eventos.json").exists()
+                             or (dir_trabajo / "ajustes.broll.json").exists(),
         "es_renderizado": video.name != "02_cortado.mp4",
         "ancho": config.ANCHO, "alto": config.ALTO, "fps": config.FPS,
         "resolucion_origen": list(resolucion_origen),  # w_in/h_in reales del recorte de f4_retencion

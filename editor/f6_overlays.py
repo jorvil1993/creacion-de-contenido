@@ -1523,20 +1523,47 @@ def cargar_eventos_manual(ruta_json: Path, dir_tmp: Path, catalogo: list = None)
     for i, ev in enumerate(datos):
         asset_id = ev.get("asset_id")
         archivo = ev.get("archivo")
-        if asset_id:
+        tiene_archivo = bool(archivo and Path(archivo).exists())
+
+        # Un clip de video (PiP de video o B-roll) se usa TAL CUAL. Pasarlo por
+        # render_pip_producto lo congelaría en una tarjeta PNG: el editor
+        # mandaba un B-roll a pantalla completa y volvía convertido en una
+        # estampita de 400x520 en una esquina.
+        es_video = ev.get("medio") == "video" or ev.get("broll_fullscreen")
+        if es_video:
+            if not tiene_archivo:
+                print(f"AVISO: evento manual #{i} es de video pero no existe su archivo "
+                      f"({archivo}) — omitido.")
+                continue
+            ruta_png = Path(archivo)
+        elif asset_id:
             asset = por_id.get(asset_id)
-            if asset is None:
-                print(f"AVISO: asset_id '{asset_id}' no está en el catálogo — evento manual #{i} omitido.")
-                continue
-            ruta_img = _version_sin_fondo(asset) or (config.RAIZ_PROYECTO / asset["ruta"])
-            if not ruta_img.exists():
-                print(f"AVISO: no existe el archivo de '{asset_id}' — evento manual #{i} omitido.")
-                continue
-            nombre_cache = re.sub(r"[^\w-]", "_", asset_id)
-            ruta_png = dir_tmp / f"manual_{nombre_cache}.png"
-            if not ruta_png.exists():
-                render_pip_producto(ruta_img, ruta_png, ancho=400, alto=520, centrar_en_lienzo=False)
-        elif archivo and Path(archivo).exists():
+            ruta_img = None
+            if asset is not None:
+                ruta_img = _version_sin_fondo(asset) or (config.RAIZ_PROYECTO / asset["ruta"])
+                if not ruta_img.exists():
+                    ruta_img = None
+            if ruta_img is None:
+                # El asset no es del catálogo (`video:…`, `broll-manual:…`, uno
+                # generado) o su archivo se movió. Antes se descartaba el evento
+                # entero y el inserto desaparecía del video sin más aviso que una
+                # línea en el log; si el editor mandó también la ruta ya
+                # renderizada, esa sirve perfectamente.
+                if tiene_archivo:
+                    print(f"AVISO: asset_id '{asset_id}' no resuelve en el catálogo — "
+                          f"se usa el archivo que mandó el editor.")
+                    ruta_png = Path(archivo)
+                else:
+                    print(f"AVISO: asset_id '{asset_id}' no está en el catálogo y no vino "
+                          f"'archivo' — evento manual #{i} omitido.")
+                    continue
+            else:
+                nombre_cache = re.sub(r"[^\w-]", "_", asset_id)
+                ruta_png = dir_tmp / f"manual_{nombre_cache}.png"
+                if not ruta_png.exists():
+                    render_pip_producto(ruta_img, ruta_png, ancho=400, alto=520,
+                                        centrar_en_lienzo=False)
+        elif tiene_archivo:
             ruta_png = Path(archivo)
         else:
             print(f"AVISO: evento manual #{i} sin 'asset_id' ni 'archivo' válido — omitido.")

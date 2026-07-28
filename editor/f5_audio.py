@@ -548,6 +548,12 @@ def main():
         for e in eventos:
             e.setdefault("volumen", config.SFX_VOLUMEN)
             e.setdefault("razon", "manual")
+            # `_ruta_sfx` tolera una ruta absoluta (pathlib la deja pasar tal
+            # cual), pero los niveles medidos y los puntos de golpe se indexan
+            # por NOMBRE de archivo. f13_guion escribe rutas absolutas, así que
+            # sus SFX se saltaban en silencio la normalización de volumen y la
+            # alineación al golpe. Con el nombre pelado los dos aciertan.
+            e["archivo"] = Path(str(e["archivo"])).name
         eventos.sort(key=lambda e: e["t"])
         _log(f"SFX manuales cargados desde {args.sfx_manual} (se ignora la lista automática)")
         # El sonido sigue a su evento visual: si el PiP se movió desde la Fase 2,

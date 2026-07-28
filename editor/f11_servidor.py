@@ -47,6 +47,14 @@ def _guardar_eventos(eventos: list) -> Path:
     return _escritura_atomica(DIR_TRABAJO / "ajustes.eventos.json", {"eventos": eventos})
 
 
+def _guardar_broll(broll: list) -> Path:
+    """B-rolls a pantalla completa. Van en su propio archivo porque el pipeline
+    los recibe por `--broll-manual`, no por `--eventos-manual`: son dos listas
+    distintas y mezclarlas convierte un clip a pantalla completa en una tarjeta
+    PiP de esquina."""
+    return _escritura_atomica(DIR_TRABAJO / "ajustes.broll.json", {"broll": broll})
+
+
 def _guardar_sfx(sfx: list) -> Path:
     # --sfx-manual (f5_audio.py) espera una LISTA plana, no envuelta en dict.
     return _escritura_atomica(DIR_TRABAJO / "ajustes.sfx.json", sfx)
@@ -54,6 +62,41 @@ def _guardar_sfx(sfx: list) -> Path:
 
 def _guardar_animaciones(animaciones: list) -> Path:
     return _escritura_atomica(DIR_TRABAJO / "ajustes.animaciones.json", {"animaciones": animaciones})
+
+
+def _guardar_hook(texto: str) -> Path:
+    return _escritura_atomica(DIR_TRABAJO / "ajustes.hook.json", {"hook": texto})
+
+
+def _leer_corrida() -> dict:
+    """Parámetros con los que se lanzó la corrida original (`00_corrida.json`,
+    que escribe editor.py).
+
+    Sin esto el re-render desde el editor llamaba a editor.py sin `--guion N`,
+    y todo lo que el guion aportaba y no estuviera ya en 05_overlays.eventos.json
+    —la hoja de sonido, las animaciones, la pista de música, el presentador— se
+    perdía en silencio: 13 SFX curados volvían convertidos en 5 automáticos.
+    """
+    f = DIR_TRABAJO / "00_corrida.json"
+    if f.exists():
+        try:
+            return json.loads(f.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    # Corridas anteriores a 00_corrida.json: el número de guion se puede
+    # recuperar de la cabecera del reporte de alineación, que f13_guion ya
+    # escribía ("# Reporte de Alineación de Guion 7: ...").
+    alineado = DIR_TRABAJO / "10_guion-alineado.md"
+    if alineado.exists():
+        try:
+            m = re.search(r"Guion\s+(\d+)",
+                          alineado.read_text(encoding="utf-8", errors="replace")[:400])
+            if m:
+                return {"guion": int(m.group(1))}
+        except Exception:
+            pass
+    return {}
 
 
 def _guardar_encuadre(encuadre: dict) -> Path:
@@ -296,8 +339,20 @@ class Handler(BaseHTTPRequestHandler):
             if not cand.exists() or not cand.is_dir():
                 self.send_error(404, f"No existe el proyecto {nombre}")
                 return
+            # Un render en curso escribe en la carpeta que tiene abierta. Si se
+            # cambia de proyecto por debajo, la barra de progreso pasa a mostrar
+            # el log del otro video y el 409 de "ya hay un render en curso"
+            # bloquea el nuevo sin explicar por qué.
+            proceso = ESTADO_RENDER.get("proceso")
+            if proceso is not None and proceso.poll() is None:
+                self._json({"ok": False,
+                            "error": "hay un render en curso; esperá a que termine "
+                                     "para cambiar de video"}, code=409)
+                return
             global DIR_TRABAJO
             DIR_TRABAJO = cand
+            ESTADO_RENDER["proceso"] = None
+            ESTADO_RENDER["log"] = None
             self._json({"ok": True, "nombre": DIR_TRABAJO.name})
             return
 
@@ -305,6 +360,15 @@ class Handler(BaseHTTPRequestHandler):
             eventos = datos.get("eventos", [])
             destino = _guardar_eventos(eventos)
             resultado = {"ok": True, "ruta": str(destino), "n": len(eventos)}
+            if "broll" in datos:
+                destino_broll = _guardar_broll(datos["broll"])
+                resultado["ruta_broll"] = str(destino_broll)
+                resultado["n_broll"] = len(datos["broll"])
+            if "hook" in datos:
+                # Antes se ignoraba: escribías el hook, dabas a Guardar,
+                # recargabas y volvía el anterior.
+                _guardar_hook(datos["hook"])
+                resultado["hook"] = datos["hook"]
             if "sfx" in datos:
                 destino_sfx = _guardar_sfx(datos["sfx"])
                 resultado["ruta_sfx"] = str(destino_sfx)
@@ -317,6 +381,19 @@ class Handler(BaseHTTPRequestHandler):
                 destino_enc = _guardar_encuadre(datos["encuadre"])
                 resultado["ruta_encuadre"] = str(destino_enc)
             self._json(resultado)
+
+        elif partes.path == "/restablecer":
+            # Volver al automático para los insertos. Sin esto, un
+            # `ajustes.eventos.json` con la lista vacía era una trampa sin
+            # salida: cada render arrancaba sin insertos y la única forma de
+            # deshacerlo era borrar el archivo a mano desde el explorador.
+            borrados = []
+            for nombre in ("ajustes.eventos.json", "ajustes.broll.json"):
+                f = DIR_TRABAJO / nombre
+                if f.exists():
+                    f.unlink()
+                    borrados.append(nombre)
+            self._json({"ok": True, "borrados": borrados})
 
         elif partes.path == "/encuadre/vista-previa":
             # La curva se recalcula en Python con la MISMA funcion del render.
@@ -344,6 +421,14 @@ class Handler(BaseHTTPRequestHandler):
                 candidato = DIR_TRABAJO / "ajustes.eventos.json"
                 if candidato.exists():
                     ajustes = candidato
+
+            ajustes_broll = None
+            if "broll" in datos:
+                ajustes_broll = _guardar_broll(datos["broll"])
+            else:
+                candidato_broll = DIR_TRABAJO / "ajustes.broll.json"
+                if candidato_broll.exists():
+                    ajustes_broll = candidato_broll
 
             ajustes_sfx = None
             if "sfx" in datos:
@@ -377,16 +462,46 @@ class Handler(BaseHTTPRequestHandler):
                 py_bin = r"C:\ai-video\venv312\Scripts\python.exe"
             cmd = [py_bin, "editor.py", str(dummy_entrada),
                    "--nombre", DIR_TRABAJO.name, "--reaplicar", "--sin-editor-visual"]
+
+            # Los parámetros de la corrida original van PRIMERO y los ajustes
+            # del editor después: editor.py solo deja que el guion rellene lo
+            # que no vino a mano (`if not args.sfx_manual: ...`), así que lo
+            # tocado en el editor sigue mandando y lo que no se tocó vuelve a
+            # salir del guion en vez de re-derivarse del automático.
+            corrida = _leer_corrida()
+            if corrida.get("guion") is not None:
+                cmd += ["--guion", str(corrida["guion"])]
+            if corrida.get("presentador"):
+                cmd += ["--presentador", corrida["presentador"]]
+            if corrida.get("musica"):
+                cmd += ["--musica", corrida["musica"]]
+            if corrida.get("sin_musica"):
+                cmd.append("--sin-musica")
+            if corrida.get("sol_pip_video"):
+                cmd.append("--sol-pip-video")
+
             if ajustes is not None:
                 cmd += ["--eventos-manual", str(ajustes)]
+            if ajustes_broll is not None:
+                cmd += ["--broll-manual", str(ajustes_broll)]
             if ajustes_sfx is not None:
                 cmd += ["--sfx-manual", str(ajustes_sfx)]
             if ajustes_anim is not None:
                 cmd += ["--animaciones-manual", str(ajustes_anim)]
             if ajustes_enc is not None:
                 cmd += ["--encuadre-manual", str(ajustes_enc)]
-            if datos.get("hook"):
-                cmd += ["--hook", datos["hook"]]
+            hook = datos.get("hook")
+            if hook is None:
+                f_hook = DIR_TRABAJO / "ajustes.hook.json"
+                if f_hook.exists():
+                    try:
+                        hook = json.loads(f_hook.read_text(encoding="utf-8")).get("hook")
+                    except Exception:
+                        hook = None
+            elif hook:
+                _guardar_hook(hook)
+            if hook:
+                cmd += ["--hook", hook]
 
             dir_log = DIR_TRABAJO / "_editor"
             dir_log.mkdir(exist_ok=True)
@@ -608,6 +723,8 @@ main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 20px
     </div>
     <div class="pips-lista" id="pipsLista"></div>
     <button class="btn-primario" id="btnAñadirPip" type="button">+ Añadir PiP / B-Roll en el segundo actual</button>
+    <button class="btn-primario" id="btnResetPips" type="button">Volver al automático</button>
+    <span class="hint" id="infoPips"></span>
 
     <div class="editor-caja" id="cajaCatalogo">
       <div class="filtros">
@@ -731,12 +848,21 @@ async function cargar() {
   video.src = "/video?t=" + Date.now();
   construirTimeline();
 
-  edicionPip = DATA.movibles.filter(m => 
+  edicionPip = DATA.movibles.filter(m =>
     m.tipo !== "hook" && m.tipo !== "cta" && !m.tipo.startsWith("anim-")
   ).map(m => ({
     ini: m.ini, fin: m.fin, x: m.x, y: m.y,
-    asset_id: (m.asset && !m.asset.startsWith("generado:") && !m.asset.startsWith("manual")) ? m.asset : null,
+    // Solo los assets que EXISTEN en el catálogo pueden volver como asset_id.
+    // Adivinarlo por el prefijo del nombre dejaba pasar `video:…` y
+    // `broll-manual:…`, que el pipeline no sabe resolver: buscaba el id en el
+    // catálogo, no lo encontraba y descartaba el inserto entero. Los B-rolls y
+    // los PiP de video del guion desaparecían del render sin más rastro que un
+    // AVISO en el log.
+    asset_id: m.asset_catalogo ? m.asset : null,
+    asset: m.asset, tag: m.tag, codigo: m.codigo,
+    broll_fullscreen: m.broll_fullscreen,
     archivo: m.archivo, tarjeta: m.overlay, miniatura: m.miniatura, medio: m.medio, tipo: m.tipo,
+    palabra: m.palabra,
   }));
   renderPipsLista();
   construirOverlays(); // depende de edicionPip: tiene que ir después de poblarlo
@@ -765,7 +891,9 @@ async function cargar() {
 
   const hook = DATA.overlays.find(o => o.tipo === "hook");
   const cta = DATA.overlays.find(o => o.tipo === "cta");
-  document.getElementById("hookTexto").value = hook?.texto || "";
+  // El texto guardado a mano manda sobre el del último render.
+  document.getElementById("hookTexto").value =
+    (DATA.hook_guardado != null && DATA.hook_guardado !== "") ? DATA.hook_guardado : (hook?.texto || "");
   document.getElementById("hookFin").textContent = hook ? hook.fin.toFixed(1) : "?";
   const hookImg = hook?.miniatura_archivo || hook?.archivo;
   document.getElementById("hookMiniatura").src = hookImg ? `/archivo?ruta=${encodeURIComponent(hookImg)}` : "";
@@ -775,6 +903,9 @@ async function cargar() {
 
   edicionAnimaciones = DATA.overlays.filter(o => o.tipo.startsWith("anim-")).map(o => ({
     nombre: o.anim || o.tipo.replace("anim-", ""), ini: o.ini, fin: o.fin,
+    // La duración real del clip, para que mover la animación no falsee su
+    // barra en la línea de tiempo (el render usa la del clip, no una fija).
+    dur: Math.round((o.fin - o.ini) * 1000) / 1000,
     variante: o.variante, palabra: o.palabra, miniatura_archivo: o.miniatura_archivo,
   }));
   animacionesModificado = false;
@@ -875,6 +1006,12 @@ function renderPipsLista() {
       pintarPipTimeline();
     });
   });
+  const info = document.getElementById("infoPips");
+  if (info) {
+    const nB = edicionPip.filter(esBroll).length;
+    info.textContent = `${edicionPip.length - nB} PiP · ${nB} B-roll` +
+      (DATA.insertos_manuales ? " · ajustados a mano" : " · del guion / automáticos");
+  }
   pintarPipTimeline();
 }
 
@@ -1246,7 +1383,10 @@ function renderAnimGrid() {
     inp.addEventListener("change", () => {
       const i = parseInt(inp.dataset.idx, 10);
       edicionAnimaciones[i].ini = parseFloat(inp.value) || 0;
-      edicionAnimaciones[i].fin = edicionAnimaciones[i].ini + 2.4;
+      // Con los 2.4s fijos que había antes, la barra mentía: el render usa la
+      // duración real del clip, que va de 1.2s a 3.6s según la animación.
+      edicionAnimaciones[i].fin =
+        edicionAnimaciones[i].ini + (edicionAnimaciones[i].dur || 2.4);
       animacionesModificado = true;
     });
   });
@@ -1272,6 +1412,7 @@ async function abrirInventarioAnim(idx) {
 function elegirAnimacion(a) {
   const nueva = {
     nombre: a.nombre, ini: video.currentTime, fin: video.currentTime + a.duracion,
+    dur: a.duracion,
     variante: null, palabra: "", miniatura_archivo: null,
   };
   if (editandoAnimIdx === -1) {
@@ -1354,17 +1495,49 @@ function elegirAsset(asset) {
 }
 
 document.getElementById("btnAñadirPip").addEventListener("click", () => abrirCatalogo(-1));
+document.getElementById("btnResetPips").addEventListener("click", async () => {
+  if (!confirm("Se descartan los insertos y B-rolls ajustados a mano y vuelven los del guion / los automáticos. ¿Seguir?")) return;
+  await fetch("/restablecer", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  await cargar();
+});
 document.getElementById("btnCancelarEdicion").addEventListener("click", () => {
   editandoIdx = null;
   document.getElementById("cajaCatalogo").classList.remove("activa");
   renderPipsLista();
 });
 document.getElementById("chkTodos").addEventListener("change", cargarGridCatalogo);
+// Un B-roll ocupa el cuadro entero y viaja por --broll-manual; un PiP es una
+// tarjeta y viaja por --eventos-manual. Son dos listas distintas en el
+// pipeline, así que hay que separarlas al guardar: mandar un B-roll como
+// inserto lo devolvía convertido en una estampita de 400x520 en una esquina.
+function esBroll(ev) {
+  return ev.broll_fullscreen === true || ev.tipo === "broll";
+}
+
+// `archivo` va SIEMPRE, incluso junto a asset_id: es el respaldo con el que el
+// pipeline puede recuperar el inserto si el id no resuelve.
+function eventoBase(ev) {
+  const base = {
+    ini: ev.ini, fin: ev.fin, x: ev.x, y: ev.y,
+    tipo: ev.tipo, medio: ev.medio,
+    palabra: ev.palabra || "", tag: ev.tag || "",
+  };
+  if (ev.asset_id) base.asset_id = ev.asset_id;
+  if (ev.asset) base.asset = ev.asset;
+  if (ev.archivo) base.archivo = ev.archivo;
+  if (ev.codigo) base.codigo = ev.codigo;
+  return base;
+}
+
 function eventosParaGuardar() {
-  return edicionPip.map(ev => {
-    const base = { ini: ev.ini, fin: ev.fin, x: ev.x, y: ev.y };
-    if (ev.asset_id) base.asset_id = ev.asset_id;
-    else if (ev.archivo) base.archivo = ev.archivo;
+  return edicionPip.filter(ev => !esBroll(ev)).map(eventoBase);
+}
+
+function brollParaGuardar() {
+  return edicionPip.filter(esBroll).map(ev => {
+    const base = eventoBase(ev);
+    base.broll_fullscreen = true;
+    base.medio = "video";
     return base;
   });
 }
@@ -1375,7 +1548,11 @@ function cuerpoAjustes() {
   // cualquier PiP que se mueva, sustituya o quite — Fase 4, punto 2 del plan).
   // El hook SÍ se manda siempre: si no, --reaplicar lo volvería a derivar de
   // la transcripción y pisaría en silencio un texto que José ya haya elegido.
-  const cuerpo = { eventos: eventosParaGuardar(), hook: document.getElementById("hookTexto").value };
+  const cuerpo = {
+    eventos: eventosParaGuardar(),
+    broll: brollParaGuardar(),
+    hook: document.getElementById("hookTexto").value,
+  };
   if (sfxModificado) cuerpo.sfx = sfxParaGuardar();
   if (animacionesModificado) cuerpo.animaciones = animacionesParaGuardar();
   if (encModificado) cuerpo.encuadre = encuadreParaGuardar();
@@ -1727,6 +1904,8 @@ if (btnCargarProyecto) {
         await cargar();
         video.src = "/video?t=" + Date.now();
         video.load();
+      } else {
+        alert(res.error || "No se pudo cambiar de video.");
       }
     } catch (err) {
       alert("Error al cargar proyecto: " + err);
