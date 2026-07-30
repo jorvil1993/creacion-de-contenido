@@ -20,6 +20,12 @@
   var iniciado = false;
   var T = null;              // DATA.tira
   var dur = 0;
+  var zoom = 1;
+  var imanActivo = true;
+  var imanElegido = false;   // true en cuanto se toca la casilla: cambiar de
+                             // corrida no puede volver a encender el imán que
+                             // se acaba de apagar a mano
+  var arrastre = null;       // {tipo, obj} mientras se arrastra algo
   var huella = "";
   var ultimaHuella = 0;
   var ultimoCursor = -1;
@@ -38,6 +44,7 @@
   function sfx() { return leer(function () { return edicionSfx; }, []); }
   function anims() { return leer(function () { return edicionAnimaciones; }, []); }
   function elVideo() { return leer(function () { return video; }, null); }
+  function llamar(nombre, fn) { try { fn(); } catch (e) { console.warn("tira: " + nombre, e); } }
 
   // -- escala de tiempo ----------------------------------------------------
   function el(id) { return document.getElementById(id); }
@@ -45,15 +52,63 @@
     var l = el("tiraLienzo");
     return l ? l.getBoundingClientRect().width : 0;
   }
+  function segPorPx() {
+    var w = anchoLienzoPx();
+    return w > 0 ? dur / w : 0;
+  }
   function pct(t) { return dur > 0 ? (t / dur) * 100 : 0; }
 
-  /** Tiempo bajo un evento de puntero, en el espacio del lienzo. */
+  /** Tiempo bajo un evento de puntero, en el espacio del lienzo (con zoom). */
   function tiempoEn(ev) {
     var l = el("tiraLienzo");
     if (!l || dur <= 0) return 0;
     var r = l.getBoundingClientRect();
     var t = ((ev.clientX - r.left) / r.width) * dur;
     return Math.max(0, Math.min(dur, t));
+  }
+
+  // -- imán (bloque C) -----------------------------------------------------
+  /* Devuelve {t, tipo, referencia}: el instante al que se pega el marcador y a
+   * qué se pegó. La tolerancia se mide EN PANTALLA y se convierte a segundos
+   * con el zoom actual, así que ampliar afina la ayuda sola en vez de seguir
+   * imantando a medio segundo cuando ya se ve el fotograma. */
+  function imantar(t, sinIman) {
+    var libre = { t: Math.round(t * 1000) / 1000, tipo: null, referencia: null };
+    if (sinIman || !imanActivo || !T) return libre;
+    var tol = (T.iman.tolerancia_px || 8) * segPorPx();
+    if (!(tol > 0)) return libre;
+
+    var mejor = null;
+    function mirar(lista, tipo) {
+      if (!lista) return;
+      for (var i = 0; i < lista.length; i++) {
+        var d = Math.abs(lista[i] - t);
+        if (d > tol) continue;
+        // A igual distancia gana el beat: es una decisión editorial explícita
+        // del guion, mientras que un borde de palabra es solo dónde calló
+        // Whisper. Mismo criterio que la prioridad de los SFX del panel.
+        if (!mejor || d < mejor.d - 1e-9 || (Math.abs(d - mejor.d) <= 1e-9 && tipo === "beat")) {
+          mejor = { d: d, t: lista[i], tipo: tipo };
+        }
+      }
+    }
+    mirar(T.imanes && T.imanes.palabras, "palabra");
+    mirar(T.imanes && T.imanes.beats, "beat");
+    if (!mejor) return libre;
+    return { t: mejor.t, tipo: mejor.tipo, referencia: mejor.t };
+  }
+
+  function mostrarGuia(res) {
+    var g = el("tiraGuia");
+    if (!g) return;
+    if (!res || !res.tipo) { g.className = "tira-guia"; return; }
+    g.className = "tira-guia visible " + res.tipo;
+    g.style.left = pct(res.t) + "%";
+  }
+
+  function avisar(txt) {
+    var a = el("tiraAviso");
+    if (a) a.textContent = txt || "";
   }
 
   // -- construcción de la tira --------------------------------------------
@@ -71,6 +126,19 @@
     cont.innerHTML =
       '<div class="tira-panel">' +
       '<h2>Tira de capas</h2>' +
+      '<div class="tira-barra">' +
+        '<div class="grupo">' +
+          '<button type="button" id="tiraZoomMenos" title="Alejar">−</button>' +
+          '<span class="zoom-valor" id="tiraZoomValor">1.0x</span>' +
+          '<button type="button" id="tiraZoomMas" title="Acercar">+</button>' +
+          '<button type="button" id="tiraZoomTodo" title="Ver el video entero">Todo</button>' +
+        '</div>' +
+        '<div class="grupo">' +
+          '<label title="Pega los marcadores a los bordes de palabra y a los beats del guion">' +
+            '<input type="checkbox" id="tiraIman"> Imán</label>' +
+          '<span class="tira-aviso" id="tiraAviso"></span>' +
+        '</div>' +
+      '</div>' +
       '<div class="tira-cuerpo">' +
         '<div class="tira-etiquetas">' +
           '<div class="hueco"></div>' + etiquetas +
@@ -79,13 +147,16 @@
           '<div class="tira-lienzo" id="tiraLienzo">' +
             '<div class="tira-regla" id="tiraRegla"></div>' +
             carriles +
+            '<div class="tira-guia" id="tiraGuia"></div>' +
             '<div class="tira-cursor" id="tiraCursor"></div>' +
           '</div>' +
         '</div>' +
       '</div>' +
       '<p class="tira-leyenda">Clic en cualquier carril para llevar la aguja ahí. ' +
-      'Los seis carriles comparten una sola escala de tiempo: lo que está encima de ' +
-      'lo mismo, suena y se ve a la vez.</p>' +
+      '<span class="clave">Ctrl + rueda</span> acerca y aleja; los tres carriles de en medio ' +
+      '(B-Roll/PiP, animaciones y SFX) se arrastran. Con el imán puesto se pegan a los bordes ' +
+      'de palabra y a los beats del guion — <span class="clave">Alt</span> mientras arrastrás ' +
+      'lo suelta sin tener que destildar la casilla.</p>' +
       '</div>';
 
     // Los puntos de color de las etiquetas los pinta el CSS por clase; aquí
@@ -97,16 +168,67 @@
       if (p.getAttribute("data-punto") === "sfx") p.style.background = "var(--acento)";
     });
 
-    // Clic en la regla o en un carril: llevar la aguja ahí.
+    var chk = el("tiraIman");
+    if (chk) {
+      chk.checked = imanActivo;
+      chk.addEventListener("change", function () {
+        imanActivo = chk.checked;
+        imanElegido = true;
+      });
+    }
+    el("tiraZoomMas").addEventListener("click", function () { zoomCentrado(T.zoom.factor); });
+    el("tiraZoomMenos").addEventListener("click", function () { zoomCentrado(1 / T.zoom.factor); });
+    el("tiraZoomTodo").addEventListener("click", function () { fijarZoom(1); el("tiraScroll").scrollLeft = 0; });
+
+    var scroll = el("tiraScroll");
+    scroll.addEventListener("wheel", function (ev) {
+      if (!ev.ctrlKey) return;   // sin Ctrl la rueda sigue desplazando la página
+      ev.preventDefault();
+      var r = scroll.getBoundingClientRect();
+      zoomAnclado(ev.deltaY < 0 ? T.zoom.factor : 1 / T.zoom.factor, ev.clientX - r.left);
+    }, { passive: false });
+
+    // Clic en la regla o en un carril: llevar la aguja ahí. Se pone en el
+    // lienzo entero y se descarta si el clic vino de un bloque arrastrable,
+    // igual que hacen las pistas viejas con .enc-cerrado / .marca-sfx.
     el("tiraLienzo").addEventListener("click", function (ev) {
+      if (ev.target.closest(".tira-bloque.arrastrable") || ev.target.closest(".tira-marca-sfx")) return;
       var v = elVideo();
       if (v) v.currentTime = tiempoEn(ev);
     });
     return true;
   }
 
+  function fijarZoom(z) {
+    zoom = Math.max(T.zoom.min, Math.min(T.zoom.max, z));
+    var l = el("tiraLienzo");
+    if (l) l.style.width = (zoom * 100) + "%";
+    var v = el("tiraZoomValor");
+    if (v) v.textContent = zoom.toFixed(1) + "x";
+    pintarRegla();
+  }
+
+  /** Acerca manteniendo quieto el instante que está bajo `xVista` (px desde el
+   *  borde izquierdo de la ventana de scroll). Sin esto, acercar sobre el
+   *  segundo 20 saltaba al principio del video y había que volver a buscarlo. */
+  function zoomAnclado(factor, xVista) {
+    var scroll = el("tiraScroll");
+    if (!scroll || dur <= 0) return;
+    var anchoAntes = anchoLienzoPx();
+    if (!(anchoAntes > 0)) return;
+    var tAnclado = ((scroll.scrollLeft + xVista) / anchoAntes) * dur;
+    fijarZoom(zoom * factor);
+    var anchoDespues = anchoLienzoPx();
+    scroll.scrollLeft = (tAnclado / dur) * anchoDespues - xVista;
+  }
+
+  function zoomCentrado(factor) {
+    var scroll = el("tiraScroll");
+    if (scroll) zoomAnclado(factor, scroll.clientWidth / 2);
+  }
+
   /** Marcas de la regla: se elige el paso más chico de la escala que deje al
-   *  menos 60px entre marcas. */
+   *  menos 60px entre marcas, para que al acercar aparezcan décimas solas. */
   function pintarRegla() {
     var regla = el("tiraRegla");
     if (!regla || dur <= 0) return;
@@ -184,9 +306,12 @@
     pips().forEach(function (ev) {
       var esVideo = ev.medio === "video" || ev.tipo === "broll";
       var nombre = ev.asset_id || (ev.archivo ? ev.archivo.split(/[\\/]/).pop() : "") || ev.tipo;
-      c.appendChild(bloque(esVideo ? "broll" : "pip", ev.ini, ev.fin,
+      var d = bloque(esVideo ? "broll" : "pip", ev.ini, ev.fin,
         (esVideo ? "B-Roll: " : "PiP: ") + nombre,
-        nombre + " · " + ev.ini.toFixed(2) + "s - " + ev.fin.toFixed(2) + "s"));
+        nombre + " · " + ev.ini.toFixed(2) + "s - " + ev.fin.toFixed(2) + "s");
+      d.classList.add("arrastrable");
+      hacerArrastrable(d, "pip", ev);
+      c.appendChild(d);
     });
   }
 
@@ -195,8 +320,11 @@
     if (!c) return;
     c.innerHTML = "";
     anims().forEach(function (a) {
-      c.appendChild(bloque("anim", a.ini, a.fin, a.nombre,
-        a.nombre + " · " + a.ini.toFixed(2) + "s - " + a.fin.toFixed(2) + "s"));
+      var d = bloque("anim", a.ini, a.fin, a.nombre,
+        a.nombre + " · " + a.ini.toFixed(2) + "s - " + a.fin.toFixed(2) + "s");
+      d.classList.add("arrastrable");
+      hacerArrastrable(d, "anim", a);
+      c.appendChild(d);
     });
   }
 
@@ -209,6 +337,7 @@
       m.className = "tira-marca-sfx";
       m.style.left = pct(e.t) + "%";
       m.title = e.archivo + " · " + e.t.toFixed(2) + "s · " + e.razon;
+      hacerArrastrable(m, "sfx", e);
       c.appendChild(m);
     });
   }
@@ -246,6 +375,84 @@
     huella = huellaEstado();
   }
 
+  // -- arrastre con imán (bloque C) ---------------------------------------
+  /* Se mueve el bloque ENTERO, nunca sus bordes: estirar un B-Roll ya se hace
+   * en su pista de siempre, que conoce `duracionMaximaClip(ev)` y frena en el
+   * tramo elegido del clip. Moviéndolo entero la duración no cambia, así que
+   * ese tope no se puede violar desde aquí. */
+  function hacerArrastrable(elem, tipo, obj) {
+    elem.addEventListener("pointerdown", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      try { elem.setPointerCapture(ev.pointerId); } catch (e) { /* seguimos sin captura */ }
+      elem.classList.add("arrastrando");
+      arrastre = { tipo: tipo, obj: obj };
+
+      var t0 = tiempoEn(ev);
+      var ini0 = (tipo === "sfx") ? obj.t : obj.ini;
+      var largo = (tipo === "sfx") ? 0 : (obj.fin - obj.ini);
+
+      var mover = function (mv) {
+        var propuesto = ini0 + (tiempoEn(mv) - t0);
+        propuesto = Math.max(0, Math.min(dur - largo, propuesto));
+        var res = imantar(propuesto, mv.altKey);
+        var t = Math.max(0, Math.min(dur - largo, res.t));
+        aplicarMovimiento(tipo, obj, t, largo);
+        elem.style.left = pct(tipo === "sfx" ? obj.t : obj.ini) + "%";
+        mostrarGuia(res.tipo ? res : null);
+        avisar(res.tipo === "palabra" ? "pegado a un borde de palabra"
+             : res.tipo === "beat" ? "pegado a un beat del guion"
+             : (mv.altKey ? "imán suelto (Alt)" : ""));
+      };
+      var soltar = function () {
+        window.removeEventListener("pointermove", mover);
+        window.removeEventListener("pointerup", soltar);
+        elem.classList.remove("arrastrando");
+        arrastre = null;
+        mostrarGuia(null);
+        avisar("");
+        refrescarPaneles(tipo);
+        pintarTodo();
+      };
+      window.addEventListener("pointermove", mover);
+      window.addEventListener("pointerup", soltar);
+    });
+  }
+
+  function aplicarMovimiento(tipo, obj, t, largo) {
+    if (tipo === "sfx") {
+      obj.t = t;
+      try { sfxModificado = true; } catch (e) { /* sin flag no se guarda, pero no rompe */ }
+    } else if (tipo === "anim") {
+      // moverAnimacion() ya existe en el editor: hace el clamp con la duración
+      // real del clip y marca animacionesModificado. Reusarla evita que la tira
+      // y la pista de animaciones muevan las cosas de dos maneras distintas.
+      var usada = false;
+      try { moverAnimacion(obj, t); usada = true; } catch (e) { /* cae al camino manual */ }
+      if (!usada) { obj.ini = t; obj.fin = t + largo; }
+    } else {
+      obj.ini = t;
+      obj.fin = t + largo;
+    }
+  }
+
+  /* Al soltar se avisa a las secciones de siempre. La tira NO sustituye a las
+   * cinco pistas viejas (ver PLAN-TIRA.md): son ellas las que siguen mandando
+   * en la edición fina, así que tienen que enterarse de lo que se movió aquí. */
+  function refrescarPaneles(tipo) {
+    if (tipo === "sfx") {
+      llamar("pintarSfx", function () { pintarSfx(); });
+      llamar("tablaSfx", function () { tablaSfx(); });
+    } else if (tipo === "anim") {
+      llamar("pintarAnimTimeline", function () { pintarAnimTimeline(); });
+      llamar("renderAnimGrid", function () { renderAnimGrid(); });
+    } else {
+      llamar("renderPipsLista", function () { renderPipsLista(); });
+      llamar("pintarPipTimeline", function () { pintarPipTimeline(); });
+      llamar("construirTimeline", function () { construirTimeline(); });
+    }
+  }
+
   // -- sincronización con el resto del editor ------------------------------
   /* La tira no puede engancharse a los repintados de las otras secciones sin
    * modificar sus funciones, que es justo lo que este módulo no hace. En vez de
@@ -271,8 +478,11 @@
       T = D.tira;
       dur = D.duracion || 0;
       if (!T.carriles || !T.carriles.length || dur <= 0) return;
+      if (!imanElegido) imanActivo = !(T.iman && T.iman.activo_defecto === false);
       if (!construirArmazon()) return;
       iniciado = true;
+      zoom = 1;
+      fijarZoom(1);
       pintarTodo();
       ultimoCursor = -1;
     },
@@ -292,6 +502,20 @@
         ultimoCursor = t;
         var c = el("tiraCursor");
         if (c) c.style.left = pct(t) + "%";
+        // Con zoom, el cursor se va de la vista enseguida. Se sigue solo
+        // mientras el video corre: durante un arrastre o al mirar otro tramo
+        // parado, mover el scroll bajo el ratón sería pelearse con el usuario.
+        var v = elVideo();
+        if (zoom > 1 && v && !v.paused && !arrastre) {
+          var scroll = el("tiraScroll");
+          if (scroll) {
+            var x = (t / dur) * anchoLienzoPx();
+            var margen = scroll.clientWidth * 0.15;
+            if (x < scroll.scrollLeft + margen || x > scroll.scrollLeft + scroll.clientWidth - margen) {
+              scroll.scrollLeft = x - scroll.clientWidth / 2;
+            }
+          }
+        }
       }
 
       var ahora = Date.now();
@@ -305,9 +529,11 @@
     // Para las pruebas y para la consola: estado interno sin tener que
     // adivinarlo desde el DOM.
     _estado: function () {
-      return { iniciado: iniciado, dur: dur, carriles: T ? T.carriles.length : 0 };
+      return { iniciado: iniciado, zoom: zoom, iman: imanActivo, dur: dur, carriles: T ? T.carriles.length : 0 };
     },
+    _imantar: imantar,
     _pintarTodo: pintarTodo,
+    _fijarZoom: fijarZoom,
     _tiempoEn: tiempoEn,
   };
 

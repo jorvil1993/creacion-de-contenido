@@ -19,9 +19,27 @@
   color: var(--fg-2); margin: 0 0 10px;
 }
 
-/* Cuerpo: etiquetas quietas a la izquierda, carriles a la derecha. La columna
-   fija existe para que al desplazarse no se pierda de vista qué carril es
-   cuál — que es justo lo que la tira viene a arreglar. */
+.tira-barra {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 10px; font-size: 12px; color: var(--fg-2);
+}
+.tira-barra .grupo { display: flex; gap: 6px; align-items: center; }
+.tira-barra button {
+  background: var(--bg); color: var(--fg); border: 1px solid var(--linea);
+  border-radius: 6px; padding: 3px 10px; font-size: 13px; cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.tira-barra button:hover { border-color: var(--acento); color: var(--acento); }
+.tira-barra label { display: flex; gap: 4px; align-items: center; cursor: pointer; }
+.tira-barra .zoom-valor {
+  min-width: 52px; text-align: right; font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+.tira-barra .tira-aviso { color: var(--acento); font-variant-numeric: tabular-nums; }
+
+/* Cuerpo: etiquetas quietas a la izquierda, carriles desplazables a la
+   derecha. Sin la columna fija, al hacer zoom y desplazarse se pierde de vista
+   qué carril es cuál — que es justo lo que la tira viene a arreglar. */
 .tira-cuerpo { display: flex; align-items: stretch; border: 1px solid var(--linea);
                border-radius: 8px; overflow: hidden; background: var(--bg); }
 
@@ -64,6 +82,9 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   border: 1px solid transparent; box-sizing: border-box;
 }
+.tira-bloque.arrastrable { cursor: grab; }
+.tira-bloque.arrastrable:active { cursor: grabbing; }
+.tira-bloque.arrastrando { opacity: .85; box-shadow: 0 0 0 2px var(--acento); z-index: 4; }
 
 .tira-bloque.voz {
   background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .14);
@@ -92,13 +113,14 @@
 .tira-marca-sfx {
   position: absolute; top: 7px; width: 14px; height: 14px; margin-left: -7px;
   background: var(--acento); border: 1px solid var(--panel); border-radius: 3px;
-  transform: rotate(45deg);
+  transform: rotate(45deg); cursor: grab;
 }
+.tira-marca-sfx:active { cursor: grabbing; }
+.tira-marca-sfx.arrastrando { background: #ff5566; box-shadow: 0 0 0 2px rgba(255, 85, 102, .4); }
 
 /* Cursor único de toda la tira. Clase propia y NO .playhead a propósito: las
    agujas de las pistas viejas las mueve actualizarUI() por porcentaje de la
-   duración total, y la escala de la tira va a dejar de ser esa en cuanto
-   entre el zoom del bloque C. */
+   duración total, y aquí la escala depende del zoom y del desplazamiento. */
 .tira-cursor {
   position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px;
   background: #ff5566; pointer-events: none; z-index: 6;
@@ -109,8 +131,19 @@
   border-top: 6px solid #ff5566;
 }
 
-/* Marcas tenues de los beats del guion sobre la regla: los momentos que el
-   guion alineó contra la transcripción. */
+/* Guía del imán: se enciende sobre el punto al que se va a pegar el marcador
+   mientras se arrastra. Verde para bordes de palabra, ámbar para beats del
+   guion — el mismo par de colores que la leyenda de la barra. */
+.tira-guia {
+  position: absolute; top: 22px; bottom: 0; width: 1px; margin-left: -0.5px;
+  pointer-events: none; z-index: 5; display: none;
+}
+.tira-guia.visible { display: block; }
+.tira-guia.palabra { background: #34d399; box-shadow: 0 0 4px #34d399; }
+.tira-guia.beat { background: #ffc93c; box-shadow: 0 0 4px #ffc93c; }
+
+/* Marcas tenues de los beats del guion sobre la regla: sirven para ver a qué se
+   va a pegar el imán ANTES de empezar a arrastrar. */
 .tira-beat {
   position: absolute; top: 0; height: 22px; width: 1px; margin-left: -0.5px;
   background: rgba(255, 201, 60, .55); pointer-events: none;

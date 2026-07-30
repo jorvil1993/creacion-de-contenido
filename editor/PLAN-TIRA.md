@@ -207,3 +207,169 @@ llega con el bloque C. La columna «se arrastra» de la tabla describe lo que
   que los seis carriles se corresponden con lo que se oye y se ve.
 
 ---
+
+## BLOQUE C — Zoom, desplazamiento e imán
+
+**Estado: hecho.**
+
+### Qué se puede hacer ahora
+
+- **Zoom** de 1x a 40x: `Ctrl` + rueda sobre la tira, o los botones `−` / `+` /
+  `Todo`. Acercar **mantiene quieto el instante que está bajo el cursor**, así
+  que ampliar sobre el segundo 20 no salta al principio del video. Aparece
+  desplazamiento horizontal, y la regla se afina sola (de marcas cada 2s a
+  marcas cada décima) según lo que quepa.
+- **Arrastre magnético** en los tres carriles de en medio (B-Roll/PiP,
+  animaciones y SFX). Al soltar cerca de un borde de palabra o de un beat del
+  guion, el marcador se pega exacto y una guía de color dice a cuál: verde para
+  bordes de palabra, ámbar para beats. La barra escribe «pegado a un borde de
+  palabra» / «pegado a un beat del guion».
+- **El imán se suelta** con la casilla, o con `Alt` mientras se arrastra —
+  sin tener que destildar nada para un solo movimiento.
+
+### Qué decidí y por qué
+
+- **La tolerancia del imán se mide en PÍXELES, no en segundos**
+  (`IMAN_TOLERANCIA_PX = 8`, convertida a segundos con el zoom actual). Es la
+  decisión que hace que el imán no estorbe: a 1x agarra dentro de 0.22s, que es
+  lo que se quiere cuando se ve el video entero; a 20x agarra dentro de 0.011s,
+  o sea que cuando ya se ve el fotograma la ayuda se aparta sola en vez de
+  seguir pegando todo a medio segundo. Medido en el navegador, no deducido.
+- **A igual distancia gana el beat**, no el borde de palabra: un beat es una
+  decisión editorial explícita del guion y un borde de palabra es solo dónde
+  calló Whisper. Mismo criterio que la prioridad de SFX del bloque 3 de
+  `PLAN-MEJORAS.md`.
+- **Se mueve el bloque ENTERO, nunca sus bordes.** Estirar un B-Roll ya se hace
+  en su pista de siempre, que conoce `duracionMaximaClip(ev)` y frena en el
+  tramo recortado del clip (bloque 4). Moviéndolo entero la duración no cambia,
+  así que **ese tope no se puede violar desde la tira** — no hay que replicarlo
+  ni hay una segunda forma de romperlo. Hay una prueba que falla si aparece un
+  tirador de redimensionado en la tira.
+- **Las animaciones se mueven llamando a `moverAnimacion()`**, la función que ya
+  existe: hace el clamp con la duración real del clip y marca
+  `animacionesModificado`. Replicar su lógica habría permitido que el mismo
+  gesto diera resultados distintos según se hiciera en la tira o en la pista.
+- **Sin Ctrl, la rueda no hace zoom.** Se comprueba en una prueba: si la tira
+  se tragara la rueda a secas, bajar por el editor con el ratón encima sería
+  imposible.
+- El imán se pega al valor EXACTO del punto (3 decimales). Las pistas viejas
+  redondean a 2 (`tiempoDesdeEvento`); son caminos distintos y los dos válidos,
+  pero conviene saberlo: mover el mismo SFX en la tira y en su pista puede
+  dejar `2.783` o `2.78`. La diferencia es de un tercio de fotograma.
+
+### El hallazgo que conviene recordar
+
+**Cuatro de los seis beats de `Guion-7` caen EXACTAMENTE sobre un borde de
+palabra** (distancia 0.0000s), porque `f13_guion.py` alinea los beats contra
+palabras de la transcripción: el tiempo de un beat *es* un borde de palabra.
+Los que no coinciden son los derivados — el fin de un tramo, el inicio de un
+plano cerrado. O sea que en la práctica la regla de «a igual distancia gana el
+beat» casi nunca se activa, y las dos familias del imán se solapan mucho más de
+lo que parece.
+
+Esto se descubrió porque la primera prueba del imán a beats **falló**: pedí
+imantar a 0.03s del beat 6.4s y se pegó a 6.404s, un borde de palabra que
+estaba a 4 milésimas del beat. El código hacía lo correcto (el más cercano
+gana); la prueba había elegido un beat que no servía para distinguir nada. Se
+reescribió para buscar un beat aislado de verdad (10.816s, a 0.11s del borde
+más cercano).
+
+### Verificación hecha
+
+- `python editor/test_regresion.py` (202) y `python editor/test_align.py`: en
+  verde. `python editor/test_tira.py`: **52 pruebas** (17 nuevas en la sección
+  5). Cubren que el zoom y la tolerancia se lean de `/datos`, que la tolerancia
+  se convierta de píxeles a segundos, que la rueda solo actúe con Ctrl, que se
+  muevan bloques enteros y no bordes, que las animaciones usen
+  `moverAnimacion()`, que mover marque el flag de «editado a mano» —sin él el
+  cambio se ve en pantalla y el re-render lo tira— y que al soltar se refresquen
+  las siete funciones de las secciones de siempre.
+- `node --check` sobre `tira.js` y sobre el `<script>` extraído: sin errores.
+- **En el navegador de verdad** (Edge headless + CDP), contra una copia limpia
+  de `_prueba-tira` recreada justo antes:
+  - Zoom por botones: 4 clics dan 1.25⁴, el lienzo pasa de 891px visibles a
+    2174px reales, aparece desplazamiento y la regla pasa de 13 a 25 marcas.
+  - `Ctrl`+rueda ×5 → 3.05x, y el instante bajo el cursor se movió de 18.6248s
+    a 18.6290s: **4 milésimas**, con el lienzo desplazado 1371px para
+    conservarlo. La misma rueda sin Ctrl no cambió el zoom.
+  - Arrastre real de un SFX (eventos `pointerdown`/`pointermove`/`pointerup`
+    despachados sobre el elemento): soltado en 8.425s → **pegado a 8.465s
+    exacto**, guía verde encendida, aviso escrito, `sfxModificado` en true, y
+    **el marcador de la pista de SFX de siempre se movió al mismo sitio**
+    (34.0877% = 8.465s) — la tira y la pista vieja no se desincronizan.
+  - El mismo gesto con `Alt`: se quedó en 8.425s y no se encendió ninguna guía.
+  - Imán a un beat aislado (10.816s): se pegó y lo identificó como beat.
+  - Tolerancia: a 1x (0.2231s) un desvío de 0.15s se imanta; a 20x (0.0112s) el
+    mismo desvío ya no.
+  - Casilla: destildar apaga el imán, volver a tildarla lo enciende.
+  - Arrastre de un B-Roll: se movió 3s exactos **sin cambiar su duración**
+    (1.85s antes y después), y empujado más allá del final se frenó en 24.833s.
+  - Consola del navegador **vacía** en las dos tandas.
+  - Captura a 3.1x: se leen los nombres completos de los clips y el texto de
+    los subtítulos, que a 1x no cabían.
+- **El otro camino del pipeline también**: una corrida **sin `--guion` y sin
+  render** (`es_renderizado: false`, sin ningún `guion.*.json` ni
+  `10_guion-alineado.md`) levantada aparte en el puerto 8802. La tira se
+  enciende igual, pinta los seis carriles, calcula los 21 bloques de subtítulo,
+  **no dibuja ninguna marca de beat** —porque no hay— y el imán sigue
+  funcionando con los 147 bordes de palabra. Era el caso con más probabilidad
+  de reventar y es el que sale cuando se corre el pipeline sin número de guion.
+
+### Archivos tocados
+
+- `editor/web/tira.js`, `editor/web/tira.css` — zoom, imán y arrastre
+- `editor/test_tira.py` — sección 5
+
+### Lo que NO pude verificar
+
+- **Arrastre con un ratón de verdad.** En headless no hay puntero: se despachan
+  eventos `pointerdown`/`pointermove`/`pointerup`, que ejercitan exactamente el
+  mismo código pero no pasan por el sistema de ventanas. Falta que José agarre
+  un B-Roll y lo mueva: que el cursor cambie a la manita, que el bloque siga al
+  ratón sin tirones y que la guía del imán se vea encenderse al acercarse.
+- **La rueda física con Ctrl.** Se probó con un `WheelEvent` sintético. En
+  algunos ratones y trackpads Windows manda `deltaY` en pasos distintos; si el
+  zoom se sintiera brusco o al revés, el número a tocar es
+  `f14_tira.ZOOM_FACTOR` (1.25), no el JS.
+- **Reproducción del video**, igual que en el bloque A: Edge headless no trae
+  el decodificador H.264. En particular falta comprobar que el **desplazamiento
+  automático** (con zoom > 1, la tira sigue al cursor cuando se sale de la
+  vista) no marea al reproducir.
+
+---
+
+## Notas operativas de esta sesión
+
+- El worktree `C:\ai-video\wt-tira` necesita enlaces a las carpetas pesadas que
+  no están en git. Se hicieron con *junctions* de Windows (no hacen falta
+  permisos de administrador):
+  `assets` (la carpeta entera, borrando antes la que había creado el checkout),
+  `entrada` y `salida`. Git ve el contenido a través del junction; los `M` que
+  aparecen en `git status` sobre `assets/` son solo ruido de fin de línea
+  (`git diff` sale vacío).
+- **El worktree se deja en pie a propósito.** Queda la verificación manual
+  (arrastre con ratón, reproducción del video) y desde ahí se puede abrir el
+  editor sin tocar el repo principal, donde otra sesión sigue trabajando:
+
+  ```
+  C:\ai-video\venv312\Scripts\python.exe editor/f11_servidor.py "C:\ai-video\salida\Guion-7" --puerto 8801
+  ```
+
+  Cuando José integre `mejoras-tira` en `mejoras-editor`:
+  `git worktree remove C:\ai-video\wt-tira` (los junctions se van con él).
+- Los únicos archivos tocados son los siete de la lista de cada bloque.
+  `git diff --name-only mejoras-editor..mejoras-tira` lo confirma: no se tocó
+  `test_regresion.py`, ni `PLAN-MEJORAS.md`, ni ninguno de los archivos del
+  bloque de silencios (`f2_cortar.py`, `editor.py`, `f15_silencios.py`,
+  `editor/web/silencios.js`, `PLAN-SILENCIOS.md`, `test_silencios.py`).
+- **Percance a evitar**: para limpiar el servidor de verificación se hizo un
+  `Stop-Process` filtrando por nombre `python.exe`, y cayeron **seis** procesos
+  cuando solo uno era el servidor de esta sesión. Hay otra sesión de Claude
+  trabajando en paralelo sobre este mismo repo. Lo correcto es guardar el PID
+  al lanzar (`Start-Process -PassThru`) y matar solo ese, o filtrar por
+  `CommandLine`. Se comprobó después que ninguna corrida real cambió de mtime.
+- Toda la verificación se hizo contra `C:\ai-video\salida\_prueba-tira`, copia
+  descartable de `Guion-7`, recreada entre tandas para partir siempre de un
+  estado conocido (el autoguardado del editor escribe `ajustes.*.json` en
+  cuanto se mueve algo). El `Guion-7` real no se tocó en ningún momento y se
+  comprobó su mtime al empezar y al terminar. La copia se borra al cerrar.

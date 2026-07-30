@@ -308,6 +308,72 @@ def pruebas_enganche():
 
 
 # ===========================================================================
+# 5. Zoom e iman (bloque C)
+# ===========================================================================
+def pruebas_zoom_iman():
+    seccion("5. Zoom e iman (bloque C)")
+
+    js = (AQUI / "web" / "tira.js").read_text(encoding="utf-8")
+
+    chk("los limites de zoom y la tolerancia del iman se leen de /datos",
+        "T.zoom.min" in js and "T.zoom.max" in js and "T.zoom.factor" in js
+        and "T.iman.tolerancia_px" in js,
+        "mismo patron que los picos de SFX y la zona segura: nada hardcodeado en el JS")
+
+    # La tolerancia se mide en PANTALLA, no en segundos. Es lo que hace que al
+    # acercar la ayuda se afine sola en vez de seguir pegando todo a medio
+    # segundo cuando ya se ve el fotograma.
+    chk("la tolerancia del iman se convierte de pixeles a segundos con el zoom",
+        "tolerancia_px || 8) * segPorPx()" in js and "return w > 0 ? dur / w : 0;" in js)
+
+    chk("el iman se puede soltar con Alt y con la casilla",
+        "mv.altKey" in js and 'el("tiraIman")' in js and "imanActivo = chk.checked" in js)
+
+    # Ctrl+rueda: sin Ctrl la rueda tiene que seguir desplazando la pagina, o
+    # se vuelve imposible bajar por el editor con el raton sobre la tira.
+    chk("la rueda solo hace zoom con Ctrl",
+        "if (!ev.ctrlKey) return;" in js and "{ passive: false }" in js)
+    chk("acercar mantiene quieto el instante bajo el cursor",
+        "zoomAnclado" in js and "tAnclado" in js and "scroll.scrollLeft =" in js)
+
+    # Mover un bloque ENTERO nunca cambia su duracion, asi que no puede
+    # saltarse el tope del tramo recortado del clip (bloque 4 de PLAN-MEJORAS),
+    # que es cosa de los tiradores de la pista de siempre.
+    # Sin los comentarios: el que explica esta misma decision nombra
+    # duracionMaximaClip para decir que NO hace falta llamarla.
+    js_codigo = re.sub(r"/\*.*?\*/", "", js, flags=re.S)
+    js_codigo = re.sub(r"^\s*//.*$", "", js_codigo, flags=re.M)
+    chk("la tira mueve bloques enteros, no redimensiona",
+        "obj.fin = t + largo" in js_codigo and "enc-tirador" not in js_codigo
+        and "duracionMaximaClip" not in js_codigo,
+        "moviendo entero la duracion no cambia, asi que el tope del tramo "
+        "recortado del clip no se puede violar desde la tira")
+    chk("el movimiento se frena en los bordes del video",
+        "Math.min(dur - largo, propuesto)" in js)
+
+    # Reusar moverAnimacion() en vez de replicar su clamp: si la tira y la
+    # pista de animaciones movieran de dos maneras distintas, el mismo gesto
+    # daria resultados distintos segun donde se hiciera.
+    chk("las animaciones se mueven con moverAnimacion(), la funcion que ya existe",
+        "moverAnimacion(obj, t)" in js)
+    fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+    chk("moverAnimacion sigue existiendo en el editor y marca el flag",
+        "function moverAnimacion(a, ini)" in fuente_srv
+        and "animacionesModificado = true;" in fuente_srv)
+
+    # Mover algo desde la tira tiene que marcarlo como manual: si no, el
+    # cambio se ve en pantalla pero el re-render lo tira.
+    chk("mover un SFX en la tira lo marca como editado a mano",
+        "sfxModificado = true" in js)
+
+    # Al soltar, las secciones de siempre tienen que enterarse: la tira NO las
+    # sustituye, siguen siendo ellas las que mandan en la edicion fina.
+    for fn in ("pintarSfx", "tablaSfx", "pintarAnimTimeline", "renderAnimGrid",
+               "renderPipsLista", "pintarPipTimeline", "construirTimeline"):
+        chk(f"al soltar se refresca {fn}()", f"{fn}();" in js.split("function refrescarPaneles")[-1])
+
+
+# ===========================================================================
 def main():
     print("=" * 60)
     print("  PRUEBAS DE LA TIRA DE CAPAS  (editor/PLAN-TIRA.md)")
@@ -317,6 +383,7 @@ def main():
     pruebas_beats()
     pruebas_robustez()
     pruebas_enganche()
+    pruebas_zoom_iman()
 
     fallos = [n for n, ok in _resultados if not ok]
     print("\n" + "=" * 60)
