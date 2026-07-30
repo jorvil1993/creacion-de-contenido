@@ -405,6 +405,15 @@ class Handler(BaseHTTPRequestHandler):
                                 DIR_TRABAJO / "02_cortado.mp4")
                 proxy = f10.generar_proxy(v_target, DIR_TRABAJO)
                 self._archivo(proxy, "video/mp4")
+            elif ruta in ("/tira.js", "/tira.css"):
+                # Tira de capas apiladas (PLAN-TIRA.md). Su JS y su CSS viven en
+                # editor/web/ y no dentro de PAGINA a propósito: un conflicto de
+                # merge dentro del texto del JavaScript daría Python válido con
+                # JS roto, y los tests son de Python.
+                estatico = Path(__file__).resolve().parent / "web" / ruta.lstrip("/")
+                self._archivo(estatico,
+                              "application/javascript; charset=utf-8" if ruta.endswith(".js")
+                              else "text/css; charset=utf-8")
             elif ruta == "/archivo":
                 valores = qs.get("ruta")
                 if not valores:
@@ -1023,6 +1032,7 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
 .version-fila button:hover { border-color: var(--acento); color: var(--acento); }
 .version-fila button.quitar:hover { border-color: #f87171; color: #f87171; }
 </style>
+<link rel="stylesheet" href="/tira.css">
 </head>
 <body>
 <header style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
@@ -1072,6 +1082,7 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       <div class="franjas" id="franjas"></div>
       <div class="palabras" id="palabras"></div>
     </div>
+    <div id="tiraCapas"></div>
   </div>
 
   <div class="panel">
@@ -1885,6 +1896,8 @@ async function cargar() {
     loopArrancado = true;
     requestAnimationFrame(loop);
   }
+
+  if (window.__tira) window.__tira.init(DATA);
 }
 
 function avisosPip() {
@@ -3384,6 +3397,8 @@ function loop() {
         }
       });
     }
+
+    if (window.__tira) window.__tira.cursor(video.currentTime);
   }
   requestAnimationFrame(loop);
 }
@@ -3477,6 +3492,7 @@ cargarProyectos();
 refrescarVersiones();
 cargar();
 </script>
+<script src="/tira.js"></script>
 </body>
 </html>
 """
