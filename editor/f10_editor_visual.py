@@ -31,6 +31,7 @@ import numpy as np
 
 import config
 import f5_audio
+import f15_silencios
 
 
 def _b64(ruta: Path, mime: str) -> str:
@@ -792,6 +793,7 @@ def recolectar(dir_trabajo: Path) -> dict:
         "musica_volumen_defecto": config.MUSICA_VOLUMEN,
         "musica_inicio_s": musica_inicio_s,
         "sin_musica": sin_musica,
+        "silencios": f15_silencios.datos_silencios(dir_trabajo),
     }
 
 

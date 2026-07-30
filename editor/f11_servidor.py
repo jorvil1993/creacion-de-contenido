@@ -29,6 +29,7 @@ from urllib.parse import urlparse, parse_qs
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config
 import f10_editor_visual as f10
+import f15_silencios
 
 DIR_TRABAJO: Path = None
 RAICES_PERMITIDAS: list = None
@@ -105,6 +106,42 @@ def _guardar_musica(datos: dict) -> Path:
     return _escritura_atomica(DIR_TRABAJO / "ajustes.musica.json", limpio)
 
 
+def _guardar_silencios(datos: dict) -> Path:
+    """Qué tramos recortados hay que devolver al video (Bloque B).
+
+    Solo se guarda lo que se APARTA del corte automático: un tramo que no está
+    en el archivo es un tramo que se corta como siempre. Así el archivo sigue
+    siendo válido cuando el catálogo cambia (otro guion, otro `hooksegs`), en
+    vez de fijar un estado para tramos que ya no existen.
+    """
+    limpio = {"cortes": {}}
+    for cid, estado in (datos.get("cortes") or {}).items():
+        if not isinstance(estado, dict):
+            continue
+        entrada = {}
+        if estado.get("activo") is False:
+            entrada["activo"] = False
+        if estado.get("inicio") is not None:
+            entrada["inicio"] = round(float(estado["inicio"]), 3)
+        if estado.get("fin") is not None:
+            entrada["fin"] = round(float(estado["fin"]), 3)
+        if entrada:
+            limpio["cortes"][str(cid)] = entrada
+    return _escritura_atomica(DIR_TRABAJO / "ajustes.silencios.json", limpio)
+
+
+def _datos_silencios_actuales() -> dict:
+    """El catálogo de silencios de la corrida abierta.
+
+    Existe como función de módulo, en vez de leerse `DIR_TRABAJO` desde el
+    endpoint, porque `do_POST` declara `global DIR_TRABAJO` más abajo (en
+    /cambiar-proyecto) y Python prohíbe usar el nombre antes de esa
+    declaración: hacerlo es un SyntaxError que `ast.parse` no detecta y que
+    solo aparece al importar el módulo.
+    """
+    return f15_silencios.datos_silencios(DIR_TRABAJO)
+
+
 def _leer_corrida() -> dict:
     """Parámetros con los que se lanzó la corrida original (`00_corrida.json`,
     que escribe editor.py).
@@ -164,7 +201,7 @@ ARCHIVOS_AJUSTES = (
     "ajustes.eventos.json", "ajustes.broll.json", "ajustes.sfx.json",
     "ajustes.animaciones.json", "ajustes.encuadre.json", "ajustes.hookcta.json",
     "ajustes.hook.json", "ajustes.sesion.json", "ajustes.subtitulos.json",
-    "ajustes.musica.json",
+    "ajustes.musica.json", "ajustes.silencios.json",
 )
 
 # El PLAN sobre el que se hicieron esos ajustes. Va en la versión junto a ellos,
@@ -393,6 +430,15 @@ class Handler(BaseHTTPRequestHandler):
                 })
             elif ruta == "/datos":
                 self._json(f10.recolectar(DIR_TRABAJO))
+            elif ruta == "/silencios.js":
+                # El JS del editor de silencios vive en su propio archivo en vez
+                # de dentro de PAGINA: este módulo ya son 3500 líneas de Python
+                # con HTML y JavaScript entretejidos, y hay otra sesión tocándolo
+                # en paralelo. Un conflicto de merge dentro del texto de un
+                # <script> produce Python válido con JS roto, y los tests, que
+                # son de Python, pasan igual en verde.
+                self._archivo(Path(__file__).parent / "web" / "silencios.js",
+                              "application/javascript; charset=utf-8")
             elif ruta == "/video":
                 # Tras una previsualización hay que mirar el 07_PREVIEW, no el
                 # 07_FINAL, o el editor enseñaría el render anterior y parecería
@@ -489,7 +535,15 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(400, f"JSON inválido: {e}")
             return
 
-        if partes.path == "/cambiar-proyecto":
+        if partes.path == "/guardar-silencios":
+            _guardar_silencios(datos)
+            # Se devuelve el catálogo recalculado, no un simple ok: al desactivar
+            # un tramo cambian los segundos que el video va a durar y cuántos
+            # quedan restaurados, y el editor tiene que enseñar ESO y no lo que
+            # el navegador supone que pasó.
+            self._json({"ok": True, "silencios": _datos_silencios_actuales()})
+
+        elif partes.path == "/cambiar-proyecto":
             nombre = datos.get("nombre")
             if not nombre:
                 self.send_error(400, "falta 'nombre'")
@@ -779,6 +833,17 @@ class Handler(BaseHTTPRequestHandler):
                 cmd += ["--sub-tamano", str(ajustes_sub_tamano)]
             if ajustes_sub_correcciones is not None:
                 cmd += ["--sub-correcciones", str(ajustes_sub_correcciones)]
+
+            # Silencios restaurados (Bloque B). Es la única bandera que hace que
+            # --reaplicar vuelva a cortar, así que solo se pasa si de verdad hay
+            # algo apartado del corte automático: sin este `if`, cada render
+            # normal recortaría la grabación entera otra vez para nada.
+            if "silencios" in datos:
+                _guardar_silencios(datos["silencios"])
+            f_sil = DIR_TRABAJO / "ajustes.silencios.json"
+            if f_sil.exists() and f15_silencios.hay_cambios(DIR_TRABAJO):
+                cmd += ["--silencios", str(f_sil)]
+
             hook = datos.get("hook")
             if hook is None:
                 f_hook = DIR_TRABAJO / "ajustes.hook.json"
@@ -1235,6 +1300,25 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
         <button type="button" id="btnCancelarAnim">cancelar</button>
       </div>
       <div class="anim-grid" id="gridInventario"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panelSilencios">
+    <h2>Silencios recortados <span class="hint" id="silResumen"></span></h2>
+    <p class="hint">Lo que el corte automático se llevó de la grabación: silencios largos,
+      muletillas y tomas repetidas. Destildá uno para <b>devolverlo al video</b>, o arrastrá
+      los bordes de un silencio para dejar más aire. La barra de abajo es la
+      <b>grabación entera</b>, no el video que estás viendo: en gris lo que se conserva,
+      en rojo lo que se corta.</p>
+    <div id="silAvisoFuente" class="badge aviso" style="display:none; margin-bottom:8px;"></div>
+    <div id="silAvisosRemapeo" style="display:none; margin-bottom:8px;"></div>
+    <div class="pista-enc" id="pistaSilencios" style="margin-bottom:10px;">
+      <div class="franjas-enc" id="franjasSilencios"></div>
+    </div>
+    <div id="silLista"></div>
+    <div style="display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap;">
+      <button class="btn-primario" id="btnResetSilencios" type="button">Volver al corte automático</button>
+      <span class="hint" id="silPendiente"></span>
     </div>
   </div>
 
@@ -1885,6 +1969,8 @@ async function cargar() {
     loopArrancado = true;
     requestAnimationFrame(loop);
   }
+
+  if (window.__silencios) window.__silencios.init(DATA);
 }
 
 function avisosPip() {
@@ -3477,6 +3563,7 @@ cargarProyectos();
 refrescarVersiones();
 cargar();
 </script>
+<script src="/silencios.js"></script>
 </body>
 </html>
 """
