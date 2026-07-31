@@ -1,0 +1,153 @@
+/* Tira de capas apiladas (bloques A y C).
+   Reusa las variables de color que ya define el <style> de f11_servidor.py
+   (--bg, --panel, --linea, --fg, --fg-2, --acento); aquí no se redefine
+   ninguna, para que un cambio de tema siga afectando a la tira.
+   Los colores por carril son los que ya usan las pistas viejas: violeta para
+   B-Roll (igual que .grid-catalogo .item.clip y las franjas de video), ámbar
+   para animaciones (--sol, el de .enc-punch) y cian para SFX (.marca-sfx). */
+
+#tiraCapas { margin-bottom: 20px; }
+
+.tira-panel {
+  background: var(--panel);
+  border: 1px solid var(--linea);
+  border-radius: 10px;
+  padding: 14px;
+}
+.tira-panel h2 {
+  font-size: 13px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--fg-2); margin: 0 0 10px;
+}
+
+.tira-barra {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 10px; font-size: 12px; color: var(--fg-2);
+}
+.tira-barra .grupo { display: flex; gap: 6px; align-items: center; }
+.tira-barra button {
+  background: var(--bg); color: var(--fg); border: 1px solid var(--linea);
+  border-radius: 6px; padding: 3px 10px; font-size: 13px; cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.tira-barra button:hover { border-color: var(--acento); color: var(--acento); }
+.tira-barra label { display: flex; gap: 4px; align-items: center; cursor: pointer; }
+.tira-barra .zoom-valor {
+  min-width: 52px; text-align: right; font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+.tira-barra .tira-aviso { color: var(--acento); font-variant-numeric: tabular-nums; }
+
+/* Cuerpo: etiquetas quietas a la izquierda, carriles desplazables a la
+   derecha. Sin la columna fija, al hacer zoom y desplazarse se pierde de vista
+   qué carril es cuál — que es justo lo que la tira viene a arreglar. */
+.tira-cuerpo { display: flex; align-items: stretch; border: 1px solid var(--linea);
+               border-radius: 8px; overflow: hidden; background: var(--bg); }
+
+.tira-etiquetas { flex: 0 0 116px; border-right: 1px solid var(--linea); }
+.tira-etiquetas .hueco { height: 22px; border-bottom: 1px solid var(--linea); }
+.tira-etiquetas .et {
+  height: 30px; display: flex; align-items: center; padding: 0 8px;
+  font-size: 11px; color: var(--fg-2); border-bottom: 1px solid var(--linea);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tira-etiquetas .et:last-child { border-bottom: none; }
+.tira-etiquetas .et.editable { color: var(--fg); }
+.tira-etiquetas .et .punto {
+  width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; flex: none;
+}
+
+.tira-scroll { flex: 1 1 auto; overflow-x: auto; overflow-y: hidden; min-width: 0; }
+.tira-lienzo { position: relative; height: 202px; /* 22 de regla + 6 x 30 */ }
+
+/* Regla de tiempo */
+.tira-regla { position: relative; height: 22px; border-bottom: 1px solid var(--linea);
+              cursor: pointer; }
+.tira-regla .marca { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--linea); }
+.tira-regla .marca span {
+  position: absolute; left: 3px; top: 3px; font-size: 9px; color: var(--fg-2);
+  font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap;
+}
+
+.tira-carril {
+  position: relative; height: 30px; border-bottom: 1px solid var(--linea);
+  cursor: pointer;
+}
+.tira-carril:last-of-type { border-bottom: none; }
+.tira-carril:nth-of-type(even) { background: rgba(255, 255, 255, .02); }
+
+/* Bloques */
+.tira-bloque {
+  position: absolute; top: 4px; height: 22px; border-radius: 4px;
+  font-size: 10px; line-height: 22px; padding: 0 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border: 1px solid transparent; box-sizing: border-box;
+}
+.tira-bloque.arrastrable { cursor: grab; }
+.tira-bloque.arrastrable:active { cursor: grabbing; }
+.tira-bloque.arrastrando { opacity: .85; box-shadow: 0 0 0 2px var(--acento); z-index: 4; }
+
+.tira-bloque.voz {
+  background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .14);
+  color: var(--fg-2);
+}
+.tira-bloque.subtitulo {
+  background: rgba(232, 241, 244, .10); border-color: rgba(232, 241, 244, .3);
+  color: var(--fg);
+}
+.tira-bloque.broll { background: rgba(139, 92, 246, .3); border-color: #8b5cf6; color: #ddd6fe; }
+.tira-bloque.pip { background: rgba(139, 92, 246, .16); border-color: #a78bfa; color: #ddd6fe; }
+.tira-bloque.anim {
+  background: rgba(255, 201, 60, .22); border-color: var(--sol, #ffc93c); color: #ffe9a8;
+}
+.tira-bloque.musica {
+  background: rgba(79, 209, 217, .10); border-color: rgba(79, 209, 217, .45);
+  color: var(--acento);
+}
+.tira-bloque.musica.apagada {
+  background: repeating-linear-gradient(135deg,
+    rgba(157, 179, 188, .12) 0 6px, rgba(157, 179, 188, .04) 6px 12px);
+  border-color: var(--fg-2); color: var(--fg-2);
+}
+
+/* Los SFX son un instante, no un tramo: rombo de ancho fijo centrado en su t. */
+.tira-marca-sfx {
+  position: absolute; top: 7px; width: 14px; height: 14px; margin-left: -7px;
+  background: var(--acento); border: 1px solid var(--panel); border-radius: 3px;
+  transform: rotate(45deg); cursor: grab;
+}
+.tira-marca-sfx:active { cursor: grabbing; }
+.tira-marca-sfx.arrastrando { background: #ff5566; box-shadow: 0 0 0 2px rgba(255, 85, 102, .4); }
+
+/* Cursor único de toda la tira. Clase propia y NO .playhead a propósito: las
+   agujas de las pistas viejas las mueve actualizarUI() por porcentaje de la
+   duración total, y aquí la escala depende del zoom y del desplazamiento. */
+.tira-cursor {
+  position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px;
+  background: #ff5566; pointer-events: none; z-index: 6;
+}
+.tira-cursor::before {
+  content: ""; position: absolute; top: 0; left: -4px;
+  border-left: 5px solid transparent; border-right: 5px solid transparent;
+  border-top: 6px solid #ff5566;
+}
+
+/* Guía del imán: se enciende sobre el punto al que se va a pegar el marcador
+   mientras se arrastra. Verde para bordes de palabra, ámbar para beats del
+   guion — el mismo par de colores que la leyenda de la barra. */
+.tira-guia {
+  position: absolute; top: 22px; bottom: 0; width: 1px; margin-left: -0.5px;
+  pointer-events: none; z-index: 5; display: none;
+}
+.tira-guia.visible { display: block; }
+.tira-guia.palabra { background: #34d399; box-shadow: 0 0 4px #34d399; }
+.tira-guia.beat { background: #ffc93c; box-shadow: 0 0 4px #ffc93c; }
+
+/* Marcas tenues de los beats del guion sobre la regla: sirven para ver a qué se
+   va a pegar el imán ANTES de empezar a arrastrar. */
+.tira-beat {
+  position: absolute; top: 0; height: 22px; width: 1px; margin-left: -0.5px;
+  background: rgba(255, 201, 60, .55); pointer-events: none;
+}
+
+.tira-leyenda { margin-top: 8px; font-size: 11px; color: var(--fg-2); line-height: 1.6; }
+.tira-leyenda .clave { color: var(--fg); }

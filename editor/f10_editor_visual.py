@@ -31,6 +31,7 @@ import numpy as np
 
 import config
 import f5_audio
+import f14_tira
 import f15_silencios
 
 
@@ -794,6 +795,7 @@ def recolectar(dir_trabajo: Path) -> dict:
         "musica_inicio_s": musica_inicio_s,
         "sin_musica": sin_musica,
         "silencios": f15_silencios.datos_silencios(dir_trabajo),
+        "tira": f14_tira.datos_tira(dir_trabajo),
     }
 
 
