@@ -232,8 +232,15 @@ HOOK_CONSERVAR_FIN_S = 0.0
 # Punto de partida — calibrado una primera vez con grabación real de José (2026-07-26)
 MULETILLAS = [
     "eh", "ehh", "mmm", "o sea", "digamos",
-    "viste", "no ve", "ya pues", "nada", "tipo",
+    "viste", "no ve", "ya pues", "tipo",
 ]
+# OJO: las entradas de DOS palabras ("o sea", "no ve", "ya pues") no se cortan
+# nunca. `f2_cortar._es_muletilla` compara UNA palabra de la transcripción
+# contra esta lista, así que una entrada con espacio no puede coincidir. Están
+# inertes desde siempre. Se dejan porque quitarlas no cambia nada y documentan
+# la intención; hacerlas funcionar es un cambio de comportamiento (empezarían a
+# cortarse de golpe) que hay que decidir mirando material real, no de paso.
+#
 # Conectores ambiguos: solo se tratan como muletilla si además cumplen
 # criterio de contexto (pausa larga alrededor, posición aislada en la frase).
 # NO eliminar por coincidencia literal.
@@ -242,7 +249,18 @@ MULETILLAS = [
 # trataba cualquier "este" como muletilla sin mirar el contexto — rompió la
 # gramática de la frase. "este" SÍ puede ser muletilla (p.ej. "eh... este...
 # no sé") pero solo cuando está aislado por pausas, no siempre.
-CONECTORES_AMBIGUOS = ["bueno", "entonces", "pues", "este"]
+#
+# "nada" se movió aquí el 2026-07-30 por el MISMO motivo y con el mismo
+# diagnóstico. José dijo "¿ya no podés estar cinco minutos sin hacer NADA?" y el
+# corte se lo comió: es un pronombre indefinido, no una muletilla. Medido sobre
+# todas las transcripciones que había en C:\ai-video\salida: 6 apariciones de
+# "nada", las 6 pegadas a las palabras de al lado (pausas de ~0.1s) y las 6 de
+# uso legítimo — nunca ha aparecido una sola vez como muletilla. En los guiones
+# escritos del panel son 12 apariciones, también todas legítimas ("sin nada
+# encima", "donde nada te interrumpa", "no te da nada que…"). "nada" SÍ es
+# muletilla en el habla boliviana ("nada… la cosa es que"), pero solo cuando va
+# aislado por pausas, que es justo lo que el criterio de contexto comprueba.
+CONECTORES_AMBIGUOS = ["bueno", "entonces", "pues", "este", "nada"]
 
 # Umbral de similitud difusa para detectar tomas repetidas (0-1)
 TOMA_REPETIDA_SIMILITUD_MIN = 0.75

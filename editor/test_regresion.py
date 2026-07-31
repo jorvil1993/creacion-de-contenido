@@ -164,6 +164,46 @@ def pruebas_corte():
     chk("el remapeo es monotono (nunca retrocede en el tiempo)",
         m == sorted(m), f"0,4,6.5,9,25 -> {[round(x, 2) for x in m]}")
 
+    # --- palabras normales que la lista de muletillas se comia --------------
+    # Caso real (2026-07-30): Jose dijo "ya no podes estar cinco minutos sin
+    # hacer NADA?" y el corte se llevo el "nada" porque estaba en MULETILLAS,
+    # que se aplica por coincidencia LITERAL sin mirar contexto. Es un pronombre
+    # indefinido, no una muletilla, y romperlo cambia el sentido de la frase.
+    # Mismo bug que ya habia tenido "este" ("mas ESTE año"). La correccion es la
+    # misma: pasarlo a CONECTORES_AMBIGUOS, que solo corta si la palabra va
+    # AISLADA por pausas -- que es como suena una muletilla de verdad.
+    palabras_nada = [
+        {"inicio": 0.00, "fin": 0.30, "texto": "cinco"},
+        {"inicio": 0.32, "fin": 0.70, "texto": "minutos"},
+        {"inicio": 0.72, "fin": 0.90, "texto": "sin"},
+        {"inicio": 0.92, "fin": 1.20, "texto": "hacer"},
+        {"inicio": 1.22, "fin": 1.50, "texto": "nada?"},   # legitimo: pegado
+        {"inicio": 1.52, "fin": 1.70, "texto": "Sin"},
+        {"inicio": 1.72, "fin": 2.10, "texto": "sacar"},
+        {"inicio": 3.50, "fin": 3.80, "texto": "nada"},    # muletilla: aislado
+        {"inicio": 4.40, "fin": 4.90, "texto": "final"},
+    ]
+    cortes_m = f2_cortar.detectar_cortes_muletillas(
+        palabras_nada, [{"inicio": 0.0, "fin": 4.90}])
+    cortados = [round(c["inicio"], 2) for c in cortes_m]
+    chk("'sin hacer nada?' NO se corta: es un pronombre, no una muletilla",
+        1.22 not in cortados,
+        f"cortes en {cortados}" if cortados else "no corto nada")
+    chk("un 'nada' AISLADO por pausas si se sigue cortando",
+        3.50 in cortados,
+        "el criterio de contexto no puede volverse tan blando que deje de "
+        "cortar la muletilla de verdad")
+    chk("'nada' esta en los ambiguos y ya no en la lista literal",
+        "nada" in config.CONECTORES_AMBIGUOS and "nada" not in config.MULETILLAS)
+
+    # Las entradas de dos palabras de MULETILLAS estan INERTES: _es_muletilla
+    # compara una sola palabra de la transcripcion. Se documenta para que nadie
+    # las cuente como proteccion activa; hacerlas funcionar es otro cambio.
+    inertes = [m for m in config.MULETILLAS if " " in m]
+    chk("las muletillas de dos palabras se sabe que no cortan nada",
+        all(" " in m for m in inertes),
+        f"inertes por comparar palabra a palabra: {inertes}")
+
 
 # ===========================================================================
 # 2. Encuadre y zoom (f4_retencion)
