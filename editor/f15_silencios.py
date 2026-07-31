@@ -315,6 +315,14 @@ def catalogo(dir_trabajo) -> dict:
         "duracion_original_s": round(float(duracion_original), 3),
         "duracion_actual_s": datos_c.get("duracion_resultante_s"),
         "parametros": params,
+        # Los tramos que de verdad sobrevivieron en el 02_cortado.mp4 que se
+        # está viendo. NO es lo mismo que "los tramos no activos del catálogo":
+        # al destildar un silencio en el panel, el catálogo cambia al instante
+        # pero el video en pantalla sigue siendo el de antes hasta re-renderizar.
+        # La aguja tiene que mapear con lo que el archivo tiene, no con lo que
+        # se acaba de pedir, o señalaría un punto de la grabación que no se
+        # corresponde con el fotograma que se está viendo.
+        "intervalos_conservados": intervalos,
     }
 
 

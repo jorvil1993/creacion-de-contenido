@@ -1352,7 +1352,12 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       muletillas y tomas repetidas. Destildá uno para <b>devolverlo al video</b>, o arrastrá
       los bordes de un silencio para dejar más aire. La barra de abajo es la
       <b>grabación entera</b>, no el video que estás viendo: en gris lo que se conserva,
-      en rojo lo que se corta.</p>
+      en rojo lo que se corta. La <b>aguja cian</b> sigue al reproductor sobre esa escala:
+      cuando el video llega a un corte, la aguja <b>salta por encima de la franja roja</b>
+      (destella en ámbar) — eso es lo que se quitó. Clic en la barra para ir ahí.</p>
+    <div style="display:flex; justify-content:flex-end; margin-bottom:4px;">
+      <span class="sil-donde" id="silDonde"></span>
+    </div>
     <div id="silAvisoFuente" class="badge aviso" style="display:none; margin-bottom:8px;"></div>
     <div id="silAvisosRemapeo" style="display:none; margin-bottom:8px;"></div>
     <div class="pista-enc" id="pistaSilencios" style="margin-bottom:10px;">
@@ -3575,6 +3580,7 @@ function loop() {
     }
 
     if (window.__tira) window.__tira.cursor(video.currentTime);
+    if (window.__silencios) window.__silencios.cursor(video.currentTime);
   }
   requestAnimationFrame(loop);
 }

@@ -11,6 +11,7 @@ MISMO instante del habla que antes.
 Uso:  python editor/test_silencios.py
 """
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -429,6 +430,7 @@ def pruebas_cableado():
     fuente_editor = (AQUI / "editor.py").read_text(encoding="utf-8")
     fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
     fuente_f10 = (AQUI / "f10_editor_visual.py").read_text(encoding="utf-8")
+    fuente_f15 = (AQUI / "f15_silencios.py").read_text(encoding="utf-8")
     fuente_js = (AQUI / "web" / "silencios.js").read_text(encoding="utf-8")
     fuente_f2 = (AQUI / "f2_cortar.py").read_text(encoding="utf-8")
 
@@ -509,6 +511,47 @@ def pruebas_cableado():
               if c not in fuente_js]
     chk("el JS usa los mismos nombres de campo que datos_silencios()",
         not faltan, f"faltan en el JS: {faltan}" if faltan else "los 6 campos coinciden")
+
+    # --- aguja mapeada sobre la barra de la grabacion ----------------------
+    # La barra esta en coordenadas de la GRABACION y el reproductor en las del
+    # video cortado. La aguja convierte de una a otra, asi que al llegar a un
+    # corte brinca por encima de la franja roja: eso es "ver lo que se quito".
+    chk("datos_silencios() expone los intervalos que sobrevivieron en el video",
+        "intervalos_conservados" in fuente_f15 and "intervalos_conservados" in fuente_js,
+        "son los del 02_cortado.mp4 que se esta viendo, no los que pide el panel: "
+        "al destildar un tramo el catalogo cambia pero el archivo sigue igual "
+        "hasta re-renderizar, y la aguja tiene que seguir al archivo")
+    chk("el JS convierte del video a la grabacion con la misma aritmetica que f2_cortar",
+        "function aOriginal" in fuente_js and "offset + largo + 1e-9" in fuente_js,
+        "mismo bucle que f2_cortar.mapear_a_original, con los intervalos de /datos")
+    # Sin comentarios: el que explica esta misma decision nombra .playhead.
+    js_codigo = re.sub(r"/\*.*?\*/", "", fuente_js, flags=re.S)
+    js_codigo = re.sub(r"^\s*//.*$", "", js_codigo, flags=re.M)
+    chk("la aguja tiene clase propia, no .playhead",
+        "sil-aguja" in fuente_js and "playhead" not in js_codigo,
+        "actualizarUI() mueve las .playhead por porcentaje de la duracion del video "
+        "CORTADO; esta barra es mas larga y quedaria clavada en el sitio equivocado")
+    chk("el loop del editor mueve la aguja en cada frame",
+        "if (window.__silencios) window.__silencios.cursor(video.currentTime);" in fuente_srv
+        and "cursor: cursor" in fuente_js)
+    chk("la aguja sobrevive al repintado de la pista",
+        "ultimaPosOriginal" in fuente_js,
+        "pintarPista() corre al tocar cualquier casilla; sin recordar la posicion "
+        "la aguja se iria al 0 en mitad de la reproduccion")
+    chk("clic en la barra lleva el video al punto que corresponde",
+        "enganchadoClic" in fuente_js)
+
+    # La ida y vuelta tiene que cerrar: llevar una costura al original y volver.
+    intervalos = [{"inicio": 0.0, "fin": 2.0}, {"inicio": 5.0, "fin": 9.0}]
+    peor = 0.0
+    t = 0.0
+    while t <= 6.0:
+        ida = f2_cortar.mapear_a_original(t, intervalos)
+        vuelta = f2_cortar.mapear_a_nueva_linea(ida, intervalos)
+        peor = max(peor, abs(vuelta - t))
+        t += 0.01
+    chk("video -> grabacion -> video cierra exacto en todo el rango",
+        peor < 1e-6, f"peor error {peor * 1000:.4f} ms")
 
 
 def main():

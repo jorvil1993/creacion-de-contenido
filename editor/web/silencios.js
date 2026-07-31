@@ -43,6 +43,20 @@
     background:rgba(230,180,40,.14); border:1px solid rgba(230,180,40,.4);
     color:#e6b428; margin-bottom:5px; }
   #panelSilencios .sil-vacio { color:var(--fg-2); font-size:13px; padding:8px 0; }
+  /* Aguja sobre la barra de la GRABACIÓN. Clase propia y no .playhead: esa la
+     mueve actualizarUI() por porcentaje de la duración del video cortado, y
+     esta barra está en la escala de la grabación entera, que es más larga. */
+  #panelSilencios .sil-aguja { position:absolute; top:0; bottom:0; width:2px;
+    margin-left:-1px; background:#4fd1d9; pointer-events:none; z-index:6;
+    box-shadow:0 0 5px rgba(79,209,217,.8); transition:none; }
+  #panelSilencios .sil-aguja::before { content:""; position:absolute; top:0; left:-4px;
+    border-left:5px solid transparent; border-right:5px solid transparent;
+    border-top:6px solid #4fd1d9; }
+  #panelSilencios .sil-aguja.saltando { background:#ffc93c; box-shadow:0 0 8px #ffc93c; }
+  #panelSilencios .sil-aguja.saltando::before { border-top-color:#ffc93c; }
+  #panelSilencios .sil-donde { font-size:12px; color:var(--fg-2);
+    font-variant-numeric:tabular-nums; }
+  #panelSilencios .sil-donde b { color:var(--fg); }
   `;
 
   let cat = null;             // el catálogo que llegó del servidor
@@ -194,6 +208,67 @@
       }
       franjas.appendChild(d);
     }
+
+    // La aguja se recrea con la pista, pero conserva dónde estaba: pintarPista()
+    // corre cada vez que se toca una casilla, y sin esto la aguja se iría al 0
+    // en medio de la reproducción.
+    const aguja = document.createElement("div");
+    aguja.className = "sil-aguja";
+    aguja.id = "silAguja";
+    aguja.style.left = (100 * ultimaPosOriginal / dur) + "%";
+    franjas.appendChild(aguja);
+  }
+
+  /* --- aguja: del video cortado a la grabación ---------------------------- */
+
+  /* Misma aritmética que f2_cortar.mapear_a_original, que es la que usa el
+     pipeline para remapear los ajustes. Se replica aquí en vez de pedirla al
+     servidor porque hace falta en cada frame; los intervalos vienen de /datos
+     ya calculados, así que lo único que se duplica es el bucle. */
+  function aOriginal(t) {
+    const ivs = (cat && cat.intervalos_conservados) || [];
+    let offset = 0;
+    for (const iv of ivs) {
+      const largo = iv.fin - iv.inicio;
+      if (t <= offset + largo + 1e-9) return iv.inicio + (t - offset);
+      offset += largo;
+    }
+    return ivs.length ? ivs[ivs.length - 1].fin : 0;
+  }
+
+  let ultimaPosOriginal = 0;
+  let ultimoT = -1;
+
+  function cursor(t) {
+    if (!cat || !cat.disponible || typeof t !== "number" || !isFinite(t)) return;
+    if (t === ultimoT) return;
+    ultimoT = t;
+    const dur = cat.duracion_original_s || 0;
+    if (!dur) return;
+
+    const pos = aOriginal(t);
+    // Un salto grande en la grabación con un avance normal del video = la
+    // reproducción acaba de cruzar una costura. Se marca en ámbar un instante
+    // para que se VEA el brinco por encima de la franja roja, que es lo que se
+    // cortó. El umbral sale de los propios tramos: cualquier corte real dura
+    // más que dos fotogramas.
+    const salto = Math.abs(pos - ultimaPosOriginal) > 0.25 && ultimaPosOriginal > 0;
+    ultimaPosOriginal = pos;
+
+    const aguja = $("silAguja");
+    if (aguja) {
+      aguja.style.left = (100 * pos / dur) + "%";
+      if (salto) {
+        aguja.classList.add("saltando");
+        clearTimeout(aguja._destello);
+        aguja._destello = setTimeout(() => aguja.classList.remove("saltando"), 450);
+      }
+    }
+    const donde = $("silDonde");
+    if (donde) {
+      donde.innerHTML = "video <b>" + t.toFixed(2) + "s</b> = grabación <b>"
+        + pos.toFixed(2) + "s</b>";
+    }
   }
 
   function pintarLista() {
@@ -341,10 +416,35 @@
         guardar();
       });
     }
+    ultimaPosOriginal = 0;
+    ultimoT = -1;
+
+    // Clic en la barra: lleva el video al punto del VIDEO que corresponde a ese
+    // instante de la grabación. Si se clica dentro de un tramo cortado, no hay
+    // fotograma que mostrar — se va a la costura, que es donde quedó.
+    if (!pista.dataset.enganchadoClic) {
+      pista.dataset.enganchadoClic = "1";
+      pista.addEventListener("click", (ev) => {
+        if (ev.target.closest(".sil-corte")) return;
+        const r = pista.getBoundingClientRect();
+        const tOriginal = ((ev.clientX - r.left) / r.width) * (cat.duracion_original_s || 0);
+        let offset = 0;
+        let destino = 0;
+        for (const iv of (cat.intervalos_conservados || [])) {
+          if (tOriginal < iv.inicio) { destino = offset; break; }
+          if (tOriginal <= iv.fin) { destino = offset + (tOriginal - iv.inicio); break; }
+          offset += iv.fin - iv.inicio;
+          destino = offset;
+        }
+        if (typeof video !== "undefined" && video) video.currentTime = destino;
+      });
+    }
+
     pintar();
+    cursor(typeof video !== "undefined" && video ? video.currentTime : 0);
   }
 
-  window.__silencios = { init: init };
+  window.__silencios = { init: init, cursor: cursor };
 
   // cargar() puede haber terminado antes de que este archivo llegue: su
   // llamada a __silencios.init() se habría perdido y el panel quedaría vacío
