@@ -137,6 +137,13 @@ def detectar_cortes_silencio(silencios: list, conservar_inicio_s: float = 0.0,
                 "inicio": round(inicio_corte, 3),
                 "fin": round(fin_corte, 3),
                 "razon": razon,
+                # El silencio ENTERO del que sale este corte. El editor de
+                # silencios lo usa como tope de sus tiradores: se puede cortar
+                # menos (dejar más aire) hasta devolver el silencio completo,
+                # pero nunca más, porque a partir de ahí ya se estaría cortando
+                # habla y este bloque existe para lo contrario.
+                "limite_inicio": round(s["inicio"], 3),
+                "limite_fin": round(s["fin"], 3),
             })
     return cortes, round(conservado_inicio, 3), round(conservado_fin, 3)
 
@@ -266,6 +273,57 @@ def mapear_a_nueva_linea(t: float, intervalos_conservados: list) -> float:
     return round(offset, 3)
 
 
+def mapear_a_original(t: float, intervalos_conservados: list) -> float:
+    """Inversa exacta de `mapear_a_nueva_linea`: del video cortado al original.
+
+    La necesita el editor de silencios: para llevar un ajuste (un SFX, un
+    B-roll) de la línea de tiempo vieja a la nueva hay que pasar por la
+    grabación original, que es el único sistema de coordenadas que NO cambia
+    cuando se restaura un tramo. Componer `mapear_a_original` con los
+    intervalos viejos y `mapear_a_nueva_linea` con los nuevos da el remapeo
+    completo, y es exacto: verificado sobre Guion-7 con paso de 10 ms, error
+    máximo 0.000 ms.
+
+    Ambigüedad en los empalmes: un instante que cae JUSTO en la costura entre
+    dos intervalos conservados corresponde a dos puntos del original (el fin de
+    uno y el principio del siguiente). Se devuelve el FIN del intervalo que
+    termina, no el inicio del que empieza, porque un ajuste colocado en esa
+    costura se hizo mirando el fotograma que ya estaba en pantalla.
+    """
+    offset = 0.0
+    for iv in intervalos_conservados:
+        largo = iv["fin"] - iv["inicio"]
+        if t <= offset + largo + 1e-9:
+            return round(iv["inicio"] + (t - offset), 3)
+        offset += largo
+    return round(intervalos_conservados[-1]["fin"], 3) if intervalos_conservados else 0.0
+
+
+def detectar_todos_los_cortes(datos_transcripcion: dict, duracion_total: float,
+                              conservar_inicio: float = 0.0,
+                              conservar_fin: float = 0.0) -> tuple:
+    """Los tres detectores de una sola llamada, sobre la transcripción SIN cortar.
+
+    Se extrajo de `main()` para que el editor de silencios pueda recalcular el
+    catálogo de cortes candidatos sin volver a transcribir ni cortar nada. Es
+    determinista: la misma transcripción y el mismo perfil dan siempre la misma
+    lista, así que los identificadores que el editor construye a partir de ella
+    sobreviven a cualquier número de re-cortes.
+
+    Devuelve (cortes, hook_conservado_s, cierre_conservado_s).
+    """
+    palabras = datos_transcripcion.get("palabras", [])
+    segmentos = datos_transcripcion.get("segmentos", [])
+    silencios = datos_transcripcion.get("silencios", [])
+
+    cortes, hook_s, cierre_s = detectar_cortes_silencio(
+        silencios, conservar_inicio, conservar_fin, duracion_total)
+    cortes = list(cortes)
+    cortes += detectar_cortes_muletillas(palabras, segmentos)
+    cortes += detectar_tomas_repetidas(segmentos)
+    return cortes, hook_s, cierre_s
+
+
 def cortar_video_ffmpeg(ruta_entrada: Path, ruta_salida: Path, intervalos: list):
     n = len(intervalos)
     if n == 0:
@@ -326,6 +384,11 @@ def main():
                         help="Segundos de silencio a conservar justo después de la última "
                              "palabra: el cierre físico (levantarte, bajar el aparato). Con "
                              "--guion N el valor sale del campo `cierresegs` del panel")
+    parser.add_argument("--silencios", type=str, default=None, metavar="JSON",
+                        help="ajustes.silencios.json del editor visual: qué tramos "
+                             "detectados NO hay que cortar (silencios restaurados a "
+                             "mano) y con qué límites. Sin esto se cortan todos los "
+                             "detectados, que es el comportamiento de siempre")
     parser.add_argument("--tomas", type=str, default=None, metavar="JSON",
                         help="Lista de segundos donde empieza cada toma real, en la línea de "
                              "tiempo del archivo de entrada (la escribe editor.py al unir "
@@ -361,12 +424,21 @@ def main():
         print(f"Cierre físico: se conservan {conservar_fin:.2f}s de silencio después de la "
               f"última palabra.")
 
-    cortes = []
-    cortes_silencio, hook_conservado_s, cierre_conservado_s = detectar_cortes_silencio(
-        silencios, conservar_inicio, conservar_fin, duracion_total)
-    cortes += cortes_silencio
-    cortes += detectar_cortes_muletillas(palabras, segmentos)
-    cortes += detectar_tomas_repetidas(segmentos)
+    cortes, hook_conservado_s, cierre_conservado_s = detectar_todos_los_cortes(
+        datos, duracion_total, conservar_inicio, conservar_fin)
+
+    # El editor de silencios puede desactivar cortes: si hay una selección
+    # guardada, manda ella. La detección de arriba se ejecuta igual porque es la
+    # que produce el catálogo completo de tramos que el editor deja elegir.
+    if args.silencios:
+        import f15_silencios
+        cortes, descartados = f15_silencios.aplicar_seleccion(
+            cortes, Path(args.silencios))
+        if descartados:
+            print(f"\nEditor de silencios: {len(descartados)} tramo(s) NO se cortan "
+                  f"(restaurados a mano):")
+            for c in descartados:
+                print(f"  [{c['inicio']:.2f}s - {c['fin']:.2f}s] {c['razon']}")
 
     print(f"Cortes detectados: {len(cortes)}")
     for c in cortes:
@@ -388,6 +460,21 @@ def main():
     salida_datos["cortes_aplicados"] = cortes
     salida_datos["intervalos_conservados_original"] = intervalos_conservados
     salida_datos["duracion_resultante_s"] = round(duracion_resultante, 2)
+    # Con qué se detectaron los cortes y sobre qué archivo. El editor de
+    # silencios reconstruye el catálogo de tramos llamando otra vez a los
+    # detectores, y sin estos tres datos tendría que adivinar los parámetros:
+    # con otro `conservar_inicio` el primer tramo sale distinto y el editor
+    # enseñaría un corte que no es el que se aplicó.
+    salida_datos["corte_parametros"] = {
+        "conservar_inicio_s": round(conservar_inicio, 3),
+        "conservar_fin_s": round(conservar_fin, 3),
+        # La CLAVE del perfil ("jose"/"esposa"), no su nombre para mostrar:
+        # config.perfil() solo entiende la clave, y guardar "José" hacía que el
+        # editor de silencios reventara al reconstruir el catálogo.
+        "presentador": args.presentador,
+        "duracion_original_s": round(duracion_total, 3),
+        "fuente_corte": str(ruta_video),
+    }
     # Ventana de hook físico en la NUEVA línea de tiempo: va de 0 a este valor y
     # no tiene ni una palabra. f13_guion la usa para colocar ahí los sonidos del
     # primer beat, que por definición no puede alinear contra la transcripción

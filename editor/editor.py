@@ -200,6 +200,12 @@ def main():
                              "corrida existente (mismo --nombre): entra directo en overlays -> "
                              "render -> audio sin volver a transcribir ni cortar. Para iterar rápido "
                              "desde el editor visual sobre ajustes de SFX/posiciones/eventos.")
+    parser.add_argument("--silencios", type=str, default=None, metavar="JSON",
+                        help="ajustes.silencios.json del editor visual: qué tramos "
+                             "recortados hay que devolver al video. Con --reaplicar "
+                             "rehace SOLO el corte y el plan de retención (la "
+                             "transcripción se reutiliza) y remapea los ajustes ya "
+                             "hechos a la nueva línea de tiempo")
     args = parser.parse_args()
 
     rutas_entrada = [Path(e).resolve() for e in args.entrada]
@@ -271,6 +277,32 @@ def main():
     # hablan igual (sección 2 del plan).
     perfil = ["--presentador", args.presentador] if args.presentador else []
 
+    # El hook físico (entrar al cuadro, sentarse) es silencio puro, así que el
+    # corte de silencios se lo llevaba entero. Cuánto conservar sale del campo
+    # `hooksegs` del guion en PANEL-PRODUCCION.html, y hay que leerlo ANTES de
+    # cortar — por eso este parseo suelto en vez de esperar a f13_guion, que
+    # necesita la transcripción ya recortada.
+    def _extra_de_corte():
+        extra = []
+        if args.guion is not None:
+            import f13_guion
+            params = f13_guion.leer_parametros_guion(args.guion)
+            if params["hooksegs"] > 0:
+                extra += ["--conservar-inicio", str(params["hooksegs"])]
+                print(f"\nGuion {args.guion} ({params['tipo_hook']}): se conservarán "
+                      f"{params['hooksegs']}s de hook físico al inicio.")
+            if params["cierresegs"] > 0:
+                extra += ["--conservar-fin", str(params["cierresegs"])]
+                print(f"Guion {args.guion}: se conservarán {params['cierresegs']}s de "
+                      f"cierre físico al final.")
+        if tomas_json.exists():
+            extra += ["--tomas", str(tomas_json)]
+        return extra
+
+    # Un re-corte invalida el plan de retención: se calculó sobre el video
+    # anterior y sus segundos apuntan a otro sitio.
+    recorte_rehecho = False
+
     if args.reaplicar:
         # Reusa 01/02/03 de una corrida anterior con el mismo --nombre: evita
         # los 41s de transcripción + corte + análisis de retención en cada
@@ -292,26 +324,52 @@ def main():
             # hacer nada".
             print("  OJO: `hooksegs`/`cierresegs` se aplican al cortar. Si los cambiaste en "
                   "el panel, corré SIN --reaplicar para que tenga efecto.")
+
+        # --- Silencios restaurados a mano desde el editor visual -------------
+        # Único caso en que --reaplicar SÍ vuelve a cortar. Lo caro es la
+        # transcripción (WhisperX large-v3), y esa no depende de dónde estén los
+        # cortes: 01_transcripcion.json cubre la grabación entera y sigue siendo
+        # válido. Se rehace el corte (ffmpeg, segundos) y el análisis de
+        # retención, que sí mira el video cortado.
+        import f15_silencios
+        if args.silencios and f15_silencios.hay_cambios(dir_trabajo):
+            datos_previos = json.loads(json_cortado.read_text(encoding="utf-8"))
+            intervalos_viejos = datos_previos.get("intervalos_conservados_original", [])
+            fuente_corte = ((datos_previos.get("corte_parametros") or {}).get("fuente_corte")
+                            or json.loads(transcripcion.read_text(encoding="utf-8")).get("fuente"))
+            fuente_corte = Path(fuente_corte) if fuente_corte else None
+
+            if not fuente_corte or not fuente_corte.exists():
+                # Sin la grabación original no hay de dónde sacar el metraje: el
+                # tramo restaurado no está en 02_cortado.mp4. Mejor seguir con el
+                # corte que ya hay que renderizar algo silenciosamente distinto.
+                print(f"\nAVISO: no se puede rehacer el corte — falta la grabación original "
+                      f"({fuente_corte}).\n  Se renderiza con el corte actual y los silencios "
+                      f"restaurados NO se aplican.", file=sys.stderr)
+            else:
+                paso("FASE 1b-bis: Re-corte con los silencios restaurados", [
+                    "f2_cortar.py", str(transcripcion), str(fuente_corte),
+                    "--salida", str(video_cortado),
+                    *perfil, *_extra_de_corte(), "--silencios", args.silencios,
+                ])
+                datos_nuevos = json.loads(json_cortado.read_text(encoding="utf-8"))
+                intervalos_nuevos = datos_nuevos.get("intervalos_conservados_original", [])
+
+                print("\nRemapeando los ajustes ya hechos a la nueva línea de tiempo...")
+                res = f15_silencios.remapear_ajustes(
+                    dir_trabajo, intervalos_viejos, intervalos_nuevos)
+                for nombre_aj in res["cambiados"]:
+                    print(f"  remapeado: {nombre_aj}")
+                f15_silencios.guardar_avisos(dir_trabajo, res["avisos"])
+                for aviso in res["avisos"]:
+                    print(f"  AVISO [{aviso['archivo']}] {aviso.get('etiqueta','')}: "
+                          f"{aviso['detalle']}")
+                if res["avisos"]:
+                    print(f"  -> {len(res['avisos'])} aviso(s). El editor los enseña al "
+                          f"volver a abrirlo: hay que revisarlos a mano.")
+                recorte_rehecho = True
     else:
-        # El hook físico (entrar al cuadro, sentarse) es silencio puro, así que
-        # el corte de silencios se lo llevaba entero. Cuánto conservar sale del
-        # campo `hooksegs` del guion en PANEL-PRODUCCION.html, y hay que leerlo
-        # ANTES de cortar — por eso este parseo suelto en vez de esperar a
-        # f13_guion, que necesita la transcripción ya recortada.
-        cortar_extra = []
-        if args.guion is not None:
-            import f13_guion
-            params = f13_guion.leer_parametros_guion(args.guion)
-            if params["hooksegs"] > 0:
-                cortar_extra += ["--conservar-inicio", str(params["hooksegs"])]
-                print(f"\nGuion {args.guion} ({params['tipo_hook']}): se conservarán "
-                      f"{params['hooksegs']}s de hook físico al inicio.")
-            if params["cierresegs"] > 0:
-                cortar_extra += ["--conservar-fin", str(params["cierresegs"])]
-                print(f"Guion {args.guion}: se conservarán {params['cierresegs']}s de "
-                      f"cierre físico al final.")
-        if tomas_json.exists():
-            cortar_extra += ["--tomas", str(tomas_json)]
+        cortar_extra = _extra_de_corte()
 
         paso("FASE 1a: Transcripción (WhisperX)", [
             "f1_transcribir.py", str(ruta_entrada), "--salida", str(transcripcion)
@@ -352,10 +410,16 @@ def main():
         encuadre_guion = ["--encuadre", args.encuadre_manual]
         print(f"\nEncuadre manual: {args.encuadre_manual}")
 
-    if not args.reaplicar:
+    if not args.reaplicar or recorte_rehecho:
         # El nombre 03_retencion.mp4 no se renderiza: --sin-render solo escribe el
         # plan JSON (03_retencion.plan.json); el render real ocurre en la fase de
         # composición de abajo, con overlays y subtítulos en la misma pasada.
+        #
+        # `recorte_rehecho` obliga a repetirlo aunque sea --reaplicar: el plan
+        # guarda el track del rostro y la curva de acercamientos indexados por
+        # segundo del video CORTADO, así que tras mover un corte apuntan al
+        # fotograma equivocado. Reusarlo era el fallo silencioso de este bloque:
+        # el render sale, pero el zoom se cierra medio segundo tarde.
         paso("FASE 3a: Análisis de retención (face tracking, punch-ins, regla de 5s)", [
             "f4_retencion.py", str(video_cortado), str(json_cortado),
             "--salida", str(dir_trabajo / "03_retencion.mp4"), "--sin-render",
