@@ -130,6 +130,22 @@ def _guardar_silencios(datos: dict) -> Path:
     return _escritura_atomica(DIR_TRABAJO / "ajustes.silencios.json", limpio)
 
 
+def _limpiar_corrida(solo_ver: bool, a_fondo: bool) -> dict:
+    """Libera los intermedios de la corrida abierta (o solo dice cuáles serían).
+
+    Función de módulo por la misma razón que `_datos_silencios_actuales`: leer
+    `DIR_TRABAJO` dentro de `do_POST` es un SyntaxError, porque más abajo (en
+    /cambiar-proyecto) se declara `global DIR_TRABAJO` y Python prohíbe usar el
+    nombre antes de esa declaración. No lo detecta `ast.parse` sobre el fuente
+    ni ninguna prueba de texto: solo aparece al importar el módulo — o sea, al
+    arrancar el servidor de verdad.
+    """
+    import f16_limpiar
+    if solo_ver:
+        return f16_limpiar.calcular(DIR_TRABAJO, a_fondo=a_fondo)
+    return f16_limpiar.limpiar(DIR_TRABAJO, a_fondo=a_fondo)
+
+
 def _datos_silencios_actuales() -> dict:
     """El catálogo de silencios de la corrida abierta.
 
@@ -556,7 +572,16 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(400, f"JSON inválido: {e}")
             return
 
-        if partes.path == "/guardar-silencios":
+        if partes.path == "/limpiar":
+            # "Ya está listo para publicar": libera los intermedios de esta
+            # corrida. f16_limpiar exige que el video esté en salida/ de
+            # OneDrive antes de borrar nada — sin esa guarda, un clic de más
+            # sobre una corrida a medio renderizar se lleva el único archivo
+            # que existía.
+            self._json(_limpiar_corrida(bool(datos.get("solo_ver")),
+                                        bool(datos.get("a_fondo"))))
+
+        elif partes.path == "/guardar-silencios":
             _guardar_silencios(datos)
             # Se devuelve el catálogo recalculado, no un simple ok: al desactivar
             # un tramo cambian los segundos que el video va a durar y cuántos
@@ -1418,6 +1443,18 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       final y no publica nada — para comprobar un ajuste. <b>Renderizar final</b> hace el bueno
       y lo copia a OneDrive listo para subir.</span>
     </p>
+    <div class="versiones-caja" style="border-color:rgba(230,180,40,.45);">
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <button class="btn-primario" id="btnListoPublicar" type="button"
+                style="margin-bottom:0;">✅ Listo para publicar · liberar disco</button>
+        <span class="hint" id="infoLimpiar"></span>
+      </div>
+      <p class="hint" style="margin:0;">Cuando el video ya esté como lo querés subir. Borra de
+        <b>C:\ai-video</b> los pasos intermedios de esta corrida —el compuesto sin audio, los
+        clips de los insertos, las previsualizaciones— que juntos pesan unas 4 veces más que el
+        video. <b>No toca el .mp4 de <code>salida/</code> en OneDrive</b>, que es el que subís, ni
+        los ajustes que hiciste. Si el video todavía no está publicado no borra nada y te lo dice.</p>
+    </div>
     <div id="cajaProgreso" style="display:none;">
       <div style="background:var(--linea); border-radius:6px; height:8px; overflow:hidden; margin-bottom:6px;">
         <div id="barraProgreso" style="background:var(--acento); height:100%; width:0%; transition:width .3s;"></div>
@@ -3388,6 +3425,66 @@ async function iniciarRender(preview = false) {
 
 document.getElementById("btnRender").addEventListener("click", () => iniciarRender(false));
 document.getElementById("btnPreview").addEventListener("click", () => iniciarRender(true));
+
+// --- "Listo para publicar": liberar el disco de esta corrida ---------------
+function mb(bytes) { return (bytes / 1048576).toFixed(1) + " MB"; }
+
+const btnListoPublicar = document.getElementById("btnListoPublicar");
+if (btnListoPublicar) {
+  btnListoPublicar.addEventListener("click", async () => {
+    const info = document.getElementById("infoLimpiar");
+    btnListoPublicar.disabled = true;
+    info.textContent = "mirando qué se puede liberar…";
+    try {
+      // Primero se PREGUNTA qué se borraría, y se enseña. Un botón que borra
+      // 200 MB sin decir qué se lleva no se puede pulsar con confianza.
+      const rv = await fetch("/limpiar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ solo_ver: true }),
+      });
+      const plan = await rv.json();
+
+      if (!plan.esta_publicado) {
+        info.textContent = "";
+        alert("Todavía no hay ningún video de esta corrida en salida/ de OneDrive.\n\n"
+          + "Dale primero a «Renderizar final». Si se borran los intermedios ahora, "
+          + "no queda ningún archivo del video.");
+        return;
+      }
+      if (!plan.objetivos.length) {
+        info.textContent = "ya está limpia, no hay nada que liberar";
+        return;
+      }
+
+      const lista = plan.objetivos
+        .map(o => "  · " + o.nombre + (o.carpeta ? "/" : "") + "  (" + mb(o.bytes) + ")")
+        .join("\n");
+      const ok = confirm(
+        "Liberar " + mb(plan.bytes) + " de C:\\ai-video borrando:\n\n" + lista
+        + "\n\nSE CONSERVAN:\n"
+        + "  · el video publicado: " + plan.publicado.join(", ") + "\n"
+        + "  · el 07_FINAL.mp4 y el corte crudo (para seguir editando)\n"
+        + "  · todos tus ajustes\n\n¿Seguimos?");
+      if (!ok) { info.textContent = ""; return; }
+
+      info.textContent = "liberando…";
+      const r = await fetch("/limpiar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const res = await r.json();
+      if (!res.ok) { info.textContent = ""; alert(res.motivo || "no se pudo limpiar"); return; }
+      info.textContent = mb(res.liberado) + " liberados"
+        + (res.fallos.length ? " · " + res.fallos.length + " en uso, probá al cerrar el editor" : "");
+      if (res.fallos.length) console.warn("no se pudieron borrar:", res.fallos);
+    } catch (e) {
+      info.textContent = "";
+      alert("Error al limpiar: " + e);
+    } finally {
+      btnListoPublicar.disabled = false;
+    }
+  });
+}
 
 function construirOverlays() {
   // Se reconstruye desde `edicionPip` (el estado editable), no desde
