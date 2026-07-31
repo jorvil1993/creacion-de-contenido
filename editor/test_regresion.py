@@ -1627,6 +1627,46 @@ def pruebas_musica_editor():
         'id="selMusicaPista"' in fuente_srv and 'id="musicaVolumenInput"' in fuente_srv and 'id="musicaInicioInput"' in fuente_srv,
         "el usuario debe disponer de los controles de musica en la interfaz")
 
+    # --- El bug de la ruta: la musica NUNCA sonaba desde el .bat ------------
+    # La previa pedia /archivo?ruta=assets/musica/<pista>. Esa ruta es RELATIVA
+    # y `_archivo_permitido` la resuelve con Path.resolve(), o sea contra el cwd
+    # del proceso. "Abrir Editor DeviceShop.bat" hace `cd` a editor\, asi que
+    # resolvia a editor\assets\musica\ -- que no existe. Resultado: 404 mudo, la
+    # musica no sonaba nunca y no habia ni un error a la vista. Lanzado a mano
+    # desde la raiz del proyecto SI funcionaba, que es lo que lo hacia dificil
+    # de ver.
+    chk("existe el endpoint /musica, que no depende del cwd",
+        'ruta == "/musica"' in fuente_srv and 'config.DIR_ASSETS / "musica" / nombre' in fuente_srv,
+        "la pista se resuelve desde config.DIR_ASSETS, no contra el directorio de trabajo")
+    chk("el endpoint rechaza cualquier intento de salirse de assets/musica/",
+        '"/" in nombre or "\\\\" in nombre' in fuente_srv,
+        "un nombre con separadores de ruta serviria archivos de fuera de la carpeta")
+    chk("el JS ya no construye la ruta de musica a mano",
+        '"assets/musica/" + edicionMusicaPista' not in fuente_srv
+        and '"/musica?archivo=" + encodeURIComponent(archivo)' in fuente_srv,
+        "si vuelve la ruta relativa, la musica deja de sonar otra vez y en silencio")
+
+    # Boton de preescucha: es la UNICA forma de oir la pista cuando la corrida
+    # ya esta renderizada, porque ahi sincronizarMusicaPrevia() no suena a
+    # proposito (la musica ya va mezclada dentro del mp4 y sonaria doble).
+    chk("hay un boton para escuchar la pista sola",
+        'id="btnEscucharMusica"' in fuente_srv and "function alternarEscuchaMusica" in fuente_srv)
+    chk("la preescucha manda sobre el loop de la previa",
+        "let musicaEscuchaManual" in fuente_srv
+        and "if (musicaEscuchaManual) return;" in fuente_srv,
+        "sin esto el loop, que corre en cada frame, la pausaria al instante por video.paused")
+    chk("si el navegador no deja reproducir, se avisa en vez de callarse",
+        "avisarMusica(" in fuente_srv and 'id="avisoMusica"' in fuente_srv,
+        "revertir el boton en silencio deja el mismo problema que el boton viene a arreglar")
+
+    # Las dos previas de hook y CTA, al mismo tamaño. La regla de ancho solo
+    # existia para `img`, y quedo huerfana cuando pasaron a enseñarse con un
+    # <video>: cada uno se dibujaba a su tamaño intrinseco y el CTA (tarjeta a
+    # pantalla completa) salia casi del doble que el hook (una banda de arriba).
+    chk("las previas de hook y CTA tienen el mismo ancho asignado",
+        ".hook-preview > div { flex: 0 0 170px" in fuente_srv
+        and ".hook-preview video { width: 100%" in fuente_srv)
+
 
 # ===========================================================================
 # 18. Fase 0: preparar la entrada (recortar, ordenar, unir) — f0_preparar

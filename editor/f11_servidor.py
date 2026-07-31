@@ -460,6 +460,18 @@ class Handler(BaseHTTPRequestHandler):
                 self._archivo(estatico,
                               "application/javascript; charset=utf-8" if ruta.endswith(".js")
                               else "text/css; charset=utf-8")
+            elif ruta == "/musica":
+                # Endpoint propio en vez de /archivo?ruta=assets/musica/…: esa
+                # ruta es RELATIVA y `_archivo_permitido` la resuelve contra el
+                # cwd del proceso. Como "Abrir Editor DeviceShop.bat" hace `cd`
+                # a editor\, resolvía a editor\assets\musica\ — que no existe —
+                # y la música de la previa daba 404 en silencio: no sonaba
+                # nunca y no había ningún error a la vista.
+                nombre = (qs.get("archivo") or [""])[0]
+                if not nombre or "/" in nombre or "\\" in nombre or nombre.startswith("."):
+                    self.send_error(400, "nombre de pista inválido")
+                    return
+                self._archivo(config.DIR_ASSETS / "musica" / nombre)
             elif ruta == "/archivo":
                 valores = qs.get("ruta")
                 if not valores:
@@ -1063,6 +1075,14 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
                        border-radius: 6px; padding: 8px; resize: vertical; min-height: 44px; }
 .hook-preview { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
 .hook-preview img { width: 90px; border-radius: 6px; background: #000; }
+/* Las dos previas al MISMO ancho. Antes solo había regla para `img`, y esa
+   quedó huérfana cuando el hook y el CTA pasaron a enseñarse con un <video>
+   (los .mov ProRes que un <img> no puede pintar): sin ancho asignado, cada
+   <video> se dibujaba a su tamaño intrínseco, y como el del CTA es una tarjeta
+   a pantalla completa y el del hook una banda de arriba, el CTA salía casi
+   del doble. No es el tamaño real en el video — es solo la miniatura. */
+.hook-preview > div { flex: 0 0 170px; max-width: 170px; }
+.hook-preview video { width: 100%; height: auto; display: block; border-radius: 6px; }
 .anim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
 .anim-card { border: 1px solid var(--linea); border-radius: 8px; padding: 8px; display: flex;
              flex-direction: column; gap: 6px; }
@@ -1192,7 +1212,12 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
     <div id="panelMusicaOpciones" style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
       <div>
         <label class="hint" for="selMusicaPista" style="display:block; margin-bottom:4px;">Pista</label>
-        <select id="selMusicaPista" style="min-width:240px;"></select>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <select id="selMusicaPista" style="min-width:240px;"></select>
+          <button class="btn-primario" id="btnEscucharMusica" type="button"
+                  style="margin-bottom:0; white-space:nowrap;">▶ Escuchar</button>
+          <span class="badge aviso" id="avisoMusica" style="display:none;"></span>
+        </div>
       </div>
       <div>
         <label class="hint" for="musicaVolumenInput" style="display:block; margin-bottom:4px;">Volumen: <span id="musicaVolumenValor">50%</span></label>
@@ -1204,6 +1229,9 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       </div>
       <span class="hint" id="infoMusica" style="align-self:flex-end; padding-bottom:4px;"></span>
     </div>
+    <p class="hint" style="margin-top:8px;">«Escuchar» reproduce la pista sola, desde el segundo
+      de inicio y al volumen elegido, sin tocar el video — sirve también cuando el video ya está
+      renderizado, que es cuando la música va quemada adentro y no se puede probar de otra forma.</p>
   </div>
 
   <div class="panel">
@@ -1280,12 +1308,16 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       no se ven animadas acá (ningún navegador reproduce ProRes 4444), solo un fotograma
       representativo. El CTA repite un eco corto del hook para cerrar el loop; cambia solo.</p>
     <div class="hook-caja">
-      <label class="hint" for="hookTexto">Texto del hook</label>
+      <label class="hint" for="hookTexto"><b>Texto del hook</b> — lo que se lee en los primeros
+        segundos. Es lo ÚNICO editable acá: el CTA no se escribe, se arma solo con el WhatsApp
+        del catálogo más un <b>eco</b> de este mismo texto (las primeras palabras), para que el
+        video cierre con la frase con la que abrió.</label>
       <textarea id="hookTexto" maxlength="140"></textarea>
       <div class="hook-preview">
         <div id="hookMedio"><p class="hint">hook · <span id="hookRango">?</span>
           <span class="badge aviso" id="hookZonaAviso" style="display:none;"></span></p></div>
-        <div id="ctaMedio"><p class="hint">cta · <span id="ctaRango">?</span> · eco: "<span id="ctaEco"></span>"
+        <div id="ctaMedio"><p class="hint">cta · <span id="ctaRango">?</span><br>
+          repite del hook: "<span id="ctaEco"></span>"
           <span class="badge aviso" id="ctaZonaAviso" style="display:none;"></span></p></div>
       </div>
     </div>
@@ -1803,8 +1835,62 @@ function pintarEstadoMusica() {
   if (info) info.textContent = musicaModificada ? "· editado a mano" : "· automático";
 }
 
+// Preescucha de la pista SOLA, con el botón "Escuchar". Mientras está puesta,
+// sincronizarMusicaPrevia() no toca el audio: los dos usan el mismo elemento y
+// el loop, que corre en cada frame, lo pausaría al instante por `video.paused`.
+let musicaEscuchaManual = false;
+
+// La ruta la resuelve el servidor desde config.DIR_ASSETS. Construirla aquí
+// como "assets/musica/…" y pasarla por /archivo la hacía depender del
+// directorio desde el que se lanzó el servidor — y con el .bat daba 404.
+function srcMusica(archivo) {
+  return "/musica?archivo=" + encodeURIComponent(archivo);
+}
+
+function avisarMusica(texto) {
+  const el = document.getElementById("avisoMusica");
+  if (!el) return;
+  el.textContent = texto || "";
+  el.style.display = texto ? "" : "none";
+}
+
+function pararEscuchaMusica() {
+  musicaEscuchaManual = false;
+  if (musicaAudio && !musicaAudio.paused) musicaAudio.pause();
+  const btn = document.getElementById("btnEscucharMusica");
+  if (btn) btn.textContent = "▶ Escuchar";
+}
+
+function alternarEscuchaMusica() {
+  if (musicaEscuchaManual) { pararEscuchaMusica(); avisarMusica(""); return; }
+  // La previa sincronizada y la preescucha aislada no pueden sonar a la vez.
+  if (!video.paused) video.pause();
+  avisarMusica("");
+
+  poolMusica();
+  if (musicaCtx.state === "suspended") musicaCtx.resume();
+  musicaAudio.src = srcMusica(edicionMusicaPista);
+  musicaGainNode.gain.value = edicionMusicaVolumen;
+  musicaEscuchaManual = true;
+  const btn = document.getElementById("btnEscucharMusica");
+  if (btn) btn.textContent = "⏸ Parar";
+  // El `currentTime` solo se puede fijar cuando el archivo ya tiene metadatos;
+  // hacerlo antes lo deja en 0 sin avisar y el control de inicio no serviría.
+  musicaAudio.addEventListener("loadedmetadata", () => {
+    musicaAudio.currentTime = Math.min(edicionMusicaInicio, (musicaAudio.duration || 1) - 0.1);
+  }, { once: true });
+  // Si el navegador se niega a reproducir hay que DECIRLO. Revertir el botón en
+  // silencio deja exactamente el problema que este botón viene a arreglar:
+  // le das a escuchar, no se oye nada y no hay ni un mensaje que lo explique.
+  musicaAudio.play().catch((err) => {
+    pararEscuchaMusica();
+    avisarMusica("el navegador no dejó reproducir: " + (err && err.name ? err.name : "error"));
+  });
+}
+
 function sincronizarMusicaPrevia() {
   if (!DATA || !DATA.musica_catalogo) return;
+  if (musicaEscuchaManual) return;   // manda la preescucha del botón
   if (edicionSinMusica || DATA.es_renderizado || video.paused) {
     if (musicaAudio && !musicaAudio.paused) musicaAudio.pause();
     return;
@@ -1813,8 +1899,8 @@ function sincronizarMusicaPrevia() {
   poolMusica();
   if (musicaCtx.state === "suspended") musicaCtx.resume();
 
-  const src = `/archivo?ruta=${encodeURIComponent("assets/musica/" + edicionMusicaPista)}`;
-  if (!musicaAudio.src.includes(encodeURIComponent(edicionMusicaPista))) {
+  const src = srcMusica(edicionMusicaPista);
+  if (musicaAudio.getAttribute("src") !== src) {
     musicaAudio.src = src;
   }
 
@@ -1827,6 +1913,11 @@ function sincronizarMusicaPrevia() {
     musicaAudio.play().catch(() => {});
   }
 }
+
+document.getElementById("btnEscucharMusica")?.addEventListener("click", alternarEscuchaMusica);
+// Darle al play del video corta la preescucha aislada: si no, se oirían las dos
+// a la vez y desfasadas entre sí.
+video.addEventListener("play", () => { if (musicaEscuchaManual) pararEscuchaMusica(); });
 
 document.getElementById("chkSinMusica")?.addEventListener("change", () => {
   musicaModificada = true; pintarEstadoMusica(); sincronizarMusicaPrevia();
