@@ -843,7 +843,7 @@ const G=[
  hooktxt:'Entras de pie al plano caminando hacia cámara',
  utileria:['Kindle Paperwhite — lo levantas en la toma 4','Celular en mano — scrolleando en la toma 2'],
  set:['Ventana a 45° a tu izquierda','2 m de separación de la pared','De pie frente a cámara','Cámara ya grabando antes de que entres al plano'],
- tele:'¿Te diste cuenta de que ya no podés estar cinco minutos sin hacer nada? Sin sacar el celular. Sin buscar dopamina barata. || Ya casi nadie puede. Y no es casualidad. || Estás compitiendo contra una aplicación diseñada por mil ingenieros para que no puedas soltarla. El video que se reproduce solo. La notificación. El siguiente. Todo está diseñado para ganarte. || No es falta de disciplina. Es una pelea injusta: vos, con tu pobre fuerza de voluntad, contra un algoritmo. Y así, no la vas a ganar. || La única forma de ganarla es salirte del juego. || Volver a tener un espacio donde nada te interrumpa. Donde abrís un libro y el mundo se apaga: sin notificaciones, sin pantallas que te quemen la vista, sin tentaciones a un toque. || Un espacio donde tu atención vuelve a ser tuya. || Mandáselo a alguien que no suelta el celular ni en la mesa.',
+ tele:'Intenta estar cinco minutos sin mirar el celular. No puedes. || Ya casi nadie puede. Y no es casualidad. || Estás compitiendo contra una aplicación diseñada por mil ingenieros para que no puedas soltarla. El video que se reproduce solo. La notificación. El scroll. Todo está diseñado para ganarte. || No es falta de disciplina. Es una pelea injusta: tú, con tu pobre fuerza de voluntad, contra un algoritmo. Y así, no la vas a ganar. || La única forma de ganarla es salirte del juego. || Volver a tener un espacio donde nada te interrumpa. Donde abres un libro y el ruido por fin desaparece: sin notificaciones, sin pantallas que te quemen la vista, sin tentaciones a un toque. || Un espacio donde tu atención vuelve a ser tuya. Es hora de ganarles la pelea. || Envíaselo a esa persona que no suelta el celular ni en la mesa.',
  tomas:[
   ['0–6s','Plano medio · de pie · HOOK','Cámara ya grabando. Entras de pie al cuadro caminando hacia cámara. Miras fijo a cámara y dices el hook.','¿Te diste cuenta de que ya no podés estar cinco minutos sin hacer nada? Sin sacar el celular. Sin buscar dopamina barata.'],
   ['6–20s','Plano medio · de perfil con celular','Pones tu cuerpo de perfil scrolleando el celular concentrado. Dices "Ya casi nadie puede...", luego te giras o miras a cámara marcando "mil ingenieros" con la mano.','Ya casi nadie puede. Y no es casualidad. Estás compitiendo contra una aplicación diseñada por mil ingenieros para que no puedas soltarla. El video que se reproduce solo. La notificación. El siguiente. Todo está diseñado para ganarte.'],
@@ -1432,7 +1432,7 @@ function renderGuiones(){
             </div>
 
             <div class="tele" id="tele-box-${g.n}">
-              <button class="copiar" onclick="cp(this,G[${i}].tele.replace(/ \|\| /g,'\n\n'))">Copiar</button>
+              <button class="copiar" onclick="cp(this,g.tele.replace(/ \|\| /g,'\n\n'))">Copiar</button>
               ${g.tele.split(' || ').map(p => p).join('<br><span class="pausa">// pausá //</span><br>')}
             </div>
 
