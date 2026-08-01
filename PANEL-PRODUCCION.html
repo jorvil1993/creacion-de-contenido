@@ -845,11 +845,11 @@ const G=[
  set:['Ventana a 45° a tu izquierda','2 m de separación de la pared','De pie frente a cámara','Cámara ya grabando antes de que entres al plano'],
  tele:'Intenta estar cinco minutos sin mirar el celular. No puedes. || Ya casi nadie puede. Y no es casualidad. || Estás compitiendo contra una aplicación diseñada por mil ingenieros para que no puedas soltarla. El video que se reproduce solo. La notificación. El scroll. Todo está diseñado para ganarte. || No es falta de disciplina. Es una pelea injusta: tú, con tu pobre fuerza de voluntad, contra un algoritmo. Y así, no la vas a ganar. || La única forma de ganarla es salirte del juego. || Volver a tener un espacio donde nada te interrumpa. Donde abres un libro y el ruido por fin desaparece: sin notificaciones, sin pantallas que te quemen la vista, sin tentaciones a un toque. || Un espacio donde tu atención vuelve a ser tuya. Es hora de ganarles la pelea. || Envíaselo a esa persona que no suelta el celular ni en la mesa.',
  tomas:[
-  ['0–6s','Plano medio · de pie · HOOK','Cámara ya grabando. Entras de pie al cuadro caminando hacia cámara. Miras fijo a cámara y dices el hook.','¿Te diste cuenta de que ya no podés estar cinco minutos sin hacer nada? Sin sacar el celular. Sin buscar dopamina barata.'],
-  ['6–20s','Plano medio · de perfil con celular','Pones tu cuerpo de perfil scrolleando el celular concentrado. Dices "Ya casi nadie puede...", luego te giras o miras a cámara marcando "mil ingenieros" con la mano.','Ya casi nadie puede. Y no es casualidad. Estás compitiendo contra una aplicación diseñada por mil ingenieros para que no puedas soltarla. El video que se reproduce solo. La notificación. El siguiente. Todo está diseñado para ganarte.'],
-  ['20–32s','Plano cerrado (acercá la cámara)','Cambio de distancia real de pie. Tono más confidencial e íntimo.','No es falta de disciplina. Es una pelea injusta: vos, con tu pobre fuerza de voluntad, contra un algoritmo. Y así, no la vas a ganar. La única forma de ganarla es salirte del juego.'],
-  ['32–47s','Plano medio · con producto','Levantas el Kindle al cuadro a la altura del pecho de pie y lo sostienes suavemente mientras hablas.','Volver a tener un espacio donde nada te interrumpa. Donde abrís un libro y el mundo se apaga: sin notificaciones, sin pantallas que te quemen la vista, sin tentaciones a un toque. Un espacio donde tu atención vuelve a ser tuya.'],
-  ['47–52s','Plano medio · CIERRE','Bajas el aparato de pie y miras fijo a cámara sosteniendo el gesto.','Mandáselo a alguien que no suelta el celular ni en la mesa.']],
+  ['0–6s','Plano medio · de pie · HOOK','Cámara ya grabando. Entras de pie al cuadro caminando hacia cámara. Miras fijo a cámara y dices el hook.','Intenta estar cinco minutos sin mirar el celular. No puedes.'],
+  ['6–20s','Plano medio · de perfil con celular','Pones tu cuerpo de perfil scrolleando el celular concentrado. Dices "Ya casi nadie puede...", luego te giras o miras a cámara marcando "mil ingenieros" con la mano.','Ya casi nadie puede. Y no es casualidad. Estás compitiendo contra una aplicación diseñada por mil ingenieros para que no puedas soltarla. El video que se reproduce solo. La notificación. El scroll. Todo está diseñado para ganarte.'],
+  ['20–32s','Plano cerrado (acercá la cámara)','Cambio de distancia real de pie. Tono más confidencial e íntimo.','No es falta de disciplina. Es una pelea injusta: tú, con tu pobre fuerza de voluntad, contra un algoritmo. Y así, no la vas a ganar.'],
+  ['32–47s','Plano medio · con producto','Levantas el Kindle al cuadro a la altura del pecho de pie y lo sostienes suavemente mientras hablas.','La única forma de ganarla es salirte del juego. Volver a tener un espacio donde nada te interrumpa. Donde abres un libro y el ruido por fin desaparece: sin notificaciones, sin pantallas que te quemen la vista, sin tentaciones a un toque.'],
+  ['47–52s','Plano medio · CIERRE','Bajas el aparato de pie y miras fijo a cámara sosteniendo el gesto.','Un espacio donde tu atención vuelve a ser tuya. Es hora de ganarles la pelea. Envíaselo a esa persona que no suelta el celular ni en la mesa.']],
  tl:[
   ['0–3s','¿Te diste cuenta de que ya no podés estar cinco minutos sin hacer nada?','YO','Entras de pie al plano caminando a cámara. Banner de hook arriba','whoosh_rapido al entrar + impacto_grave','—'],
   ['3–6s','Sin sacar el celular. Sin buscar dopamina barata.','ANIM','F14 arriba a la derecha: persona haciendo scroll infinito en el celular','pop + ui_blip_1','entra 02-lofi a −20 dB'],
@@ -1226,18 +1226,12 @@ function actualizarTextosGuion(g, nuevoTeleRaw){
 
   // Actualizar g.tomas
   if (g.tomas && g.tomas.length > 0) {
-    if (parrafos.length === g.tomas.length) {
-      for (let k = 0; k < g.tomas.length; k++) {
-        g.tomas[k][3] = parrafos[k];
-      }
-    } else {
-      const parrafosPorToma = Math.ceil(parrafos.length / g.tomas.length);
-      for (let k = 0; k < g.tomas.length; k++) {
-        const sub = parrafos.slice(k * parrafosPorToma, (k + 1) * parrafosPorToma);
-        if (sub.length > 0) {
-          g.tomas[k][3] = sub.join(' ');
-        }
-      }
+    const numTomas = g.tomas.length;
+    for (let k = 0; k < numTomas; k++) {
+      const idxStart = Math.floor(k * parrafos.length / numTomas);
+      const idxEnd = Math.floor((k + 1) * parrafos.length / numTomas);
+      const sub = parrafos.slice(idxStart, idxEnd);
+      g.tomas[k][3] = sub.length > 0 ? sub.join(' ') : parrafos[parrafos.length - 1];
     }
   }
 

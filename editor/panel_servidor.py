@@ -178,29 +178,54 @@ def escribir_fila(fuente: str, n: int, ri: int, tipo: str, ve: str) -> str:
 
 
 def escribir_tele(fuente: str, n: int, tele: str) -> str:
-    """Devuelve el fuente con el campo `tele:` del guion `n` reemplazado.
+    """Devuelve el fuente con `tele:` y `tomas:[...]` del guion `n` reemplazados.
 
     El texto llega desde el navegador con párrafos separados por ' || ' y se
-    escribe tal cual en la cadena `'…'` del fuente, con los escapes mínimos
-    (barra invertida y comilla simple). Los saltos de línea no se permiten
-    porque cada guion ocupa exactamente una línea del fuente y el parser de
-    posiciones de `_lineas_filas` se rompería.
+    escribe tal cual en la cadena `'…'` del fuente. Además de `tele:`, actualiza
+    los textos de cada toma en `tomas:[...]` para que la vista del Teleprompter
+    en la tablet (`teleCargarGuion`) muestre el texto actualizado.
     """
     if "\n" in tele or "\r" in tele:
         raise ValueError("El texto del teleprompter no puede tener saltos de línea")
     if not tele.strip():
         raise ValueError("El texto del teleprompter no puede estar vacío")
 
+    parrafos = [p.strip() for p in tele.split(" || ") if p.strip()]
+    if not parrafos:
+        raise ValueError("Sin párrafos válidos en tele")
+
     ini, fin = _bloque_guion(fuente, n)
     bloque = fuente[ini:fin]
-    # El campo tele puede estar en cualquier línea del bloque, siempre como:
-    #   tele:'contenido aquí',
+
+    # 1. Reemplazar tele:'...'
     m = re.search(r" tele:'((?:[^'\\]|\\.)*)',", bloque)
     if not m:
         raise ValueError(f"El guion {n} no tiene campo `tele:`")
     tele_escapado = _escapar(tele)
-    nuevo_bloque = bloque[:m.start(1)] + tele_escapado + bloque[m.end(1):]
-    return fuente[:ini] + nuevo_bloque + fuente[fin:]
+    bloque = bloque[:m.start(1)] + tele_escapado + bloque[m.end(1):]
+
+    # 2. Reemplazar tomas:[...]
+    m_tomas = re.search(r"tomas:\[\r?\n([\s\S]*?)\],\r?\n\s*tl:", bloque)
+    if m_tomas:
+        lineas_tomas = m_tomas.group(1).splitlines()
+        nuevas_lineas = []
+        num_tomas = len(lineas_tomas)
+        for k, linea in enumerate(lineas_tomas):
+            campos = _campos(linea)
+            if len(campos) >= 4:
+                idx_start = int(k * len(parrafos) / num_tomas)
+                idx_end = int((k + 1) * len(parrafos) / num_tomas)
+                sub = parrafos[idx_start:idx_end]
+                if not sub and parrafos:
+                    sub = [parrafos[-1]]
+                nuevo_texto_toma = " ".join(sub)
+                x, y = campos[3]
+                linea = linea[:x] + _escapar(nuevo_texto_toma) + linea[y:]
+            nuevas_lineas.append(linea)
+        nuevo_tomas_str = "\n".join(nuevas_lineas)
+        bloque = bloque[:m_tomas.start(1)] + nuevo_tomas_str + bloque[m_tomas.end(1):]
+
+    return fuente[:ini] + bloque + fuente[fin:]
 
 
 def escribir_segundos(fuente: str, n: int, campo: str, valor: float) -> str:
