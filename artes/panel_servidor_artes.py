@@ -272,7 +272,8 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == "/api/abrir-subir":
             SUBIR.mkdir(parents=True, exist_ok=True)
             try:
-                os.startfile(SUBIR)  # noqa: S606 — panel local, uso propio
+                import subprocess
+                subprocess.run(["explorer.exe", str(SUBIR)], check=False)
                 return self._json({"ok": True})
             except Exception as e:
                 return self._json({"ok": False, "error": str(e)}, 500)
@@ -284,9 +285,9 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 import subprocess
                 if target.is_file():
-                    subprocess.run(["explorer", "/select,", str(target)], check=False)
+                    subprocess.run(["explorer.exe", f"/select,{target}"], check=False)
                 else:
-                    os.startfile(target)
+                    subprocess.run(["explorer.exe", str(target)], check=False)
                 return self._json({"ok": True})
             except Exception as e:
                 return self._json({"ok": False, "error": str(e)}, 500)
