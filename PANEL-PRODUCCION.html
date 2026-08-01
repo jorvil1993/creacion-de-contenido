@@ -571,9 +571,9 @@ a{color:var(--cian)}
     <button id="tele-play" onclick="teleTogglePlay()">▶ Iniciar</button>
     <div class="tele-ctrl">
       <span>Velocidad:</span>
-      <button onclick="teleSpeed(-1)">-</button>
-      <span id="tele-speed-lbl">3x</span>
-      <button onclick="teleSpeed(1)">+</button>
+      <button onclick="teleSpeed(-0.2)">-</button>
+      <span id="tele-speed-lbl">1.6x</span>
+      <button onclick="teleSpeed(0.2)">+</button>
     </div>
     <div class="tele-ctrl">
       <span>Letra:</span>
@@ -1719,7 +1719,8 @@ function renderPrompts(){
 
 /* ═══════════ TELEPROMPTER TABLET LOGIC ═══════════ */
 let teleScrollTimer = null;
-let teleScrollSpeed = 3;
+let teleScrollSpeed = 1.6;
+let telePos = 0;
 let teleFontSize = 38;
 let telePlaying = false;
 let teleWakeLock = null;
@@ -1766,14 +1767,20 @@ function teleTogglePlay(){
 function teleStart(){
  telePlaying = true;
  const btn = document.getElementById('tele-play');
- btn.textContent = '❚❚ Pausar';
- btn.style.background = 'var(--warn)';
- btn.style.color = '#000';
+ if(btn){
+   btn.textContent = '❚❚ Pausar';
+   btn.style.background = 'var(--warn)';
+   btn.style.color = '#000';
+ }
+ const body = document.getElementById('tele-body');
+ if(body) telePos = body.scrollTop;
  if(teleScrollTimer) clearInterval(teleScrollTimer);
  teleScrollTimer = setInterval(()=>{
-   const body = document.getElementById('tele-body');
-   body.scrollTop += teleScrollSpeed;
-   if(body.scrollTop + body.clientHeight >= body.scrollHeight - 10){
+   const b = document.getElementById('tele-body');
+   if(!b) return;
+   telePos += teleScrollSpeed;
+   b.scrollTop = telePos;
+   if(b.scrollTop + b.clientHeight >= b.scrollHeight - 10){
      teleStop();
    }
  }, 30);
@@ -1789,8 +1796,9 @@ function teleStop(){
 }
 
 function teleSpeed(delta){
- teleScrollSpeed = Math.max(1, Math.min(15, teleScrollSpeed + delta));
- document.getElementById('tele-speed-lbl').textContent = teleScrollSpeed + 'x';
+ teleScrollSpeed = Math.max(0.2, Math.min(10.0, Math.round((teleScrollSpeed + delta) * 10) / 10));
+ const lbl = document.getElementById('tele-speed-lbl');
+ if(lbl) lbl.textContent = teleScrollSpeed.toFixed(1) + 'x';
 }
 
 function teleFont(delta){
@@ -1805,7 +1813,8 @@ function teleToggleEspejo(){
 
 function teleReset(){
  const body = document.getElementById('tele-body');
- body.scrollTop = 0;
+ if(body) body.scrollTop = 0;
+ telePos = 0;
 }
 
 function teleCerrar(){
