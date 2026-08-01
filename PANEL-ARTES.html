@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Panel de artes — DeviceShop</title>
+<style>
+  :root{ --tur:#00C7CA; --navy:#011A2E; --fondo:#0d1b26; --caja:#11242f; --linea:#1d3a48; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fondo);color:#eaf6f8;
+       font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;padding:24px}
+  h1{font-size:22px;margin:0 0 2px}
+  .sub{opacity:.6;font-size:14px;margin:0 0 22px}
+  .grid{display:grid;grid-template-columns:1fr 420px;gap:22px;align-items:start}
+  @media(max-width:1000px){.grid{grid-template-columns:1fr}}
+  .caja{background:var(--caja);border:1px solid var(--linea);border-radius:14px;
+        padding:18px;margin-bottom:18px}
+  .caja h2{font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--tur);
+           margin:0 0 14px}
+  label{display:block;font-size:13px;opacity:.75;margin:0 0 5px}
+  select,input[type=text]{width:100%;background:#0a1720;color:#eaf6f8;
+        border:1px solid var(--linea);border-radius:8px;padding:9px 11px;font-size:14px}
+  .fila{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+  .fila3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px}
+  /* Las miniaturas existen porque adivinar la foto no funciona: la img2 del
+     Kobo Libra era una infografia y su recorte salio con texto en ingles. */
+  .fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;
+         max-height:270px;overflow:auto;padding:3px}
+  .fotos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer;
+             border:3px solid transparent;background:#fff;display:block}
+  .fotos img.sel{border-color:var(--tur)}
+  .fotos.chica{max-height:150px;grid-template-columns:repeat(auto-fill,minmax(76px,1fr))}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{background:#0a1720;border:1px solid var(--linea);border-radius:999px;
+        padding:7px 14px;font-size:13px;cursor:pointer;user-select:none}
+  .chip.on{background:var(--tur);color:var(--navy);border-color:var(--tur);font-weight:800}
+  .chip.deshabilitado{opacity:.4;cursor:default;pointer-events:none}
+  button.ir{background:var(--tur);color:var(--navy);border:0;border-radius:999px;
+        padding:13px 28px;font-weight:800;font-size:15px;cursor:pointer;width:100%}
+  button.ir:disabled{opacity:.45;cursor:default}
+  button.cp{background:transparent;color:var(--tur);border:1px solid var(--tur);
+        border-radius:999px;padding:7px 16px;font-weight:700;font-size:13px;cursor:pointer}
+  button.cp.ok{background:#2ecc71;color:#06210f;border-color:#2ecc71}
+  button.sec{background:#0a1720;color:#eaf6f8;border:1px solid var(--linea);
+        border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer}
+  button.sec:disabled{opacity:.4;cursor:default}
+  a.descargar{display:block;text-align:center;background:#0a1720;color:var(--tur);
+        border:1px solid var(--tur);border-radius:999px;padding:9px 16px;font-weight:700;
+        font-size:13px;text-decoration:none;margin-top:10px}
+  pre.log{background:#0a1720;border:1px solid var(--linea);border-radius:8px;padding:12px;
+      font:12.5px/1.45 ui-monospace,monospace;max-height:190px;overflow:auto;margin:0;
+      white-space:pre-wrap}
+  #vista img{width:100%;border-radius:10px;display:block}
+  .copy{border-top:1px solid var(--linea);padding-top:12px;margin-top:12px}
+  .copy:first-of-type{border-top:0;padding-top:0;margin-top:0}
+  .copy h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--tur);
+           margin:0 0 8px;display:flex;justify-content:space-between;align-items:center}
+  .copy pre{background:#0a1720;border:1px solid var(--linea);border-radius:8px;padding:11px;
+      font:12.5px/1.5 ui-monospace,monospace;white-space:pre-wrap;margin:0;max-height:200px;
+      overflow:auto}
+  .aviso{background:#2a1c10;border:1px solid #5a4020;border-radius:10px;padding:11px 14px;
+      font-size:13.5px;margin-bottom:16px}
+  #sinServidor{display:none}
+  .oculto{display:none !important}
+  .fila-ia{display:flex;align-items:center;justify-content:space-between;gap:10px;
+      margin-top:10px;padding:10px 12px;background:#0a1720;border:1px solid var(--linea);
+      border-radius:10px}
+  .fila-ia label{margin:0;display:flex;align-items:center;gap:8px;font-size:13.5px;opacity:1;
+      cursor:pointer}
+  .nota-ia{font-size:12px;opacity:.6;margin:6px 0 0}
+  /* ---- ComfyUI ---- */
+  .comfy{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .punto{width:9px;height:9px;border-radius:50%;background:#666;flex:none}
+  .punto.on{background:#2ecc71}
+  .punto.off{background:#c8443c}
+  .comfy-txt{font-size:13px;opacity:.85}
+  .comfy .sec{margin-left:auto}
+  /* ---- comparativa (split) ---- */
+  .card{background:#0a1720;border:1px solid var(--linea);border-radius:10px;padding:14px;
+        margin-bottom:12px}
+  .card .para{font-weight:800;margin-bottom:8px;font-size:13.5px;color:var(--tur)}
+  .card .campo{display:grid;grid-template-columns:78px 1fr;gap:8px;margin-bottom:6px;
+        font-size:12.5px}
+  .card .campo b{opacity:.7;font-weight:700}
+  .card .campo span{opacity:.85}
+  .card pre{white-space:pre-wrap;word-wrap:break-word;background:#081119;border-radius:8px;
+      padding:10px 12px;font:12px/1.45 ui-monospace,monospace;margin:10px 0 8px;
+      border:1px solid #17303c}
+  /* ---- historial ---- */
+  .historial{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;
+      max-height:280px;overflow:auto;padding:2px}
+  .historial img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer;
+      border:2px solid transparent}
+  .historial img:hover{border-color:var(--tur)}
+</style>
+
+<h1>Panel de artes — DeviceShop</h1>
+<p class="sub">Elegí producto, foto y concepto. El arte y los 3 copys salen de acá.</p>
+
+<div class="aviso" id="sinServidor">
+  <b>Modo lectura.</b> El panel no encontró su servidor. Para generar artes:
+  <code>C:\ai-video\venv312\Scripts\python.exe artes/panel_servidor_artes.py</code>
+</div>
+
+<div class="grid">
+  <div>
+    <div class="caja" id="cajaProductoFoto">
+      <h2>1 · Producto y foto</h2>
+      <div class="fila">
+        <div>
+          <label>Producto</label>
+          <select id="producto"></select>
+        </div>
+        <div>
+          <label>Nombre que se imprime en el arte</label>
+          <input type="text" id="nombre" placeholder="Kindle Paperwhite 16GB">
+        </div>
+      </div>
+      <div id="bloqueFoto">
+        <label>Foto base — elegí una: el recorte sale de ésta</label>
+        <div class="fotos" id="fotos"></div>
+      </div>
+    </div>
+
+    <div class="caja">
+      <h2>2 · Concepto</h2>
+      <p class="sub" style="margin:-8px 0 12px">El titular y la escena son una sola
+        idea. Cambiar uno sin el otro rompe la pieza.</p>
+      <select id="concepto"></select>
+      <p class="sub" id="notaConcepto" style="margin:8px 0 0"></p>
+      <label style="margin-top:12px">Titular (editable — admite &lt;br&gt; y
+        &lt;span class="acento"&gt;)</label>
+      <input type="text" id="titular">
+    </div>
+
+    <div class="caja">
+      <h2>3 · Cómo se arma</h2>
+      <div class="fila3">
+        <div>
+          <label>Modo</label>
+          <select id="modo">
+            <option value="limpio">Limpio (recomendado)</option>
+            <option value="dolores">Dolores resueltos</option>
+            <option value="fichas">Fichas técnicas</option>
+            <option value="split">Comparativa partida (Gemini)</option>
+          </select>
+        </div>
+        <div>
+          <label>Formato</label>
+          <select id="formato"></select>
+        </div>
+        <div id="bloqueEscena">
+          <label>Fondo</label>
+          <select id="escena"></select>
+        </div>
+      </div>
+
+      <div id="filaDolores" class="oculto" style="margin-bottom:14px">
+        <label>Cuántos dolores mostrar</label>
+        <select id="nDolores"></select>
+      </div>
+
+      <div id="bloqueIA" class="fila-ia">
+        <label><input type="checkbox" id="qwenEscena"> Escena con IA (Qwen) —
+          usa la escena del concepto en vez del fondo de color</label>
+      </div>
+      <p class="nota-ia" id="notaIA"></p>
+      <div id="cajaComfy" class="comfy oculto" style="margin-top:10px">
+        <span class="punto" id="comfyPunto"></span>
+        <span class="comfy-txt" id="comfyTxt">verificando ComfyUI…</span>
+        <button class="sec" id="comfyToggle">Encender</button>
+      </div>
+
+      <label style="margin-top:14px">Sello (rotalo, no lo pongas en todos)</label>
+      <div class="chips" id="sellos">
+        <span class="chip on" data-v="">Sin sello</span>
+        <span class="chip" data-v="anios">6 años + bandera</span>
+        <span class="chip" data-v="moto">Envíos · moto</span>
+        <span class="chip" data-v="qr">Pagás al recibir · QR</span>
+      </div>
+      <div style="margin-top:14px" class="chips" id="extras">
+        <span class="chip" data-v="vidrio">Panel difuminado</span>
+      </div>
+    </div>
+
+    <div class="caja oculto" id="cajaSplit">
+      <h2>3b · Comparativa partida (Gemini)</h2>
+      <p class="sub" style="margin:-8px 0 12px">Copiá cada prompt, pegalo en
+        Gemini Studio y guardá las dos imágenes en la carpeta de subida.</p>
+      <label>Comparativa</label>
+      <select id="comparativa"></select>
+      <div id="promptsSplit" style="margin-top:12px"></div>
+      <button class="sec" id="abrirCarpeta" style="width:100%;margin:6px 0 16px">
+        Abrir carpeta para subir las imágenes
+      </button>
+      <div class="fila">
+        <div>
+          <label>Mitad izquierda (el dolor)</label>
+          <div class="fotos chica" id="fotosIzq"></div>
+        </div>
+        <div>
+          <label>Mitad derecha (la solución)</label>
+          <div class="fotos chica" id="fotosDer"></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="ir" id="generar">Generar arte</button>
+    <div class="caja" style="margin-top:18px">
+      <h2>Registro</h2>
+      <pre class="log" id="log">Esperando…</pre>
+    </div>
+  </div>
+
+  <div>
+    <div class="caja">
+      <h2>Vista previa</h2>
+      <div id="vista"><p class="sub" style="margin:0">Todavía no generaste nada.</p></div>
+      <a class="descargar oculto" id="descargar" download>Descargar arte</a>
+    </div>
+    <div class="caja" id="cajaCopys" style="display:none">
+      <h2>Copy para el post — 3 variantes</h2>
+      <div id="copys"></div>
+    </div>
+    <div class="caja">
+      <h2>Historial</h2>
+      <div class="historial" id="historial"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let DATOS = null, fotoSel = null, splitIzqSel = null, splitDerSel = null, sello = "", vidrio = false;
+
+// El panel es un solo archivo: si el servidor no está, se esconde lo que no
+// tiene sentido sin él. Mismo criterio que PANEL-PRODUCCION.html.
+fetch("/api/estado").then(r => r.json()).then(d => { DATOS = d; pintar(); comfyEstado(); historial(); })
+  .catch(() => {
+    $("#sinServidor").style.display = "block";
+    $("#generar").disabled = true;
+  });
+
+function pintar() {
+  const sp = $("#producto");
+  DATOS.productos.forEach(p => sp.add(new Option(p.clave, p.clave)));
+  const sc = $("#concepto");
+  DATOS.conceptos.forEach(c => sc.add(new Option(
+    // El <br> se cambia por espacio ANTES de sacar las etiquetas: si no,
+    // "BIBLIOTECA<br>ENTRA" queda pegado como "BIBLIOTECAENTRA".
+    c.titular.replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, "")
+             .replace(/\s+/g, " ").trim(), c.clave)));
+  DATOS.formatos.forEach(f => $("#formato").add(new Option(f, f)));
+  DATOS.escenas.forEach(e => $("#escena").add(new Option(e, e)));
+  for (let n = 3; n <= DATOS.n_dolores_max; n++) $("#nDolores").add(new Option(n, n));
+  $("#nDolores").value = Math.min(3, DATOS.n_dolores_max);
+  Object.keys(DATOS.prompts).forEach(k => $("#comparativa").add(new Option(k, k)));
+
+  sp.onchange = fotos; sc.onchange = nota;
+  $("#modo").onchange = modoCambio;
+  $("#comparativa").onchange = pintarPromptsSplit;
+  fotos(); nota(); modoCambio(); pintarPromptsSplit();
+  cargarSubidas();
+}
+
+function fotos() {
+  const p = DATOS.productos.find(x => x.clave === $("#producto").value);
+  $("#nombre").value = p.clave.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  const cont = $("#fotos"); cont.innerHTML = ""; fotoSel = null;
+  p.fotos.forEach(f => {
+    const im = document.createElement("img");
+    im.src = "/api/miniatura?f=" + encodeURIComponent(f);
+    im.title = f;
+    im.onclick = () => {
+      cont.querySelectorAll("img").forEach(x => x.classList.remove("sel"));
+      im.classList.add("sel"); fotoSel = f;
+    };
+    cont.appendChild(im);
+  });
+  const modo = $("#modo");
+  modo.querySelector('[value=fichas]').disabled = !p.fichas;
+}
+
+function nota() {
+  const c = DATOS.conceptos.find(x => x.clave === $("#concepto").value);
+  $("#notaConcepto").textContent = c.nota || "";
+  // El titular se re-llena al cambiar de concepto (misma logica que el campo
+  // "nombre" con el producto). Si ya lo editaste y cambiás de concepto, se
+  // pisa: son una sola idea, mezclar el titular viejo con la escena nueva
+  // rompe la pieza (regla de a8_conceptos.py).
+  $("#titular").value = c.titular;
+}
+
+function modoCambio() {
+  const modo = $("#modo").value;
+  const split = modo === "split";
+  $("#cajaSplit").classList.toggle("oculto", !split);
+  $("#bloqueFoto").classList.toggle("oculto", split);
+  $("#bloqueEscena").classList.toggle("oculto", split);
+  $("#bloqueIA").classList.toggle("oculto", split);
+  if (split) $("#cajaComfy").classList.add("oculto");
+  $("#filaDolores").classList.toggle("oculto", modo !== "dolores");
+}
+
+$("#qwenEscena").onchange = () => {
+  const on = $("#qwenEscena").checked;
+  $("#bloqueEscena").classList.toggle("oculto", on);
+  $("#cajaComfy").classList.toggle("oculto", !on);
+  $("#notaIA").textContent = on
+    ? "Usa la escena del concepto elegido arriba. Tarda 2-3 min: enciende y apaga ComfyUI sola."
+    : "";
+  if (on) comfyEstado();
+};
+
+function pintarPromptsSplit() {
+  const clave = $("#comparativa").value;
+  const par = (DATOS.prompts[clave] || []);
+  const box = $("#promptsSplit"); box.innerHTML = "";
+  par.forEach(p => {
+    const d = document.createElement("div");
+    d.className = "card";
+    d.innerHTML =
+      '<div class="para">' + p.para + '</div>' +
+      '<div class="campo"><b>Objetivo</b><span>' + p.objetivo + '</span></div>' +
+      '<div class="campo"><b>A quién</b><span>' + p.a_quien + '</span></div>' +
+      '<div class="campo"><b>Demuestra</b><span>' + p.demuestra + '</span></div>' +
+      '<pre></pre><button class="cp">Copiar prompt</button>';
+    d.querySelector("pre").textContent = p.prompt;
+    d.querySelector("button").onclick = ev => {
+      navigator.clipboard.writeText(p.prompt);
+      const b = ev.target; b.textContent = "Copiado"; b.classList.add("ok");
+      setTimeout(() => { b.textContent = "Copiar prompt"; b.classList.remove("ok"); }, 1400);
+    };
+    box.appendChild(d);
+  });
+}
+
+$("#abrirCarpeta").onclick = async () => {
+  await fetch("/api/abrir-subir");
+  setTimeout(cargarSubidas, 600);
+};
+
+async function cargarSubidas() {
+  const d = await fetch("/api/subir-fotos").then(r => r.json());
+  [["#fotosIzq", v => splitIzqSel = v], ["#fotosDer", v => splitDerSel = v]].forEach(([sel, set]) => {
+    const cont = $(sel); cont.innerHTML = "";
+    d.fotos.forEach(f => {
+      const im = document.createElement("img");
+      im.src = "/api/subir-miniatura?f=" + encodeURIComponent(f);
+      im.title = f;
+      im.onclick = () => {
+        cont.querySelectorAll("img").forEach(x => x.classList.remove("sel"));
+        im.classList.add("sel"); set(f);
+      };
+      cont.appendChild(im);
+    });
+  });
+}
+
+// ---- ComfyUI ----
+async function comfyEstado() {
+  const d = await fetch("/api/comfy").then(r => r.json()).catch(() => null);
+  if (!d) return;
+  $("#comfyPunto").className = "punto " + (d.vivo ? "on" : "off");
+  const vram = d.vram ? ` · VRAM ${(d.vram[0]/1024).toFixed(1)} / ${(d.vram[1]/1024).toFixed(1)} GB` : "";
+  if (!$("#comfyToggle").disabled) {
+    $("#comfyTxt").textContent = (d.vivo ? "ComfyUI encendido" : "ComfyUI apagado") + vram;
+    $("#comfyToggle").textContent = d.vivo ? "Apagar" : "Encender";
+  }
+}
+setInterval(comfyEstado, 3000);
+$("#comfyToggle").onclick = async () => {
+  const prender = $("#comfyToggle").textContent === "Encender";
+  $("#comfyToggle").disabled = true;
+  $("#comfyTxt").textContent = prender ? "encendiendo… (hasta 3 min)" : "apagando…";
+  await fetch(prender ? "/api/comfy/encender" : "/api/comfy/apagar", { method: "POST" });
+  $("#comfyToggle").disabled = false;
+  comfyEstado();
+};
+
+$("#sellos").onclick = e => {
+  const c = e.target.closest(".chip"); if (!c) return;
+  $("#sellos").querySelectorAll(".chip").forEach(x => x.classList.remove("on"));
+  c.classList.add("on"); sello = c.dataset.v;
+};
+$("#extras").onclick = e => {
+  const c = e.target.closest(".chip"); if (!c) return;
+  c.classList.toggle("on"); vidrio = c.classList.contains("on");
+};
+
+$("#generar").onclick = async () => {
+  const modo = $("#modo").value;
+  if (modo === "split") {
+    if (!splitIzqSel || !splitDerSel) { alert("Elegí las dos mitades primero."); return; }
+  } else if (!fotoSel) {
+    alert("Elegí una foto base primero."); return;
+  }
+  $("#generar").disabled = true;
+  $("#log").textContent = "arrancando…";
+  const cfg = {
+    producto: $("#producto").value, nombre: $("#nombre").value,
+    foto: fotoSel, concepto: $("#concepto").value, modo,
+    formato: $("#formato").value, escena: $("#escena").value,
+    titular: $("#titular").value,
+    sello, vidrio, n_dolores: $("#nDolores").value,
+    qwen_escena: $("#qwenEscena").checked,
+    comparativa: $("#comparativa").value, split_izq: splitIzqSel, split_der: splitDerSel,
+  };
+  const r = await fetch("/api/generar", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(cfg)
+  }).then(x => x.json());
+  seguir(r.id);
+};
+
+function seguir(id) {
+  const t = setInterval(async () => {
+    const d = await fetch("/api/trabajo?id=" + id).then(x => x.json());
+    $("#log").textContent = (d.log || []).join("\n");
+    if (d.estado === "listo" || d.estado === "error") {
+      clearInterval(t); $("#generar").disabled = false;
+      if (d.estado === "listo") {
+        mostrarArte(d.arte);
+        copys(d.copys);
+        historial();
+      }
+    }
+  }, 1200);
+}
+
+function mostrarArte(nombre) {
+  $("#vista").innerHTML =
+    '<img src="/api/arte?f=' + encodeURIComponent(nombre) + '&t=' + Date.now() + '">';
+  const desc = $("#descargar");
+  desc.href = "/api/arte?f=" + encodeURIComponent(nombre);
+  desc.download = nombre;
+  desc.classList.remove("oculto");
+}
+
+function copys(cs) {
+  const box = $("#copys"); box.innerHTML = "";
+  if (!cs) { $("#cajaCopys").style.display = "none"; return; }
+  Object.entries(cs).forEach(([k, v]) => {
+    const d = document.createElement("div");
+    d.className = "copy";
+    d.innerHTML = '<h3>' + k + '<button class="cp">Copiar</button></h3><pre></pre>';
+    d.querySelector("pre").textContent = v;
+    d.querySelector("button").onclick = ev => {
+      navigator.clipboard.writeText(v);
+      const b = ev.target; b.textContent = "Copiado"; b.classList.add("ok");
+      setTimeout(() => { b.textContent = "Copiar"; b.classList.remove("ok"); }, 1400);
+    };
+    box.appendChild(d);
+  });
+  $("#cajaCopys").style.display = "block";
+}
+
+// ---- historial ----
+async function historial() {
+  const d = await fetch("/api/historial").then(r => r.json()).catch(() => null);
+  if (!d) return;
+  const cont = $("#historial"); cont.innerHTML = "";
+  d.items.forEach(it => {
+    const im = document.createElement("img");
+    im.src = "/api/arte?f=" + encodeURIComponent(it.arte);
+    im.title = it.arte;
+    im.onclick = async () => {
+      mostrarArte(it.arte);
+      if (it.tiene_copy) {
+        const cd = await fetch("/api/historial-copys?f=" + encodeURIComponent(it.arte)).then(r => r.json());
+        copys(cd.copys);
+      } else {
+        copys(null);
+      }
+    };
+    cont.appendChild(im);
+  });
+}
+</script>
+</html>
