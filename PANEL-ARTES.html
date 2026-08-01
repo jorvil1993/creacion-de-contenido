@@ -406,24 +406,39 @@ $("#generar").onclick = async () => {
     qwen_escena: $("#qwenEscena").checked,
     comparativa: $("#comparativa").value, split_izq: splitIzqSel, split_der: splitDerSel,
   };
-  const r = await fetch("/api/generar", {
-    method: "POST", headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(cfg)
-  }).then(x => x.json());
-  seguir(r.id);
+  try {
+    const r = await fetch("/api/generar", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(cfg)
+    }).then(x => x.json());
+    if (r && r.id) {
+      seguir(r.id);
+    } else {
+      throw new Error("Respuesta inválida del servidor");
+    }
+  } catch (err) {
+    $("#generar").disabled = false;
+    $("#log").textContent = "ERROR al iniciar generación: " + err.message + "\nPor favor volvé a intentar.";
+  }
 };
 
 function seguir(id) {
   const t = setInterval(async () => {
-    const d = await fetch("/api/trabajo?id=" + id).then(x => x.json());
-    $("#log").textContent = (d.log || []).join("\n");
-    if (d.estado === "listo" || d.estado === "error") {
-      clearInterval(t); $("#generar").disabled = false;
-      if (d.estado === "listo") {
-        mostrarArte(d.arte);
-        copys(d.copys);
-        historial();
+    try {
+      const d = await fetch("/api/trabajo?id=" + id).then(x => x.json());
+      const logElem = $("#log");
+      logElem.textContent = (d.log || []).join("\n");
+      logElem.scrollTop = logElem.scrollHeight;
+      if (d.estado === "listo" || d.estado === "error") {
+        clearInterval(t); $("#generar").disabled = false;
+        if (d.estado === "listo") {
+          mostrarArte(d.arte);
+          copys(d.copys);
+          historial();
+        }
       }
+    } catch (e) {
+      // Ignorar reconexiones temporales
     }
   }, 1200);
 }
