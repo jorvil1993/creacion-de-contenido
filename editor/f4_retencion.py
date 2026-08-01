@@ -353,11 +353,154 @@ def detectar_huecos_regla_5s(duracion_total: float, planos: list, picos: list,
 
 
 # ---------------------------------------------------------------------------
+# 4.9 B-roll DETRÁS de José (modo "recorte")
+# ---------------------------------------------------------------------------
+# El B-roll ocupa una franja de arriba (70% del alto) en vez de tapar el cuadro,
+# y José se compone ENCIMA recortado de su cuarto. Son tres capas apiladas:
+#
+#     1. el video, con el cuarto atenuado bajo la franja   <- en el bucle Python
+#     2. el B-roll, con el borde de abajo desvanecido      <- .mov con alfa
+#     3. José recortado, con el mismo zoom que la capa 1    <- .mov con alfa (RVM)
+#
+# Las capas 2 y 3 se preparan como archivos antes de armar el comando de ffmpeg
+# y entran como dos overlays normales. Así el resto del filtro no cambia y los
+# índices de entrada siguen siendo `2 + i`.
+def _preparar_recorte(eventos: list, ruta_video: Path, dir_trabajo: Path,
+                      w_out: int, h_out: int, fps: float, encuadrar) -> tuple[list, list]:
+    """Cambia cada B-roll en modo recorte por sus dos capas ya renderizadas.
+
+    Devuelve (eventos, ventanas). `ventanas` es lo que el bucle de render
+    necesita para atenuar el cuarto debajo de cada B-roll.
+    """
+    if not any(ev.get("modo_broll") == "recorte" for ev in eventos):
+        return eventos, []
+
+    import f17_matte
+
+    alto_franja = int(h_out * config.BROLL_RECORTE_ALTO_PCT) // 2 * 2
+    degradado = int(config.BROLL_RECORTE_DEGRADADO_PX * (h_out / config.ALTO))
+    dir_tmp = dir_trabajo / "_tmp_matte"
+    dir_tmp.mkdir(parents=True, exist_ok=True)
+    mascara = f17_matte.mascara_degradado(
+        w_out, alto_franja, degradado, dir_tmp / f"degradado_{w_out}x{alto_franja}.png")
+
+    # El perfil de opacidad que usa la atenuación del fondo es EL MISMO archivo
+    # que el alfa del B-roll: si fueran dos curvas distintas se vería un segundo
+    # borde donde una termina y la otra no.
+    from PIL import Image
+    perfil = (np.asarray(Image.open(mascara).convert("L"), dtype=np.float32)[:, :1] / 255.0)
+    perfil = perfil[:, :, None]
+
+    matte = None
+    salida, ventanas = [], []
+    for i, ev in enumerate(eventos):
+        if ev.get("modo_broll") != "recorte":
+            salida.append(ev)
+            continue
+
+        dur = float(ev["fin"]) - float(ev["ini"])
+        # La resolución va en el nombre: sin ella, un --preview (media
+        # resolución) reutilizaría las capas cacheadas del render final y las
+        # compondría al doble de tamaño, o al revés.
+        base = f"recorte_{i}_{int(float(ev['ini']) * 1000)}_{w_out}x{h_out}"
+
+        # Capa 2: el clip llevado a la franja, con el borde inferior desvanecido.
+        clip = dir_tmp / f"{base}_broll.mov"
+        if not clip.exists():
+            cmd = ["ffmpeg", "-y", "-v", "error"]
+            r_ini = float(ev.get("recorte_inicio") or 0.0)
+            if r_ini > 0:
+                cmd += ["-ss", f"{r_ini:.3f}"]
+            cmd += [
+                "-i", str(ev["archivo"]), "-loop", "1", "-i", str(mascara),
+                "-filter_complex",
+                f"[0:v]scale={w_out}:{alto_franja}:force_original_aspect_ratio=increase,"
+                f"crop={w_out}:{alto_franja},setpts=PTS-STARTPTS,format=gbrp[br];"
+                f"[1:v]format=gray,scale={w_out}:{alto_franja}[m];"
+                f"[br][m]alphamerge[out]",
+                "-map", "[out]", "-t", f"{dur:.3f}",
+                "-c:v", "prores_ks", "-profile:v", "4444", "-pix_fmt", "yuva444p10le",
+                str(clip),
+            ]
+            r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                               errors="replace")
+            if r.returncode != 0:
+                _log(f"AVISO: no se pudo preparar el B-roll recortado de "
+                     f"{ev['ini']:.1f}s ({r.stderr[-300:]}) — se deja a pantalla completa.")
+                salida.append({**ev, "broll_fullscreen": True, "modo_broll": "completo"})
+                continue
+
+        # Capa 3: José recortado, con el encuadre de la capa 1.
+        capa_jose = dir_tmp / f"{base}_persona.mov"
+        if not capa_jose.exists():
+            try:
+                matte = matte or f17_matte.Matte()
+                capa_jose = f17_matte.render_ventana(
+                    ruta_video, float(ev["ini"]), float(ev["fin"]), capa_jose,
+                    w_out, h_out, fps, encuadrar=encuadrar, matte=matte)
+            except Exception as e:
+                _log(f"AVISO: falló el recorte de la persona ({e}). El B-roll de "
+                     f"{ev['ini']:.1f}s se compone SIN recortar a José por delante.")
+                capa_jose = None
+
+        # `recorte_inicio/fin` ya se aplicaron al preparar el clip: dejarlos
+        # haría que ffmpeg los aplicara una segunda vez sobre el archivo nuevo.
+        ev_broll = {k: v for k, v in ev.items()
+                    if k not in ("recorte_inicio", "recorte_fin")}
+        ev_broll.update({"archivo": str(clip), "tipo": "broll-recorte",
+                         "medio": "video", "broll_fullscreen": False, "x": 0, "y": 0})
+        salida.append(ev_broll)
+        if capa_jose is not None:
+            # Va DESPUÉS del B-roll en la lista, que es lo que la deja encima en
+            # el filter_complex.
+            salida.append({"tipo": "matte-persona", "medio": "video",
+                           "archivo": str(capa_jose), "x": 0, "y": 0,
+                           "ini": ev["ini"], "fin": ev["fin"], "asset": "matte"})
+        ventanas.append({"ini": float(ev["ini"]), "fin": float(ev["fin"]),
+                         "alto": alto_franja, "perfil": perfil})
+
+    return salida, ventanas
+
+
+def _atenuar_franja(frame, t: float, ventana: dict):
+    """Apaga el cuarto bajo la franja del B-roll, sobre el frame ya encuadrado.
+
+    Se desvanece con la misma curva que el alfa del B-roll (de ahí el `perfil`
+    compartido) y con la misma rampa de entrada y salida que su fade, para que
+    aparezca y se vaya junto con él y no por su cuenta.
+    """
+    import cv2
+
+    ini, fin = ventana["ini"], ventana["fin"]
+    if not (ini <= t < fin):
+        return
+    fade = config.BROLL_FADE_S
+    k = 1.0 if fade <= 0 else min(1.0, (t - ini) / fade, (fin - t) / fade)
+    if k <= 0:
+        return
+
+    alto = ventana["alto"]
+    franja = frame[:alto].astype(np.float32)
+    b = max(1, int(config.BROLL_RECORTE_FONDO_BLUR))
+    ajustada = cv2.blur(frame[:alto], (b, b)).astype(np.float32)
+    # saturación y brillo como los aplicaría `eq` de ffmpeg (luma BT.601 sobre
+    # BGR, que es el orden en que cv2 entrega los píxeles)
+    luma = (ajustada[:, :, 0] * 0.114 + ajustada[:, :, 1] * 0.587
+            + ajustada[:, :, 2] * 0.299)[:, :, None]
+    ajustada = luma + (ajustada - luma) * config.BROLL_RECORTE_FONDO_SATURACION
+    ajustada += config.BROLL_RECORTE_FONDO_BRILLO * 255.0
+    np.clip(ajustada, 0, 255, out=ajustada)
+
+    a = ventana["perfil"] * k
+    frame[:alto] = (franja * (1.0 - a) + ajustada * a).astype(np.uint8)
+
+
+# ---------------------------------------------------------------------------
 # 5. Render: aplica zoom + pan centrado en rostro, frame a frame
 # ---------------------------------------------------------------------------
 def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list, planos: list, picos: list,
                         eventos_overlay: list = None, ruta_subs: Path = None, final: bool = False,
-                        cerrados: list = None, escala: float = 1.0):
+                        cerrados: list = None, escala: float = 1.0, pip_anim_default: dict = None):
     """Aplica zoom/pan frame a frame y codifica en UNA sola pasada.
 
     Los frames procesados se mandan crudos por tubería a ffmpeg, que codifica
@@ -408,6 +551,55 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
         else ev
         for ev in eventos_overlay
     ]
+    # ----- Encuadre -----------------------------------------------------------
+    # Se resuelve ACÁ ARRIBA, y no junto al bucle de render como antes, porque el
+    # modo "recorte" necesita generar la capa de José antes de armar el comando
+    # de ffmpeg (es una entrada más). Esa capa tiene que llevar exactamente el
+    # mismo zoom y paneo que el fondo: si se calculara aparte, José saldría
+    # desplazado respecto de sí mismo.
+    tiempos_track = np.array([p["t"] for p in track_rostro]) if track_rostro else np.array([0.0])
+    cx_track = np.array([p["cx"] for p in track_rostro]) if track_rostro else np.array([0.5])
+    cy_track = np.array([p["cy"] for p in track_rostro]) if track_rostro else np.array([0.4])
+    aspecto_salida = w_out / h_out
+
+    # ----- Diseño de loop (sección 4.5 del plan) -----------------------------
+    # El rewatch es la señal más fuerte del algoritmo, y hasta ahora esto era
+    # solo una NOTA de texto en el plan JSON: no había ninguna lógica.
+    # Implementación: durante el último tramo el encuadre (zoom + paneo) vuelve
+    # suavemente al del primer frame, así el último frame empalma con el primero
+    # y el video "engancha" consigo mismo al reiniciarse. La otra mitad del loop
+    # (repetir el hook en el cierre) la pone f6_overlays en la tarjeta de CTA.
+    hacer_loop = (config.LOOP_ACTIVO and duracion_total > config.LOOP_DURACION_S * 3)
+    t_loop = cx_ini = cy_ini = zoom_ini = None
+    if hacer_loop:
+        cx_ini = float(np.interp(0.0, tiempos_track, cx_track))
+        cy_ini = float(np.interp(0.0, tiempos_track, cy_track))
+        zoom_ini = calcular_zoom_en_t(0.0, planos, picos, cerrados)
+        t_loop = duracion_total - config.LOOP_DURACION_S
+        _log(f"  loop: el encuadre vuelve al del primer frame desde {t_loop:.1f}s "
+             f"(zoom {zoom_ini:.3f}, centro {cx_ini:.3f}/{cy_ini:.3f})")
+
+    def encuadrar(frame, t):
+        """El frame con el zoom y el paneo que le tocan en el segundo `t`."""
+        cx, cy, zoom = encuadre_en_t(
+            t, tiempos_track, cx_track, cy_track, planos, picos,
+            hacer_loop, t_loop, cx_ini, cy_ini, zoom_ini, cerrados=cerrados,
+        )
+        # recorte centrado en rostro, con relación de aspecto de salida (9:16)
+        h_crop = h_in / zoom
+        w_crop = h_crop * aspecto_salida
+        if w_crop > w_in:
+            w_crop = w_in
+            h_crop = w_crop / aspecto_salida
+        x0 = np.clip(cx * w_in - w_crop / 2, 0, w_in - w_crop)
+        y0 = np.clip(cy * h_in - h_crop / 2, 0, h_in - h_crop)
+        recorte = frame[int(y0):int(y0 + h_crop), int(x0):int(x0 + w_crop)]
+        return cv2.resize(recorte, (w_out, h_out), interpolation=cv2.INTER_LINEAR)
+
+    # ----- B-roll DETRÁS de José (modo "recorte") -----------------------------
+    eventos_overlay, ventanas_recorte = _preparar_recorte(
+        eventos_overlay, ruta_video, ruta_salida.parent, w_out, h_out, fps, encuadrar)
+
     # los streams de PNG deben durar al menos hasta el fin del último overlay
     # (el conteo de frames puede quedar unas décimas por debajo de la duración
     # del contenedor con la que f6 planificó los eventos)
@@ -466,6 +658,27 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
                 f"fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
                 f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
             )
+        elif ev.get("tipo") == "matte-persona":
+            # La capa de José NO lleva fade. Debajo está el mismo José, en el
+            # mismo sitio y con el mismo encuadre, así que entrar y salir de
+            # golpe no se ve. Con fade se lo vería medio transparente sobre el
+            # B-roll mientras dura la transición, que sí se nota.
+            # Tampoco lleva `reducir`: _preparar_recorte ya la generó a la
+            # resolución de salida, encogerla otra vez la dejaría a la mitad.
+            filtro_partes.append(
+                f"[{idx_input}:v]format=rgba,"
+                f"setpts=PTS-STARTPTS+{ev['ini']:.3f}/TB[ov{i}]"
+            )
+        elif ev.get("tipo") == "broll-recorte":
+            # Mismo fade que usa la atenuación del cuarto en el bucle de Python:
+            # con dos duraciones distintas, el fondo se apagaría antes o después
+            # que el clip y se vería el desfase.
+            dur_fade = config.BROLL_FADE_S
+            filtro_partes.append(
+                f"[{idx_input}:v]format=rgba,setpts=PTS-STARTPTS+{ev['ini']:.3f}/TB,"
+                f"fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
+                f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
+            )
         elif ev.get("medio") == "video":
             dur_fade = 0.15
             if ev.get("tipo") == "pip-producto":
@@ -494,8 +707,26 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
                 f"[{idx_input}:v]{reducir}format=rgba,fade=t=in:st={ev['ini']:.3f}:d={dur_fade}:alpha=1,"
                 f"fade=t=out:st={ev['fin'] - dur_fade:.3f}:d={dur_fade}:alpha=1[ov{i}]"
             )
+        # Animación de entrada/salida del PiP: cambia SOLO la posición durante
+        # las ventanas de entrada y salida (ver f4b_pip_anim). Fuera de ellas la
+        # expresión vale la posición base, así que un PiP con "fundido" (lo de
+        # siempre) sale idéntico. No se anima el fondo (B-roll a pantalla
+        # completa, matte de José, recorte de B-roll): esos tienen que quedarse
+        # quietos o se despega el plano.
+        pos = f"{ev_x}:{ev_y}"
+        if not (ev.get("broll_fullscreen") or
+                ev.get("tipo") in ("matte-persona", "broll-recorte")):
+            import f4b_pip_anim
+            defec = pip_anim_default or {}
+            a_in = ev.get("anim_entrada") or defec.get("entrada") or "fundido"
+            a_out = ev.get("anim_salida") or defec.get("salida") or "fundido"
+            a_k = ev.get("anim_intensidad") or defec.get("intensidad") or 1.0
+            x_expr, y_expr = f4b_pip_anim.expr_posicion(
+                ev_x, ev_y, ev["ini"], ev["fin"], a_in, a_out, a_k)
+            if x_expr:
+                pos = f"x='{x_expr}':y='{y_expr}'"
         filtro_partes.append(
-            f"[{etiqueta}][ov{i}]overlay={ev_x}:{ev_y}:"
+            f"[{etiqueta}][ov{i}]overlay={pos}:"
             f"enable='between(t,{ev['ini']:.3f},{ev['fin']:.3f})'[v{i}]"
         )
         etiqueta = f"v{i}"
@@ -534,27 +765,6 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
     # stdout/stderr van a un archivo, NO a un pipe: si nadie lee un pipe,
     # ffmpeg se bloquea al llenarse el buffer del sistema operativo.
     log_ffmpeg = ruta_salida.with_suffix(".ffmpeg.log")
-    tiempos_track = np.array([p["t"] for p in track_rostro]) if track_rostro else np.array([0.0])
-    cx_track = np.array([p["cx"] for p in track_rostro]) if track_rostro else np.array([0.5])
-    cy_track = np.array([p["cy"] for p in track_rostro]) if track_rostro else np.array([0.4])
-
-    aspecto_salida = w_out / h_out
-
-    # ----- Diseño de loop (sección 4.5 del plan) -----------------------------
-    # El rewatch es la señal más fuerte del algoritmo, y hasta ahora esto era
-    # solo una NOTA de texto en el plan JSON: no había ninguna lógica.
-    # Implementación: durante el último tramo el encuadre (zoom + paneo) vuelve
-    # suavemente al del primer frame, así el último frame empalma con el primero
-    # y el video "engancha" consigo mismo al reiniciarse. La otra mitad del loop
-    # (repetir el hook en el cierre) la pone f6_overlays en la tarjeta de CTA.
-    hacer_loop = (config.LOOP_ACTIVO and duracion_total > config.LOOP_DURACION_S * 3)
-    if hacer_loop:
-        cx_ini = float(np.interp(0.0, tiempos_track, cx_track))
-        cy_ini = float(np.interp(0.0, tiempos_track, cy_track))
-        zoom_ini = calcular_zoom_en_t(0.0, planos, picos, cerrados)
-        t_loop = duracion_total - config.LOOP_DURACION_S
-        _log(f"  loop: el encuadre vuelve al del primer frame desde {t_loop:.1f}s "
-             f"(zoom {zoom_ini:.3f}, centro {cx_ini:.3f}/{cy_ini:.3f})")
 
     with open(log_ffmpeg, "wb") as flog:
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=flog, stderr=flog, cwd=cwd_proceso)
@@ -566,26 +776,13 @@ def renderizar_con_zoom(ruta_video: Path, ruta_salida: Path, track_rostro: list,
                     break
                 t = idx / fps
 
-                cx, cy, zoom = encuadre_en_t(
-                    t, tiempos_track, cx_track, cy_track, planos, picos,
-                    hacer_loop, t_loop if hacer_loop else None,
-                    cx_ini if hacer_loop else None, cy_ini if hacer_loop else None,
-                    zoom_ini if hacer_loop else None,
-                    cerrados=cerrados,
-                )
-
-                # recorte centrado en rostro, con relación de aspecto de salida (9:16)
-                h_crop = h_in / zoom
-                w_crop = h_crop * aspecto_salida
-                if w_crop > w_in:
-                    w_crop = w_in
-                    h_crop = w_crop / aspecto_salida
-
-                x0 = np.clip(cx * w_in - w_crop / 2, 0, w_in - w_crop)
-                y0 = np.clip(cy * h_in - h_crop / 2, 0, h_in - h_crop)
-
-                recorte = frame[int(y0):int(y0 + h_crop), int(x0):int(x0 + w_crop)]
-                salida = cv2.resize(recorte, (w_out, h_out), interpolation=cv2.INTER_LINEAR)
+                salida = encuadrar(frame, t)
+                # El cuarto que queda DEBAJO del B-roll se atenúa acá y no en
+                # ffmpeg: acá el frame ya está encuadrado, así que la franja cae
+                # siempre donde debe. Sin esto el B-roll sale lavado — la pared
+                # clara y el producto claro se confunden.
+                for v in ventanas_recorte:
+                    _atenuar_franja(salida, t, v)
                 proc.stdin.write(salida.tobytes())
 
                 idx += 1
@@ -633,6 +830,10 @@ def main():
                         help="Plan de encuadre del guion (guion.encuadre.json de f13_guion): "
                              "punch-ins y tramos de plano cerrado marcados en el panel. "
                              "Cuando está, manda sobre los picos de energía del audio")
+    parser.add_argument("--pip-anim-json", type=str, default=None, metavar="JSON",
+                        help="ajustes.pip_anim.json del editor visual: animación de entrada "
+                             "y salida por defecto de los PiP (y su intensidad). Cada evento "
+                             "puede además traer sus propios campos anim_entrada/anim_salida")
     args = parser.parse_args()
 
     global PERFIL
@@ -745,13 +946,20 @@ def main():
             eventos_overlay = json.loads(Path(args.overlays).read_text(encoding="utf-8"))
         ruta_subs = Path(args.subs) if args.subs else None
 
+        pip_anim_default = None
+        if args.pip_anim_json and Path(args.pip_anim_json).exists():
+            cfg_anim = json.loads(Path(args.pip_anim_json).read_text(encoding="utf-8"))
+            pip_anim_default = cfg_anim.get("default", cfg_anim)
+            _log(f"Animación de PiP por defecto: entrada '{pip_anim_default.get('entrada','fundido')}', "
+                 f"salida '{pip_anim_default.get('salida','fundido')}'")
+
         if args.escala != 1.0:
             _log(f"\nPrevisualización a {args.escala:g}x: misma composición, menos píxeles.")
         else:
             _log("\nRenderizando video con zoom/face-tracking (puede tardar varios minutos)...")
         renderizar_con_zoom(ruta_video, ruta_salida, track_rostro, planos, picos,
                             eventos_overlay=eventos_overlay, ruta_subs=ruta_subs, final=args.final,
-                            cerrados=cerrados, escala=args.escala)
+                            cerrados=cerrados, escala=args.escala, pip_anim_default=pip_anim_default)
         _log(f"Video con retención: {ruta_salida}")
 
 

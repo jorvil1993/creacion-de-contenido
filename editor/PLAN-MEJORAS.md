@@ -901,6 +901,128 @@ El worktree y sus enlaces (`entrada/`, `salida/`, `assets/`) ya se quitaron.
 
 ---
 
+## BLOQUE — Añadir "texto llamativo" desde el editor, con preview de cada estilo
+
+**Estado: hecho.**
+
+### Qué se pidió
+
+La plantilla `texto-destacado` (bloque "Texto llamativo tipo CapCut", más arriba)
+había quedado renderizable pero sin ningún gancho de uso real: no la disparaba
+ninguna columna del panel, y el único botón donde aparecía por accidente (el
+inventario genérico de animaciones) siempre añadía el texto y estilo por
+defecto, sin forma de escribir la frase real ni ver los 6 estilos antes de
+elegir. José pidió agregarla al editor de forma amigable, con una vista previa
+de cómo se ve cada estilo (no una captura estática: en movimiento), para no
+elegir a ciegas ni tener que re-renderizar para probar cada uno.
+
+### Qué encontré
+
+- `f8_hyperframes.inventario_animaciones()` itera TODO `config.ANIMACION_DURACION`
+  sin filtrar — por eso `texto-destacado` aparecía en el grid genérico aunque
+  ese flujo (`elegirAnimacion()`) nunca serializó un campo `variables`: cualquier
+  clic agregaba el mismo clip fijo ("¡OJO A ESTO!", contorno).
+- **Bug real que habría dejado la función muerta en el render**:
+  `f6_overlays.cargar_animaciones_manual()` (el lector de `ajustes.animaciones.json`)
+  reconstruía cada entrada con una lista fija de claves — `nombre, ini, dur,
+  variante, video_sol, palabra` — **sin `variables`**. Aunque
+  `_construir_animacion()` ya sabía recibir `variables_extra` y pasarlo a
+  `f8_hyperframes.render()` (así es como `stickers` recibe su `tipo` desde el
+  panel), la entrada que le llegaba desde el editor SIEMPRE tenía
+  `variables_extra=None` porque el loader la descartaba antes. Sin arreglar
+  esto, el editor podría haber guardado el texto y el estilo, pero el render
+  real los habría ignorado en silencio.
+- Los MOV de Hyperframes (ProRes 4444 con alfa) no los reproduce ningún
+  navegador — el editor ya resuelve esto para las demás animaciones con
+  `/anim-preview`, que compone un WebM chico sobre el color del panel
+  (`f10_editor_visual.preview_animacion`, cacheado por mtime). Pero
+  `mov_de_plantilla(plantilla)` devuelve **cualquier** MOV cacheado de esa
+  plantilla — con 6 estilos bien distintos bajo el mismo nombre de plantilla,
+  ese mecanismo solo puede enseñar UNO, no los 6.
+
+### Qué decidí y por qué
+
+- **`config.py`**: `TEXTO_DESTACADO_ESTILOS` (las 6 claves con etiqueta legible:
+  "Píldora", "Neón", etc. — el editor nunca pinta la clave cruda del CSS) y
+  `TEXTO_DESTACADO_MUESTRA = "¡OJO A ESTO!"`, el mismo texto que ya era el
+  default embebido en el HTML — así el preview pre-renderizado coincide con lo
+  que se ve si José no toca el campo de texto.
+- **`f8_hyperframes.inventario_animaciones()`**: salta `texto-destacado` a
+  propósito (con el motivo escrito en el comentario) — ese flujo genérico no
+  sirve para una plantilla que necesita texto libre; tiene su panel dedicado.
+- **`f6_overlays.cargar_animaciones_manual()`**: ahora conserva `"variables"`
+  (dict) de cada entrada si viene y es un dict. Es el fix que hace que el resto
+  de la función sirva de algo — antes de esto, ningún camino real llegaba a
+  usar la plantilla con datos propios.
+- **`/anim-preview` (f11_servidor.py)**: acepta `?estilo=` además de `?nombre=`.
+  Con `estilo` y plantilla `texto-destacado`, llama a
+  `f8_hyperframes.render("texto-destacado", {"texto": MUESTRA, "estilo": X})`
+  en vez de "cualquier MOV cacheado" — como `render()` cachea por hash de
+  contenido (plantilla + variables + hash del HTML), y los 6 estilos con el
+  texto de muestra ya se renderizaron una vez de antemano (los 6 quedan en
+  `cache_hyperframes/`), esta llamada es **siempre un cache-hit**: nunca dispara
+  un render de Hyperframes real desde el navegador. Medido: los 6 juntos, 0.02s
+  en Python puro / bajo 800ms por HTTP (el tiempo real es el ffmpeg que arma el
+  WebM chico, no Hyperframes).
+- **Editor — panel nuevo "Texto llamativo"**: input de texto libre + grid de 6
+  tarjetas (una por estilo, cada una con su preview EN MOVIMIENTO, mismo
+  componente `medioAnimacion` que ya usan hook/CTA/animaciones) + botón "Añadir
+  en el segundo actual". Elegir un estilo resalta su tarjeta
+  (`.inventario-item.seleccionado`); no hace falta abrir ningún modal aparte.
+  El texto libre de José se pinta con `textContent`, nunca `innerHTML` — es el
+  único campo del editor que acepta texto arbitrario sin ser una palabra de la
+  transcripción, y comillas o ángulos no deben interpretarse como HTML.
+- **Persistencia**: `animacionesParaGuardar()` incluye `variables` cuando
+  existe; el mapeo de recarga (`animGuardadas.map(...)`) la preserva. De paso,
+  ese mismo mapeo usaba `2.4s` fijo como duración por defecto de CUALQUIER
+  animación todavía no renderizada — ahora usa `DATA.anim_duraciones[nombre]`
+  (expuesto desde `config.ANIMACION_DURACION`, mismo patrón que los picos de
+  SFX y el tamaño de subtítulo), así que la barra de tiempo no miente ni para
+  texto-destacado (2.5s) ni para las demás que ya tenían este mismo defecto
+  impreciso (stickers, etc.) antes de tener su primer render.
+
+### Verificación hecha
+
+- `python editor/test_regresion.py` (**231 pruebas**, sección nueva 19,
+  `pruebas_texto_destacado_editor`) y `python editor/test_align.py`: en verde.
+- **Server real levantado** contra una copia descartable de `Guion-7`
+  (`_prueba-texto-destacado`, puerto propio 8799 — el 8765 ya lo tenía tomado
+  `abrir_editor.py` de una sesión de José en curso, no se tocó), borrada al
+  terminar:
+  - `/datos` expone las 4 claves nuevas con los valores correctos.
+  - `/anim-preview?nombre=texto-destacado&estilo=X` para los 6 estilos: HTTP
+    200, WebM válido (VP9, 240x300), 6 archivos con hash distinto (no se
+    repiten), 677-799ms cada uno.
+  - `/animaciones-disponibles` real ya NO incluye `texto-destacado`.
+  - `POST /guardar` con un evento `texto-destacado` real: el
+    `ajustes.animaciones.json` en disco quedó con `variables` intacto, y
+    `f6_overlays.cargar_animaciones_manual()` lo vuelve a leer con `variables`
+    presente — el round-trip completo servidor real → disco → loader.
+  - `Guion-7` (la corrida real) sin tocar: mismo contenido y mtime de
+    `ajustes.animaciones.json` antes y después.
+- `node --check` sobre el `<script>` completo (extraído por número de línea,
+  no por regex de `<script>` — el archivo tiene comentarios en español que
+  mencionan la palabra "script" entre corchetes angulares y confunden un
+  regex ingenuo): sin errores.
+
+### Archivos tocados
+
+- `editor/config.py`
+- `editor/f8_hyperframes.py`
+- `editor/f6_overlays.py`
+- `editor/f10_editor_visual.py`
+- `editor/f11_servidor.py`
+- `editor/test_regresion.py`
+
+### Siguiente paso
+
+Ninguno pendiente de este bloque. Si en uso real el texto no cabe bien en
+alguno de los 6 estilos con frases largas, la plantilla ya reduce el tamaño de
+letra sola (76px→44px, `plantillas/compositions/texto-destacado.html`) — no
+hay nada que ajustar del lado del editor.
+
+---
+
 ## 📌 TAREAS PENDIENTES FUTURAS (Próxima Fase del Editor Visual)
 
 Los siguientes 3 bloques quedaron **planificados y pendientes** para ser desarrollados en la próxima tanda sobre `f11_servidor.py`:

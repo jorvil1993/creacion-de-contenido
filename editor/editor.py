@@ -174,6 +174,23 @@ def main():
                         help="Correcciones de texto de palabras mal transcritas (Whisper), hechas "
                              "en el editor visual. Solo cambia lo que se VE en el subtítulo — los "
                              "tiempos y la alineación guion↔transcripción siguen intactos")
+    parser.add_argument("--sub-estilo", type=str, default=None, choices=list(config.SUB_ESTILOS),
+                        help="Estilo visual del subtítulo, elegido en el editor visual (Bloque 5b). "
+                             "Sin esto, config.SUB_ESTILO_DEFECTO ('karaoke', el de siempre)")
+    parser.add_argument("--transicion", type=str, default=None,
+                        help="Transición a dibujar entre cortes (flash-blanco, glitch, "
+                             "zoom-punch, ...). Se hornea en la fase de corte, así que "
+                             "cambiarla exige un render completo (no --reaplicar). Ver "
+                             "f2b_transiciones.TRANSICIONES")
+    parser.add_argument("--intensidad-transicion", type=float, default=None, metavar="K",
+                        help="Fuerza de la transición entre cortes: 0.5 suave, 1.0, 1.5 agresiva")
+    parser.add_argument("--transiciones-json", type=str, default=None, metavar="JSON",
+                        help="ajustes.transiciones.json del editor visual (tipo, intensidad "
+                             "y empalmes quitados). Manda sobre --transicion")
+    parser.add_argument("--pip-anim-json", type=str, default=None, metavar="JSON",
+                        help="ajustes.pip_anim.json del editor visual: animación de entrada "
+                             "y salida por cada PiP, con su intensidad. Se aplica en el "
+                             "render final, así que itera rápido con --reaplicar")
     parser.add_argument("--sol-pip-video", action="store_true",
                         help="Usar el video de sol (sol_video_pip.mov) como PiP en vez de la animación HTML")
     parser.add_argument("--video-ambiente", action="store_true",
@@ -297,7 +314,77 @@ def main():
                       f"cierre físico al final.")
         if tomas_json.exists():
             extra += ["--tomas", str(tomas_json)]
+        # Transiciones entre cortes: se hornean aquí, en la fase de corte. El
+        # editor visual, si las tocó, deja un ajustes.transiciones.json que manda
+        # sobre las banderas sueltas.
+        aj_trans = dir_trabajo / "ajustes.transiciones.json"
+        if args.transiciones_json:
+            extra += ["--transiciones-json", args.transiciones_json]
+        elif aj_trans.exists():
+            extra += ["--transiciones-json", str(aj_trans)]
+        else:
+            if args.transicion:
+                extra += ["--transicion", args.transicion]
+            if args.intensidad_transicion is not None:
+                extra += ["--intensidad-transicion", str(args.intensidad_transicion)]
         return extra
+
+    def _extra_pip_anim():
+        # Animación de entrada/salida de los PiP para el render final de f4.
+        aj = dir_trabajo / "ajustes.pip_anim.json"
+        if args.pip_anim_json:
+            return ["--pip-anim-json", args.pip_anim_json]
+        if aj.exists():
+            return ["--pip-anim-json", str(aj)]
+        return []
+
+    def _firma_transiciones(cfg, empalmes_s):
+        # Firma canónica de una config de transiciones: lista ordenada de
+        # (segundo, tipo, intensidad). Sirve para comparar lo pedido contra lo
+        # ya horneado sin importar el formato (marcas libres, por empalme o global).
+        if not cfg:
+            return []
+        out = []
+        if cfg.get("marcas"):
+            for m in cfg["marcas"]:
+                if (m or {}).get("tipo", "ninguna") != "ninguna":
+                    out.append((round(float(m["t"]), 2), m["tipo"],
+                                round(float(m.get("intensidad", 1.0)), 1)))
+        elif cfg.get("empalmes"):
+            for idx, c in cfg["empalmes"].items():
+                if (c or {}).get("tipo", "ninguna") != "ninguna":
+                    i = int(idx)
+                    t = empalmes_s[i] if 0 <= i < len(empalmes_s) else -1
+                    out.append((round(t, 2), c["tipo"], round(float(c.get("intensidad", 1.0)), 1)))
+        elif cfg.get("transicion", "ninguna") != "ninguna":
+            for t in empalmes_s:
+                out.append((round(t, 2), cfg["transicion"], round(float(cfg.get("intensidad", 1.0)), 1)))
+        return sorted(out)
+
+    def _transiciones_pendientes():
+        # ¿Las transiciones pedidas difieren de las ya horneadas en 02_cortado?
+        # Se usa para forzar el re-corte bajo --reaplicar SOLO cuando cambiaron:
+        # las transiciones se hornean en f2_cortar, que --reaplicar se salta, pero
+        # re-cortar en cada preview aunque no cambie nada sería un gasto inútil.
+        ruta = (Path(args.transiciones_json) if args.transiciones_json
+                else dir_trabajo / "ajustes.transiciones.json")
+        pedido = {}
+        if ruta.exists():
+            try:
+                pedido = json.loads(ruta.read_text(encoding="utf-8"))
+            except Exception:
+                pedido = {}
+        elif args.transicion and args.transicion != "ninguna":
+            pedido = {"transicion": args.transicion,
+                      "intensidad": (args.intensidad_transicion or 1.0)}
+        horneado, empalmes_s = {}, []
+        try:
+            dc = json.loads(json_cortado.read_text(encoding="utf-8"))
+            horneado = dc.get("transicion", {}) or {}
+            empalmes_s = dc.get("empalmes_s", [])
+        except Exception:
+            pass
+        return _firma_transiciones(pedido, empalmes_s) != _firma_transiciones(horneado, empalmes_s)
 
     # Un re-corte invalida el plan de retención: se calculó sobre el video
     # anterior y sus segundos apuntan a otro sitio.
@@ -332,7 +419,9 @@ def main():
         # válido. Se rehace el corte (ffmpeg, segundos) y el análisis de
         # retención, que sí mira el video cortado.
         import f15_silencios
-        if args.silencios and f15_silencios.hay_cambios(dir_trabajo):
+        silencios_cambian = bool(args.silencios and f15_silencios.hay_cambios(dir_trabajo))
+        transiciones_activas = _transiciones_pendientes()
+        if silencios_cambian or transiciones_activas:
             datos_previos = json.loads(json_cortado.read_text(encoding="utf-8"))
             intervalos_viejos = datos_previos.get("intervalos_conservados_original", [])
             fuente_corte = ((datos_previos.get("corte_parametros") or {}).get("fuente_corte")
@@ -344,29 +433,40 @@ def main():
                 # tramo restaurado no está en 02_cortado.mp4. Mejor seguir con el
                 # corte que ya hay que renderizar algo silenciosamente distinto.
                 print(f"\nAVISO: no se puede rehacer el corte — falta la grabación original "
-                      f"({fuente_corte}).\n  Se renderiza con el corte actual y los silencios "
-                      f"restaurados NO se aplican.", file=sys.stderr)
+                      f"({fuente_corte}).\n  Se renderiza con el corte actual; los silencios "
+                      f"restaurados y/o las transiciones NO se aplican.", file=sys.stderr)
             else:
-                paso("FASE 1b-bis: Re-corte con los silencios restaurados", [
-                    "f2_cortar.py", str(transcripcion), str(fuente_corte),
-                    "--salida", str(video_cortado),
-                    *perfil, *_extra_de_corte(), "--silencios", args.silencios,
-                ])
-                datos_nuevos = json.loads(json_cortado.read_text(encoding="utf-8"))
-                intervalos_nuevos = datos_nuevos.get("intervalos_conservados_original", [])
+                # Un solo re-corte cubre las dos cosas: _extra_de_corte() ya trae
+                # --transiciones-json (se hornean acá), y --silencios se suma solo
+                # si de verdad hay tramos restaurados. Las transiciones NO cambian
+                # los intervalos, así que el remapeo de ajustes solo hace falta
+                # cuando cambian los silencios.
+                motivo = []
+                if silencios_cambian:
+                    motivo.append("silencios restaurados")
+                if transiciones_activas:
+                    motivo.append("transiciones")
+                cmd_recorte = ["f2_cortar.py", str(transcripcion), str(fuente_corte),
+                               "--salida", str(video_cortado), *perfil, *_extra_de_corte()]
+                if silencios_cambian:
+                    cmd_recorte += ["--silencios", args.silencios]
+                paso(f"FASE 1b-bis: Re-corte ({' + '.join(motivo)})", cmd_recorte)
 
-                print("\nRemapeando los ajustes ya hechos a la nueva línea de tiempo...")
-                res = f15_silencios.remapear_ajustes(
-                    dir_trabajo, intervalos_viejos, intervalos_nuevos)
-                for nombre_aj in res["cambiados"]:
-                    print(f"  remapeado: {nombre_aj}")
-                f15_silencios.guardar_avisos(dir_trabajo, res["avisos"])
-                for aviso in res["avisos"]:
-                    print(f"  AVISO [{aviso['archivo']}] {aviso.get('etiqueta','')}: "
-                          f"{aviso['detalle']}")
-                if res["avisos"]:
-                    print(f"  -> {len(res['avisos'])} aviso(s). El editor los enseña al "
-                          f"volver a abrirlo: hay que revisarlos a mano.")
+                if silencios_cambian:
+                    datos_nuevos = json.loads(json_cortado.read_text(encoding="utf-8"))
+                    intervalos_nuevos = datos_nuevos.get("intervalos_conservados_original", [])
+                    print("\nRemapeando los ajustes ya hechos a la nueva línea de tiempo...")
+                    res = f15_silencios.remapear_ajustes(
+                        dir_trabajo, intervalos_viejos, intervalos_nuevos)
+                    for nombre_aj in res["cambiados"]:
+                        print(f"  remapeado: {nombre_aj}")
+                    f15_silencios.guardar_avisos(dir_trabajo, res["avisos"])
+                    for aviso in res["avisos"]:
+                        print(f"  AVISO [{aviso['archivo']}] {aviso.get('etiqueta','')}: "
+                              f"{aviso['detalle']}")
+                    if res["avisos"]:
+                        print(f"  -> {len(res['avisos'])} aviso(s). El editor los enseña al "
+                              f"volver a abrirlo: hay que revisarlos a mano.")
                 recorte_rehecho = True
     else:
         cortar_extra = _extra_de_corte()
@@ -431,6 +531,8 @@ def main():
         cmd_subs += ["--tamano", str(args.sub_tamano)]
     if args.sub_correcciones:
         cmd_subs += ["--correcciones", args.sub_correcciones]
+    if args.sub_estilo:
+        cmd_subs += ["--estilo", args.sub_estilo]
     paso("FASE 2: Subtítulos ASS", cmd_subs)
 
     cmd_overlays = [
@@ -473,6 +575,10 @@ def main():
         # recién calculado, iterar sobre el guion no obliga a re-analizar.
         "--final", *perfil, *encuadre_guion,
         *(["--escala", str(config.PREVIEW_ESCALA)] if args.preview else []),
+        # Animación de entrada/salida de los PiP: se aplica en esta pasada, así
+        # que cambiarla desde el editor itera rápido con --reaplicar. El editor
+        # deja un ajustes.pip_anim.json; si no, vale la bandera suelta.
+        *(_extra_pip_anim()),
     ])
 
     cmd_audio = ["f5_audio.py", str(video_compuesto), str(plan_retencion), "--salida", str(video_final),

@@ -273,6 +273,14 @@ TOMA_REPETIDA_VENTANA_S = 20
 SUB_COLOR_TEXTO = "&H00FFFFFF"       # blanco (formato ASS: AABBGGRR)
 SUB_COLOR_CONTORNO = "&H00000000"    # negro
 SUB_COLOR_RESALTADO = "&H00D9D14F"   # cian de marca #4FD1D9 en formato ASS (BGR)
+SUB_COLOR_CAJA = "&H80000000"        # negro 50% alpha — fondo del estilo "Caja de frase"
+SUB_COLOR_PILDORA = "&H003E2A0A"     # navy de marca #0A2A3E en formato ASS — "Píldora de marca"
+SUB_COLOR_KEYWORD = "&H0033AAFF"     # ámbar/naranja — palabra fija de "Palabra clave fija"
+SUB_COLOR_NEON_GLOW = "&H00D12FFF"   # magenta #FF2FD1 — halo del estilo "Neón"
+SUB_COLOR_GLITCH_ROJO = "&H00303BFF" # rojo #FF3B30 — franja del estilo "Glitch RGB" (la cian reusa SUB_COLOR_RESALTADO)
+SUB_COLOR_IMPACTO_AMARILLO = "&H003DD9FF"  # amarillo #FFD93D — relleno del estilo "Impacto"
+SUB_COLOR_PEGATINA = "&H00A63DFF"    # rosa #FF3DA6 — relleno del estilo "Pegatina"
+SUB_COLOR_FOCO = "&H0000E5FF"        # amarillo #FFE500 — palabra que crece en el estilo "Foco"
 
 # Resuelto en Fase 2 (sección 9, pregunta 6 del plan): sesión B entregó las
 # fuentes reales en assets/fuentes/ (Poppins y Montserrat, ambas Bold, OFL).
@@ -286,6 +294,138 @@ SUB_PALABRAS_POR_BLOQUE_MAX = 4
 SUB_POSICION_ALTURA_PCT = 0.77       # 77% de ALTO = 1478px sobre lienzo 1920
 SUB_MARGEN_INFERIOR_PCT = 0.15
 SUB_MARGEN_SUPERIOR_PCT = 0.10
+
+# Estilos visuales de subtítulo elegibles desde el editor visual (Bloque 5b
+# y 5c). Investigado contra lo que hoy domina TikTok/Reels: los primeros 5
+# contra Submagic/OpusClip/Blitzcut y guías de "Hormozi captions"; los 5
+# agregados después ("neon" en adelante) contra el catálogo real de presets
+# "Pro" (de pago) de CapCut — Caption Plug (Beast Pop, Hormozi Box, Neon
+# Sign, RGB Glitch, Impact Shake, Underline Sweep, Sticker Pop...) y la guía
+# oficial de CapCut. "karaoke" YA ES el estilo de siempre (equivalente a
+# "Hormozi captions"), así que queda como default y sus valores replican
+# EXACTAMENTE lo hardcodeado antes de que existiera este dict: cambiar el
+# estilo no puede alterar el .ass de una corrida que no lo pide.
+#
+#   agrupacion: "palabra" (1) | "bloque_corto" (SUB_PALABRAS_POR_BLOQUE_*) | "bloque_largo" (3-6)
+#   resaltado:  "dinamico" (palabra activa cambia de COLOR en el tiempo, karaoke)
+#               | "subrayado" (palabra activa se SUBRAYA en el tiempo, sin cambiar de color)
+#               | "foco" (palabra activa cambia de color Y CRECE con \fscx/\fscy, luego vuelve a 100%)
+#               | "estatico" (una palabra de impacto fija todo el bloque) | "ninguno"
+#   animacion:  "ninguna" | "pop" (escala de entrada) | "glow" (halo/blur, neón)
+#               | "shake" (sacudón que se estabiliza, impacto)
+#   borderstyle/outline_w/outline_color/backcolour/shadow: campos ASS crudos
+#     de la cabecera (ver CABECERA_ASS en f3_subtitulos.py). `None` cae en el
+#     default de siempre (outline negro fino, sin caja, sin sombra). Con
+#     borderstyle=3, backcolour rellena una caja opaca; con borderstyle=1 y
+#     shadow>0, backcolour tiñe la SOMBRA (así se logra el filo rojo/cian de
+#     "Glitch RGB" sin duplicar capas de texto).
+#   color_primario: reemplaza el blanco de siempre cuando el estilo necesita
+#     un relleno de color propio (neón, impacto, pegatina).
+#   mayusculas: True fuerza TODO el texto a mayúsculas (por defecto False,
+#     conserva la capitalización de oración de siempre).
+SUB_ESTILOS = {
+    "karaoke": {
+        "nombre": "Karaoke clásico",
+        "descripcion": "Bloques de 2-4 palabras; la que se pronuncia se resalta en cian. El de siempre.",
+        "agrupacion": "bloque_corto",
+        "resaltado": "dinamico",
+        "animacion": "ninguna",
+        "borderstyle": 1, "outline_w": 3, "outline_color": None,
+        "backcolour": None, "shadow": 0, "color_primario": None,
+    },
+    "palabra_pop": {
+        "nombre": "Una palabra a la vez",
+        "descripcion": "Una sola palabra gigante con un pequeño rebote al aparecer. Ritmo rápido, tipo MrBeast.",
+        "agrupacion": "palabra",
+        "resaltado": "ninguno",
+        "animacion": "pop",
+        "borderstyle": 1, "outline_w": 3, "outline_color": None,
+        "backcolour": None, "shadow": 0, "color_primario": None,
+    },
+    "caja_frase": {
+        "nombre": "Caja de frase",
+        "descripcion": "Bloques de 3-6 palabras sobre una caja semitransparente, sin resaltado. Estilo tutorial.",
+        "agrupacion": "bloque_largo",
+        "resaltado": "ninguno",
+        "animacion": "ninguna",
+        "borderstyle": 3, "outline_w": 24, "outline_color": None,
+        "backcolour": SUB_COLOR_CAJA, "shadow": 0, "color_primario": None,
+    },
+    "pildora_marca": {
+        "nombre": "Píldora de marca",
+        "descripcion": "Bloques de 2-4 palabras sobre una caja sólida con el navy de marca. Identidad reconocible.",
+        "agrupacion": "bloque_corto",
+        "resaltado": "ninguno",
+        "animacion": "ninguna",
+        "borderstyle": 3, "outline_w": 24, "outline_color": None,
+        "backcolour": SUB_COLOR_PILDORA, "shadow": 0, "color_primario": None,
+    },
+    "palabra_clave": {
+        "nombre": "Palabra clave fija",
+        "descripcion": "Bloques de 3-6 palabras; la de más impacto queda resaltada en ámbar todo el bloque.",
+        "agrupacion": "bloque_largo",
+        "resaltado": "estatico",
+        "animacion": "ninguna",
+        "borderstyle": 1, "outline_w": 3, "outline_color": None,
+        "backcolour": None, "shadow": 0, "color_primario": None,
+    },
+    "neon": {
+        "nombre": "Neón",
+        "descripcion": "Halo magenta con brillo (glow), tipo letrero de neón. Bloques de 2-4 palabras.",
+        "agrupacion": "bloque_corto",
+        "resaltado": "ninguno",
+        "animacion": "glow",
+        "borderstyle": 1, "outline_w": 4, "outline_color": SUB_COLOR_NEON_GLOW,
+        "backcolour": None, "shadow": 0, "color_primario": None,
+    },
+    "glitch_rgb": {
+        "nombre": "Glitch RGB",
+        "descripcion": "Franja cromática roja/cian alrededor del texto, como un desperfecto de señal.",
+        "agrupacion": "bloque_corto",
+        "resaltado": "ninguno",
+        "animacion": "ninguna",
+        "borderstyle": 1, "outline_w": 3, "outline_color": SUB_COLOR_GLITCH_ROJO,
+        "backcolour": SUB_COLOR_RESALTADO, "shadow": 4, "color_primario": None,
+    },
+    "impacto": {
+        "nombre": "Impacto",
+        "descripcion": "Texto amarillo grueso que entra con un sacudón y se estabiliza. Para momentos de golpe.",
+        "agrupacion": "bloque_corto",
+        "resaltado": "ninguno",
+        "animacion": "shake",
+        "borderstyle": 1, "outline_w": 5, "outline_color": None,
+        "backcolour": None, "shadow": 0, "color_primario": SUB_COLOR_IMPACTO_AMARILLO,
+    },
+    "subrayado": {
+        "nombre": "Subrayado que sigue la voz",
+        "descripcion": "El texto queda fijo en blanco; la palabra que se pronuncia se subraya en cian.",
+        "agrupacion": "bloque_corto",
+        "resaltado": "subrayado",
+        "animacion": "ninguna",
+        "borderstyle": 1, "outline_w": 3, "outline_color": None,
+        "backcolour": None, "shadow": 0, "color_primario": None,
+    },
+    "pegatina": {
+        "nombre": "Pegatina",
+        "descripcion": "Halo blanco bien grueso alrededor de texto rosa, como un adhesivo recortado. Estilo meme.",
+        "agrupacion": "bloque_corto",
+        "resaltado": "ninguno",
+        "animacion": "ninguna",
+        "borderstyle": 1, "outline_w": 14, "outline_color": SUB_COLOR_TEXTO,
+        "backcolour": None, "shadow": 0, "color_primario": SUB_COLOR_PEGATINA,
+    },
+    "foco": {
+        "nombre": "Foco",
+        "descripcion": "EN MAYÚSCULAS; el texto queda chico y la palabra que se pronuncia crece y se pone amarilla.",
+        "agrupacion": "bloque_corto",
+        "resaltado": "foco",
+        "animacion": "ninguna",
+        "borderstyle": 1, "outline_w": 3, "outline_color": None,
+        "backcolour": None, "shadow": 0, "color_primario": None,
+        "mayusculas": True,
+    },
+}
+SUB_ESTILO_DEFECTO = "karaoke"
 
 # ---------------------------------------------------------------------------
 # Hook (banner de los primeros segundos)
@@ -559,6 +699,21 @@ ANIMACION_DURACION = {
     "stickers": 2.5, "banner-hook": 3.2, "pip-producto": 4.0, "anim-apps": 3.0,
     "texto-destacado": 2.5
 }
+
+# Los 6 estilos visuales de la plantilla `texto-destacado` (plantillas/compositions/
+# texto-destacado.html), con la etiqueta legible que se muestra en el editor.
+# El texto de muestra es el mismo default embebido en el HTML — así el preview
+# pre-renderizado de cada estilo (editor/f8_hyperframes.py) coincide con lo que
+# se ve si no se toca el campo de texto.
+TEXTO_DESTACADO_ESTILOS = {
+    "contorno": "Contorno",
+    "pildora": "Píldora",
+    "neon": "Neón",
+    "degradado": "Degradado",
+    "sombra": "Sombra 3D",
+    "marcador": "Marcador",
+}
+TEXTO_DESTACADO_MUESTRA = "¡OJO A ESTO!"
 
 # Plantillas que el pipeline construye CON DATOS PROPIOS y coloca por su cuenta:
 # el CTA lleva el mensaje, el WhatsApp y el eco del hook; la ficha y la
@@ -947,6 +1102,48 @@ BROLL_PIP_GAP_MIN_S = 0.10     # aire mínimo antes de que arranque el próximo 
 # misma esquina no.
 BROLL_TIPOS_QUE_CORTAN = ("B-ROLL", "PIP")
 PIP_TIPOS_QUE_CORTAN = ("B-ROLL", "PIP", "ANIM")
+
+# ---------------------------------------------------------------------------
+# B-roll DETRÁS de José ("pantalla verde")
+# ---------------------------------------------------------------------------
+# El B-roll no tapa el cuadro: ocupa una franja de arriba y José se compone
+# ENCIMA, recortado del fondo. Es el efecto de la referencia de TikTok que trajo
+# José el 2026-07-31 (ver salida/prueba-matte/ para las variantes que comparó).
+#
+# Los tres números salieron de esa prueba, no de la teoría:
+#   - 70% deja ver el cuarto abajo, que es lo que ancla el plano en un lugar
+#     real. Del 80% para arriba el B-roll deja de ser fondo y se vuelve el
+#     video: para eso está el modo "completo".
+#   - el degradado evita la línea recta a media pantalla. 320px la borra; 550px
+#     desvanece tanto el clip que ya no se lee.
+#   - sin atenuar el cuarto detrás, el B-roll sale lavado — su pared clara y el
+#     Kindle claro se confunden.
+BROLL_RECORTE_ALTO_PCT = 0.70
+BROLL_RECORTE_DEGRADADO_PX = 320
+BROLL_RECORTE_FONDO_BLUR = 14           # boxblur del cuarto bajo el B-roll
+BROLL_RECORTE_FONDO_BRILLO = -0.14      # eq=brightness
+BROLL_RECORTE_FONDO_SATURACION = 0.7    # eq=saturation
+
+# Matting con Robust Video Matting (github.com/PeterL1n/RobustVideoMatting).
+#
+# resnet50 y NO mobilenetv3: el modelo chico arrastra el respaldo de la silla
+# gamer pegado a la cabeza de José, con un halo translúcido alrededor. Se probó
+# subirle la resolución de máscara y no alcanza; el grande sí lo separa limpio.
+# Ratio 0.5 va a ~17 fps en la RTX 5070 Ti a 1080x1920; 1.0 baja a 10 fps y no
+# se ve mejor.
+#
+# rembg (el de quitar_fondos.py) no sirve acá: procesa cada frame por separado
+# y el borde tiembla en movimiento, además de que este onnxruntime no trae
+# provider CUDA y correría por CPU.
+RVM_MODELO = "resnet50"
+RVM_RATIO = 0.5
+RVM_ARCHIVO = DIR_MODELOS / "rvm" / f"rvm_{RVM_MODELO}_fp32.torchscript"
+RVM_URL = ("https://github.com/PeterL1n/RobustVideoMatting/releases/download/"
+           f"v1.0.0/rvm_{RVM_MODELO}_fp32.torchscript")
+# Segundos de vídeo que se procesan ANTES de que el B-roll aparezca. RVM es
+# recurrente: arrancar justo en el primer frame visible le deja la máscara sin
+# asentar y se ve un parpadeo en la entrada.
+RVM_CALENTAMIENTO_S = 0.5
 
 # Animaciones que, CON LA GENERACIÓN DE VIDEO ENCENDIDA, le ceden su lugar a un
 # clip real. Se declara por NOMBRE DE ANIMACIÓN, no por etiqueta, y la diferencia

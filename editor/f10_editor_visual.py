@@ -20,7 +20,9 @@ Uso:
 """
 import argparse
 import base64
+import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -30,6 +32,7 @@ from pathlib import Path
 import numpy as np
 
 import config
+import f3_subtitulos
 import f5_audio
 import f14_tira
 import f15_silencios
@@ -299,6 +302,98 @@ def preview_animacion(origen: Path, dir_cache: Path | None = None,
         # más que su animación.
         "-t", f"{max(0.5, min(dur or 8.0, 8.0)):.2f}", str(destino),
     ], capture_output=True, timeout=120)
+    if r.returncode != 0 or not destino.exists():
+        return None
+    return destino
+
+
+DIR_CACHE_SUB_PREVIEW = config.DIR_EDITOR_CACHE / "sub_estilo"
+
+# Subir a mano cuando cambie CÓMO se arma la miniatura (recorte, instante
+# capturado…) sin que cambie el preset — ver el comentario en la huella
+# dentro de preview_estilo_subtitulo().
+_PREVIEW_RENDER_VERSION = 2
+
+# Frase de muestra fija (Bloque 5c): la misma para los 10 estilos, así la
+# miniatura de cada uno se puede comparar contra las demás sin que el propio
+# texto cambie lo que se ve. 4 palabras entran en un solo bloque "corto"
+# (2-4), así el frame en t=0.15s siempre cae dentro del PRIMER evento — no
+# hace falta apuntar a un bloque más adelante en la frase.
+_SUB_PREVIEW_PALABRAS = [
+    {"inicio": 0.00, "fin": 0.40, "texto": "Nunca"},
+    {"inicio": 0.42, "fin": 0.75, "texto": "vas"},
+    {"inicio": 0.77, "fin": 0.95, "texto": "a"},
+    {"inicio": 0.97, "fin": 1.55, "texto": "creer"},
+    {"inicio": 1.57, "fin": 2.10, "texto": "esto."},
+]
+
+
+def preview_estilo_subtitulo(estilo: str) -> Path | None:
+    """PNG cacheado con una CAPTURA real del estilo de subtítulo `estilo`.
+
+    A diferencia de preview_animacion() (que convierte un MOV de Hyperframes
+    a WebM), acá no hay una segunda implementación que previsualizar: el
+    subtítulo real se quema con el MISMO motor (ffmpeg + libass) que usa
+    f4_retencion, así que la miniatura es un frame genuino de ese motor, no
+    una aproximación en otro lenguaje que se puede desincronizar del render.
+
+    Cachea por huella del preset (config.SUB_ESTILOS[estilo]): si el preset
+    cambia — un color, un ancho de contorno — el nombre de archivo cambia
+    solo y se regenera; si no cambió, nunca se vuelve a invocar ffmpeg.
+    """
+    if estilo not in config.SUB_ESTILOS:
+        return None
+    DIR_CACHE_SUB_PREVIEW.mkdir(parents=True, exist_ok=True)
+    # `_PREVIEW_RENDER_VERSION` entra en la huella junto con el preset: si el
+    # PRESET no cambia pero SÍ cambia cómo se arma la miniatura (este recorte,
+    # el instante capturado…), hay que poder invalidar el caché igual sin
+    # tocar config.SUB_ESTILOS. Subir el número a mano cuando eso pase.
+    huella = hashlib.sha1(
+        (json.dumps(config.SUB_ESTILOS[estilo], sort_keys=True, ensure_ascii=False)
+         + f"|v{_PREVIEW_RENDER_VERSION}").encode("utf-8")
+    ).hexdigest()[:12]
+    destino = DIR_CACHE_SUB_PREVIEW / f"{estilo}_{huella}.png"
+    if destino.exists() and destino.stat().st_size > 512:
+        return destino
+
+    ass_texto = f3_subtitulos.generar_ass(_SUB_PREVIEW_PALABRAS, estilo=estilo)
+    ass_tmp = DIR_CACHE_SUB_PREVIEW / f"_tmp_{estilo}.ass"
+    ass_tmp.write_text(ass_texto, encoding="utf-8-sig")
+    try:
+        # Mismo motivo que f4_retencion: el filtro ass= no tolera ':' de
+        # unidad ni espacios en la ruta en Windows, así que corre con cwd en
+        # la carpeta del .ass y nombres relativos.
+        fontsdir_rel = os.path.relpath(config.DIR_FUENTES, start=DIR_CACHE_SUB_PREVIEW)
+        # Fondo #14181b: ni negro puro ni el navy de "Píldora de marca", para
+        # que esa píldora y la "Caja de frase" (negro semitransparente) no se
+        # camuflen contra el fondo de la miniatura.
+        # Frame en t=0.15s, no en t=0.00: "pop" y "shake" son animaciones de
+        # ENTRADA (0-240ms) — un frame en t=0 exacto captura el arranque
+        # (palabra chica a mitad de girar), no el estado ya asentado que de
+        # verdad representa el estilo. 0.15s cae dentro del primer evento en
+        # los 10 estilos (el más corto dura 0.40s), así que no afecta a los
+        # que no animan.
+        #
+        # Recorte a una FRANJA angosta alrededor de donde vive el subtítulo,
+        # no el lienzo 1080x1920 entero: sin esto la miniatura es 90% fondo
+        # vacío y el texto un renglón minúsculo abajo. La franja se calcula
+        # con el mismo ancla que usa generar_ass() (SUB_POSICION_ALTURA_PCT),
+        # así que sigue centrada aunque cambie la posición del subtítulo.
+        banda_alto = 420  # px sobre el lienzo de 1920; sobra para 2 líneas + caja/glow
+        banda_y0 = max(0, min(
+            int(config.SUB_POSICION_ALTURA_PCT * config.ALTO - banda_alto / 2),
+            config.ALTO - banda_alto,
+        ))
+        r = subprocess.run([
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-f", "lavfi", "-i", f"color=c=0x14181b:s={config.ANCHO}x{config.ALTO}",
+            "-ss", "0.15",
+            "-vf", (f"ass={ass_tmp.name}:fontsdir={fontsdir_rel},"
+                    f"crop={config.ANCHO}:{banda_alto}:0:{banda_y0},scale=480:-1"),
+            "-frames:v", "1", destino.name,
+        ], cwd=str(DIR_CACHE_SUB_PREVIEW), capture_output=True, timeout=30)
+    finally:
+        ass_tmp.unlink(missing_ok=True)
     if r.returncode != 0 or not destino.exists():
         return None
     return destino
@@ -671,6 +766,9 @@ def recolectar(dir_trabajo: Path) -> dict:
             "tag": ev.get("tag", ""),
             "codigo": ev.get("codigo", ""),
             "broll_fullscreen": bool(ev.get("broll_fullscreen")),
+            # "completo" | "recorte" — sin esto, elegir "detrás de mí" en el
+            # editor se perdía al recargar y el render volvía a taparle la cara.
+            "modo_broll": ev.get("modo_broll") or "completo",
             "archivo": str(archivo_path.resolve()) if archivo_path else None,
             "miniatura": miniatura,
             "overlay": overlay_b64,
@@ -788,6 +886,10 @@ def recolectar(dir_trabajo: Path) -> dict:
         "sub_tamano_defecto": config.SUB_TAMANO_PX,
         "sub_posicion_altura_pct": config.SUB_POSICION_ALTURA_PCT,
         "sub_correcciones": sub_ajustes.get("correcciones") or {},
+        "sub_estilo": sub_ajustes.get("estilo") or config.SUB_ESTILO_DEFECTO,
+        "sub_estilo_defecto": config.SUB_ESTILO_DEFECTO,
+        "sub_estilos": {k: {"nombre": v["nombre"], "descripcion": v["descripcion"]}
+                        for k, v in config.SUB_ESTILOS.items()},
         "musica_catalogo": catalogo_musica(),
         "musica_pista": musica_pista,
         "musica_volumen": musica_volumen,
@@ -796,6 +898,10 @@ def recolectar(dir_trabajo: Path) -> dict:
         "sin_musica": sin_musica,
         "silencios": f15_silencios.datos_silencios(dir_trabajo),
         "tira": f14_tira.datos_tira(dir_trabajo),
+        "anim_duraciones": config.ANIMACION_DURACION,
+        "texto_destacado_estilos": config.TEXTO_DESTACADO_ESTILOS,
+        "texto_destacado_muestra": config.TEXTO_DESTACADO_MUESTRA,
+        "texto_destacado_duracion": config.ANIMACION_DURACION.get("texto-destacado", 2.5),
     }
 
 

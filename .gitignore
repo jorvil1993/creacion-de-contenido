@@ -18,3 +18,7 @@ _tmp_overlays/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Credenciales: nunca al repo
+*.key
+secretos/

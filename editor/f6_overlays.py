@@ -853,54 +853,67 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
     # Tiempos ajustados a mano en el editor. Mandan sobre el automático: si José
     # movió o estiró el hook es porque el de por defecto no le servía.
     hc = {b.get("tipo"): b for b in (hook_cta_manual or [])}
+    # Quitado a mano en el editor: la tarjeta no se compone y su ventana queda
+    # libre para el B-roll. Reversible desde el mismo botón del editor.
+    hook_oculto = bool(hc.get("hook") and hc["hook"].get("oculto"))
+    cta_oculto = bool(hc.get("cta") and hc["cta"].get("oculto"))
     ini_hook = float(hc["hook"]["ini"]) if "hook" in hc else 0.0
     fin_hook = (float(hc["hook"]["fin"]) if "hook" in hc
                 else min(config.HOOK_DURACION_S, duracion_total))
     fin_hook = min(fin_hook, duracion_total)
 
-    clip_hook = f8_hyperframes.render("banner-hook", {"texto": texto_hook}) if hf else None
-    if clip_hook:
-        # Migrado a Hyperframes: la versión de PIL era una tarjeta navy opaca;
-        # esta es texto blanco con sombra, que respeta mejor la proporción
-        # 80% metraje / 20% marca de la sección 5.3 y se ve más limpio.
-        import f7_animaciones
-        eventos.append({"tipo": "hook", "archivo": clip_hook, "medio": "video",
-                        "x": 0, "y": 0, "ini": ini_hook, "fin": fin_hook,
-                        # texto/miniatura: solo para que el editor visual (§3c)
-                        # pueda mostrar y editar el hook sin volver a derivarlo
-                        "texto": texto_hook,
-                        "miniatura": str(f7_animaciones.miniatura(clip_hook) or "")})
+    if hook_oculto:
+        print("  hook: quitado a mano en el editor — no se compone.")
     else:
-        ruta_hook = dir_tmp / "ov_hook.png"
-        x, y, w, h = render_hook_banner(texto_hook, ruta_hook)
-        eventos.append({"tipo": "hook", "archivo": ruta_hook, "x": x, "y": y,
-                        "ini": ini_hook, "fin": fin_hook, "texto": texto_hook})
+        clip_hook = f8_hyperframes.render("banner-hook", {"texto": texto_hook}) if hf else None
+        if clip_hook:
+            # Migrado a Hyperframes: la versión de PIL era una tarjeta navy opaca;
+            # esta es texto blanco con sombra, que respeta mejor la proporción
+            # 80% metraje / 20% marca de la sección 5.3 y se ve más limpio.
+            import f7_animaciones
+            eventos.append({"tipo": "hook", "archivo": clip_hook, "medio": "video",
+                            "x": 0, "y": 0, "ini": ini_hook, "fin": fin_hook,
+                            # texto/miniatura: solo para que el editor visual (§3c)
+                            # pueda mostrar y editar el hook sin volver a derivarlo
+                            "texto": texto_hook,
+                            "miniatura": str(f7_animaciones.miniatura(clip_hook) or "")})
+        else:
+            ruta_hook = dir_tmp / "ov_hook.png"
+            x, y, w, h = render_hook_banner(texto_hook, ruta_hook)
+            eventos.append({"tipo": "hook", "archivo": ruta_hook, "x": x, "y": y,
+                            "ini": ini_hook, "fin": fin_hook, "texto": texto_hook})
 
     # ---- CTA DE CIERRE (con el eco que cierra el loop) ---------------------
     ini_cta = (float(hc["cta"]["ini"]) if "cta" in hc
                else max(duracion_total - 6.5, 3.5))
     fin_cta = min(float(hc["cta"]["fin"]), duracion_total) if "cta" in hc else duracion_total
     eco = _texto_eco_loop(texto_hook) if config.LOOP_ACTIVO else ""
-    clip_cta = f8_hyperframes.render("tarjeta-cta", {
-        "mensaje": "¡Pide el tuyo ya!",
-        "whatsapp": config.WHATSAPP_NUMERO,
-        "handle": config.TIKTOK_HANDLE,
-        "eco": eco,
-    }) if hf else None
-    if clip_cta:
-        import f7_animaciones
-        eventos.append({"tipo": "cta", "archivo": clip_cta, "medio": "video",
-                        "x": 0, "y": 0, "ini": ini_cta, "fin": fin_cta,
-                        "eco": eco, "miniatura": str(f7_animaciones.miniatura(clip_cta) or "")})
-        if eco:
-            print(f"  loop: el CTA cierra con el eco del hook -> \"{eco}\"")
+    if cta_oculto:
+        print("  cta: quitado a mano en el editor — no se compone.")
     else:
-        ruta_cta = dir_tmp / "ov_cta.png"
-        x, y, w, h = render_cta_cierre(ruta_cta, eco=eco)
-        eventos.append({"tipo": "cta", "archivo": ruta_cta, "x": x, "y": y,
-                        "ini": ini_cta, "fin": fin_cta, "eco": eco})
+        clip_cta = f8_hyperframes.render("tarjeta-cta", {
+            "mensaje": "¡Pide el tuyo ya!",
+            "whatsapp": config.WHATSAPP_NUMERO,
+            "handle": config.TIKTOK_HANDLE,
+            "eco": eco,
+        }) if hf else None
+        if clip_cta:
+            import f7_animaciones
+            eventos.append({"tipo": "cta", "archivo": clip_cta, "medio": "video",
+                            "x": 0, "y": 0, "ini": ini_cta, "fin": fin_cta,
+                            "eco": eco, "miniatura": str(f7_animaciones.miniatura(clip_cta) or "")})
+            if eco:
+                print(f"  loop: el CTA cierra con el eco del hook -> \"{eco}\"")
+        else:
+            ruta_cta = dir_tmp / "ov_cta.png"
+            x, y, w, h = render_cta_cierre(ruta_cta, eco=eco)
+            eventos.append({"tipo": "cta", "archivo": ruta_cta, "x": x, "y": y,
+                            "ini": ini_cta, "fin": fin_cta, "eco": eco})
 
-    ventanas_ocupadas = [(ini_hook, fin_hook), (ini_cta, fin_cta)]
+    # Solo se reservan las ventanas de las tarjetas que sí se componen: si el
+    # hook o el CTA fueron quitados, ese tiempo queda libre para el B-roll.
+    ventanas_ocupadas = ([] if hook_oculto else [(ini_hook, fin_hook)]) + \
+                        ([] if cta_oculto else [(ini_cta, fin_cta)])
 
     def _libre(t0, t1):
         return all(t1 <= a or t0 >= b for a, b in ventanas_ocupadas)
@@ -1408,6 +1421,17 @@ def _planificar_comparativa(palabras: list, libre_fn) -> dict | None:
 
 
 def componer_overlays(ruta_video: Path, eventos: list, ruta_salida: Path, duracion_total: float):
+    # Camino de respaldo: el pipeline normal compone dentro de f4_retencion
+    # (--solo-planificar + --solo-render), que es el único que sabe hacer el modo
+    # "recorte" — necesita el encuadre frame a frame para alinear la capa de
+    # José. Acá ese modo no existe, así que se avisa en vez de dar un video que
+    # se parece al pedido pero no lo es.
+    n_recorte = sum(1 for ev in eventos if ev.get("modo_broll") == "recorte")
+    if n_recorte:
+        print(f"AVISO: {n_recorte} B-roll(s) pedían el modo 'detrás de mí' y este camino "
+              f"los compone a pantalla completa. Para el modo recorte, corré el pipeline "
+              f"normal (editor.py), que compone en f4_retencion.")
+
     inputs = ["-i", str(ruta_video)]
     for ev in eventos:
         if ev.get("medio") == "video":
@@ -1600,6 +1624,8 @@ def cargar_eventos_manual(ruta_json: Path, dir_tmp: Path, catalogo: list = None)
             ev_dict["medio"] = ev["medio"]
         if "broll_fullscreen" in ev:
             ev_dict["broll_fullscreen"] = ev["broll_fullscreen"]
+        if ev.get("modo_broll"):
+            ev_dict["modo_broll"] = ev["modo_broll"]
         if "codigo" in ev:
             ev_dict["codigo"] = ev["codigo"]
         # Tramo elegido del clip fuente (bloque 4), por si algún día un PiP de
@@ -1610,6 +1636,12 @@ def cargar_eventos_manual(ruta_json: Path, dir_tmp: Path, catalogo: list = None)
             ev_dict["recorte_inicio"] = float(ev["recorte_inicio"])
         if ev.get("recorte_fin") is not None:
             ev_dict["recorte_fin"] = float(ev["recorte_fin"])
+        # Animación de entrada/salida propia de ESTE PiP (f4b_pip_anim). Sin
+        # dejarla pasar aquí, el editor la guardaba en el evento pero la lista
+        # blanca de arriba la descartaba y el render caía al default global.
+        for clave in ("anim_entrada", "anim_salida", "anim_intensidad"):
+            if ev.get(clave) is not None:
+                ev_dict[clave] = ev[clave]
         eventos.append(ev_dict)
     return eventos
 
@@ -1656,6 +1688,12 @@ def cargar_broll_manual(ruta_json: Path) -> list | None:
             "tag": ev.get("tag", ""),
             "asset": ev.get("asset", "broll-manual"),
             "codigo": ev.get("codigo", ""),
+            # "completo" tapa el cuadro entero; "recorte" lo deja en la franja de
+            # arriba y compone a José por delante (f4_retencion._preparar_recorte).
+            # `broll_fullscreen` sigue siendo True en los dos: significa "esto es
+            # un B-roll y no una tarjeta PiP", que es lo que mira el resto del
+            # pipeline para decidir dónde va.
+            "modo_broll": ev.get("modo_broll") or "completo",
         }
         # Tramo elegido del clip fuente (bloque 4 del plan de mejoras): desde
         # qué segundo del ARCHIVO ORIGEN se lee, no desde qué segundo del
@@ -1679,8 +1717,10 @@ def cargar_animaciones_manual(ruta_json: Path) -> list | None:
     segundo cualquiera eligiendo del inventario (`f8_hyperframes.inventario_animaciones()`).
 
     Cada entrada: {"nombre": "sol", "ini": 28.9} y, opcionales, "dur",
-    "variante" (para fijar una toma concreta en vez de la determinista) y
-    "video_sol" (usar assets/sol_video_pip.mov en vez de la animación HTML).
+    "variante" (para fijar una toma concreta en vez de la determinista),
+    "video_sol" (usar assets/sol_video_pip.mov en vez de la animación HTML) y
+    "variables" (dict con las variables propias de la plantilla — hoy solo
+    texto-destacado las usa: {"texto": "...", "estilo": "neon"}).
     Una lista vacía es una orden válida: "este video no lleva animaciones".
 
     None si el archivo no existe o no es válido — entonces manda el automático.
@@ -1707,10 +1747,15 @@ def cargar_animaciones_manual(ruta_json: Path) -> list | None:
         except (KeyError, TypeError, ValueError):
             print(f"AVISO: animación manual #{i} sin 'ini' válido — omitida.")
             continue
+        variables = a.get("variables")
         limpias.append({k: v for k, v in {
             "nombre": nombre, "ini": ini, "dur": a.get("dur"),
             "variante": a.get("variante"), "video_sol": a.get("video_sol"),
             "palabra": a.get("palabra", ""),
+            # Variables propias de la plantilla (hoy solo texto-destacado: texto
+            # y estilo) — sin esto _construir_animacion() siempre las recibía
+            # vacías y el editor no podía pasar el texto que José escribió.
+            "variables": variables if isinstance(variables, dict) else None,
         }.items() if v is not None})
     limpias.sort(key=lambda a: a["ini"])
     print(f"Animaciones manuales cargadas desde {ruta_json}: {len(limpias)} "

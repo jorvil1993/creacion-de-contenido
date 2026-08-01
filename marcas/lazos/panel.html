@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de producción — Lazos de Amor Mariano</title>
+<style>
+:root{
+  /* Sacados del arte del retiro: agua oscura, terracota del resplandor,
+     píldoras gris claro. No inventados. */
+  --bg:#0d1520; --bg2:#131e2b; --linea:#26364a; --fg:#f2f0ee; --fg2:#93a3b8;
+  --acento:#c1614a; --acento-suave:rgba(193,97,74,.16);
+  --pildora:#c9ccd1; --pildora-fg:#3d2a24;
+  --yo:#4a7ba7; --broll:#7a5ea8; --pip:#c1614a; --anim:#3f8f7a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+     font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{padding:22px 26px;border-bottom:1px solid var(--linea);
+       background:linear-gradient(180deg,#14202e,#0d1520);position:sticky;top:0;z-index:20}
+h1{margin:0 0 4px;font-size:21px;letter-spacing:.3px}
+h1 small{color:var(--acento);font-weight:400;font-size:14px;letter-spacing:1px}
+.sub{color:var(--fg2);font-size:13px;margin:0}
+nav{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+nav button{background:var(--bg2);color:var(--fg);border:1px solid var(--linea);
+           border-radius:99px;padding:7px 15px;font:inherit;font-size:13px;cursor:pointer}
+nav button:hover{border-color:var(--acento)}
+nav button.on{background:var(--acento);border-color:var(--acento);color:#fff}
+main{padding:24px 26px;max-width:1180px}
+section{display:none}
+section.on{display:block}
+h2{font-size:17px;margin:26px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--linea)}
+h2:first-child{margin-top:0}
+.aviso{background:var(--acento-suave);border:1px solid var(--acento);border-radius:10px;
+       padding:14px 16px;margin-bottom:20px;font-size:14px}
+.aviso b{color:var(--acento)}
+.g{background:var(--bg2);border:1px solid var(--linea);border-radius:12px;
+   margin-bottom:16px;overflow:hidden}
+.gh{padding:14px 18px;cursor:pointer;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.gh:hover{background:#16232f}
+.gn{background:var(--acento);color:#fff;width:30px;height:30px;border-radius:50%;
+    display:grid;place-items:center;font-weight:700;font-size:14px;flex:0 0 auto}
+.gt{font-weight:600;flex:1;min-width:220px}
+.gb{font-size:12px;color:var(--fg2);background:var(--bg);border:1px solid var(--linea);
+    border-radius:99px;padding:2px 10px}
+.rum{font-size:12px;color:var(--acento);font-weight:700}
+.gc{display:none;padding:0 18px 18px;border-top:1px solid var(--linea)}
+.g.abierto .gc{display:block}
+.hookbox{background:#0a1119;border-left:3px solid var(--acento);border-radius:0 8px 8px 0;
+         padding:12px 16px;margin:14px 0}
+.hookbox .lbl{font-size:11px;color:var(--acento);letter-spacing:1.4px;text-transform:uppercase}
+.hookbox .txt{font-size:18px;font-weight:600;margin-top:4px;line-height:1.35}
+.meta{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--fg2);margin:12px 0}
+.meta b{color:var(--fg);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+th{text-align:left;padding:7px 9px;border-bottom:1px solid var(--linea);
+   color:var(--fg2);font-weight:600;font-size:11px;letter-spacing:.8px;text-transform:uppercase}
+td{padding:8px 9px;border-bottom:1px solid #1b2836;vertical-align:top}
+tr:last-child td{border-bottom:0}
+.t{white-space:nowrap;color:var(--fg2);font-variant-numeric:tabular-nums;font-size:12px}
+.tipo{font-size:11px;padding:2px 8px;border-radius:99px;white-space:nowrap;font-weight:600}
+.tipo.YO{background:rgba(74,123,167,.2);color:#7fb0d8}
+.tipo.BROLL{background:rgba(122,94,168,.2);color:#a98fd4}
+.tipo.PIP{background:var(--acento-suave);color:var(--acento)}
+.tipo.ANIM{background:rgba(63,143,122,.2);color:#5fbfa4}
+.clip{display:inline-block;background:var(--acento-suave);color:var(--acento);
+      border:1px solid var(--acento);border-radius:5px;padding:1px 6px;font-size:12px;
+      font-weight:700;cursor:pointer;margin:0 2px}
+.clip:hover{background:var(--acento);color:#fff}
+.lista{margin:6px 0 0;padding-left:20px;color:var(--fg2);font-size:13px}
+.cta{background:var(--pildora);color:var(--pildora-fg);border-radius:10px;padding:12px 16px;
+     margin-top:14px;font-size:14px;font-weight:600}
+.cta span{display:inline-block;margin-right:16px}
+.pr{background:var(--bg2);border:1px solid var(--linea);border-radius:10px;
+    padding:14px 16px;margin-bottom:12px}
+.pr h3{margin:0 0 6px;font-size:14px;color:var(--acento)}
+.pr .cat{font-size:11px;color:var(--fg2);text-transform:uppercase;letter-spacing:1px}
+.pr pre{background:#080e15;border:1px solid var(--linea);border-radius:8px;padding:12px;
+        margin:8px 0 0;white-space:pre-wrap;font-size:12.5px;line-height:1.5;
+        font-family:ui-monospace,Consolas,monospace;color:#cfe0f0}
+.pr .usos{font-size:12px;color:var(--fg2);margin-top:6px}
+.copiar{background:var(--acento);color:#fff;border:0;border-radius:6px;padding:5px 12px;
+        font:inherit;font-size:12px;cursor:pointer;margin-top:8px}
+/* Teleprompter */
+#tele{display:none;position:fixed;inset:0;background:#000;z-index:100;
+      flex-direction:column;padding:20px}
+#tele.on{display:flex}
+#teleTxt{flex:1;overflow:hidden;font-size:44px;line-height:1.5;font-weight:600;
+         text-align:center;padding:38vh 6vw;color:#fff}
+#teleTxt.espejo{transform:scaleX(-1)}
+#teleCtl{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding-top:12px}
+#teleCtl button{background:#1a2634;color:#fff;border:1px solid #33475f;border-radius:8px;
+                padding:9px 15px;font:inherit;font-size:13px;cursor:pointer}
+.foot{color:var(--fg2);font-size:12px;margin-top:30px;padding-top:16px;
+      border-top:1px solid var(--linea)}
+code{background:#0a1119;border:1px solid var(--linea);border-radius:4px;padding:1px 6px;
+     font-size:12.5px;color:var(--acento)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Panel de producción <small>· LAZOS DE AMOR MARIANO · SANTA CRUZ, BOLIVIA</small></h1>
+  <p class="sub">Retiro espiritual · 6, 7 y 8 de agosto de 2026 · Casa de Retiros San Juan XXIII
+     · Ofrenda Bs. 300 · Inf. 72113809</p>
+  <nav>
+    <button class="on" onclick="irA('guiones')">Guiones</button>
+    <button onclick="irA('prompts')">B-roll e imágenes</button>
+    <button onclick="irA('criterio')">Criterio</button>
+  </nav>
+</header>
+
+<main>
+
+<section id="guiones" class="on">
+  <div class="aviso">
+    <b>A quién le hablamos.</b> No a quien ya va a misa. A quien lleva años sin entrar a una
+    iglesia y no sabe por qué está mal. Por eso <b>ningún gancho nombra a Dios, a la Virgen ni
+    al retiro</b>: empieza por un dolor que la persona ya siente y no sabe nombrar. Dios aparece
+    como respuesta, nunca como premisa. Si el primer segundo suena a iglesia, el 90% desliza.
+  </div>
+  <div id="listaG"></div>
+</section>
+
+<section id="prompts">
+  <div class="aviso">
+    <b>Cómo se usan.</b> Cada clip se genera una vez y sirve para varios guiones. El
+    <b>primer fotograma ya tiene que ser el concepto</b>: se generan 8 segundos pero el
+    pipeline solo muestra los primeros 2 o 3. Nada de rostros reconocibles ni de iconografía
+    religiosa explícita en los clips de dolor — ahí el video todavía no ha dicho de qué va.
+  </div>
+  <div id="listaP"></div>
+</section>
+
+<section id="criterio">
+  <h2>Por qué estos ganchos y no otros</h2>
+  <div class="aviso">
+    <b>El dato que ordena todo.</b> El estudio <i>Jóvenes Españoles 2026</i> (Fundación SM)
+    llama a esta generación <b>«náufragos posmodernos»</b>: gente que necesita «algo a lo que
+    aferrarse para no hundirse en el vacío de sentido». El arte del retiro es una mano saliendo
+    del agua que otra mano agarra. <b>La imagen que ya eligieron y el diagnóstico dicen lo
+    mismo.</b> Los diez guiones tiran de ese hilo.
+  </div>
+  <h2>Los tres errores que matan un video de evangelización</h2>
+  <ol class="lista" style="font-size:14px;line-height:1.9">
+    <li><b>Empezar por la solución.</b> «Ven al retiro», «Dios te ama». Quien no cree todavía no
+      tiene el problema planteado, así que la respuesta le llega a una pregunta que no se hizo.</li>
+    <li><b>Jerga de dentro.</b> Consagración, discernimiento, Totus Tuus, carisma. Palabras
+      hermosas que fuera no significan nada. Van al final o no van.</li>
+    <li><b>Prometer que se arregla.</b> «Sal de la depresión con Dios» es falso y se nota. El
+      retiro no cura la ansiedad: ofrece dejar de estar solo con ella. Decir eso es más creíble
+      <i>y</i> más verdadero.</li>
+  </ol>
+  <h2>Forma</h2>
+  <ul class="lista" style="font-size:14px;line-height:1.9">
+    <li><b>35 a 45 segundos</b>, más que los 30 de DeviceShop: el contenido de sentido aguanta
+      más y las plataformas premian el tiempo de visionado real.</li>
+    <li><b>El 70% mira sin sonido.</b> El subtítulo no es un extra, es el video.</li>
+    <li><b>Sin efectos de sonido marcados ni acercamientos bruscos.</b> Preset
+      <code>sobrio</code>. El ritmo de una promoción le quita verdad a esto.</li>
+    <li><b>El cierre no presiona.</b> Fecha, lugar y teléfono. Sin «cupos limitados».</li>
+  </ul>
+  <div class="foot">
+    Fuentes: Fundación SM, <i>Jóvenes Españoles 2026</i> · Barómetro de Juventud, Salud y
+    Bienestar 2025 (soledad no deseada: 87,5% de los jóvenes, frente al 81,6% de 2023;
+    42,8% con diagnóstico de salud mental) · estrategia de video corto para comunidades de fe 2026.
+  </div>
+</section>
+
+</main>
+
+<div id="tele">
+  <div id="teleTxt"></div>
+  <div id="teleCtl">
+    <button onclick="telePlay()" id="telePlayBtn">▶ Empezar</button>
+    <button onclick="teleVel(-10)">− lento</button>
+    <button onclick="teleVel(10)">+ rápido</button>
+    <button onclick="teleFuente(-4)">A−</button>
+    <button onclick="teleFuente(4)">A+</button>
+    <button onclick="teleEspejo()">Espejo</button>
+    <button onclick="teleCerrar()">Cerrar</button>
+  </div>
+</div>
+
+<script>
+/* Catálogo de B-roll generado con IA. El pipeline lo lee por su identificador
+   (L01, L02…) desde la columna "visual" de cada beat.
+   [categoría, qué se ve, en cuántos guiones se usa, prompt completo] */
+const CLIPS={
+L01:["noche","Techo de un cuarto a oscuras visto desde la cama","3 guiones","Static locked-off shot from a bed looking up at a dark bedroom ceiling at 3 AM. Faint blue-grey light from a phone screen off-frame washes across the ceiling. Slow dust motes drift. Absolute stillness, no camera movement. Melancholic, insomniac mood. Cinematic, shallow depth, 9:16 vertical."],
+L02:["noche","Mano sobre sábanas girando el celular boca abajo","2 guiones","Close-up of a hand on rumpled bedsheets in near darkness, turning a phone face-down. The screen glow dies and the frame falls into blue shadow. Intimate, quiet, defeated. Handheld micro-movement only. 9:16 vertical, cinematic."],
+L03:["soledad","Persona sola de espaldas en una fiesta desenfocada","4 guiones","A lone figure seen from behind in sharp focus, shoulders slightly slumped, while a warm blurred party with moving people glows out of focus behind them. The contrast between the sharp lonely silhouette and the soft joyful background is the whole point. Anonymous, no recognizable face. 9:16 vertical, cinematic bokeh."],
+L04:["soledad","Pantalla de chat con la lista de contactos sin abrir","3 guiones","Over-the-shoulder shot of a phone showing a long scrolling contact list, thumb hovering, never tapping. Screen is the only light source in a dark room. Generic unbranded interface, no readable names. Melancholic. 9:16 vertical."],
+L05:["vacio","Habitación ordenada y vacía con luz de tarde","3 guiones","A tidy, well-furnished but completely empty living room in late afternoon light. Everything is in its place and nothing is alive. Long shadows across the floor. The emptiness is the subject. Static shot, no people. 9:16 vertical, cinematic."],
+L06:["vacio","Trofeo o diploma cubierto de polvo en un estante","2 guiones","Close-up of a generic award trophy and a framed certificate on a shelf, a visible film of dust on both. Warm dim light. No readable text on the certificate. Shallow focus, slow push-in barely perceptible. 9:16 vertical."],
+L07:["mascara","Espejo de baño, persona ensayando una sonrisa","4 guiones","Bathroom mirror shot, chest-up, of a person practicing a smile and letting it drop. Face partially out of frame or in shadow so it is not identifiable. Cold morning light. The moment the smile falls is the beat. 9:16 vertical, cinematic."],
+L08:["mascara","Manos secándose la cara con una toalla","2 guiones","Close-up of hands pressing a towel to a face, then lowering it. Neutral bathroom background, soft window light. Anonymous, no clear facial features. Quiet, composed, exhausted. 9:16 vertical."],
+L09:["intentos","Escritorio con libros de autoayuda apilados","3 guiones","Overhead shot of a desk with a stack of generic self-help books with blank unreadable covers, a half-drunk coffee, a gym membership card and an unopened journal. Nothing has been used. Cold flat daylight. 9:16 vertical."],
+L10:["intentos","Zapatillas de correr junto a la puerta, sin usar","2 guiones","Static shot of clean unused running shoes by an apartment door, next to a gym bag that has not moved. Dust light. The abandonment is visible without words. 9:16 vertical, cinematic."],
+L11:["ruido","Pulgar deslizando sin parar en un celular","4 guiones","Extreme close-up of a thumb scrolling a phone screen endlessly, the reflected light flickering across the skin. The scrolling never stops and never lands. Screen content is abstract blur, no recognizable app. Hypnotic, slightly unsettling. 9:16 vertical."],
+L12:["ruido","Auriculares puestos en un bus, mirada perdida","3 guiones","A person with headphones on in a moving bus, seen in profile against a window, city sliding past out of focus. Eyes unfocused, not really listening. Face partially obscured by reflection. 9:16 vertical, cinematic."],
+L13:["duelo","Silla vacía en una mesa puesta para dos","3 guiones","A kitchen table set for two with one chair pushed back and empty. Warm window light. Nobody in frame. The absence is the subject. Static, no movement except dust in the light beam. 9:16 vertical, cinematic."],
+L14:["duelo","Ropa colgada que ya nadie usa","2 guiones","Close-up of a few garments hanging in a wardrobe, untouched, a hand reaching in and stopping short of touching them. Soft dim light. Restrained, tender, no melodrama. 9:16 vertical."],
+L15:["miedo","Cruce de calles de noche, persona detenida sin decidir","3 guiones","Wide shot from above of a person standing still at a night intersection while blurred traffic and pedestrians move around them. They do not choose a direction. Anonymous, small in frame. Rain-slick asphalt reflecting neon. 9:16 vertical, cinematic."],
+L16:["miedo","Mano sobre el picaporte de una puerta cerrada","2 guiones","Close-up of a hand resting on a door handle without turning it, held too long. Warm light on the other side of the frosted glass. Hesitation made visible. 9:16 vertical."],
+L17:["agua","Mano hundiéndose vista desde debajo del agua","4 guiones","Underwater shot looking up at a hand breaking the surface from below, reaching upward, backlit by daylight above the water. Bubbles and shafts of light. Dark deep blue-green water below. Dramatic, cinematic, matches the retreat artwork. 9:16 vertical."],
+L18:["agua","Dos manos que se agarran en la superficie del agua","2 guiones","Two hands gripping each other at the surface of dark water, one pulling the other up, warm rim light on wet skin against deep blue-black water. Powerful, hopeful, no faces. This is the visual signature of the retreat. 9:16 vertical, cinematic."],
+L19:["luz","Primera luz entrando por una ventana en un cuarto oscuro","4 guiones","A dark room with a single blade of warm dawn light entering through a gap in heavy curtains, slowly widening across the floor. Dust suspended in the beam. Hope arriving quietly, not triumphantly. 9:16 vertical, cinematic."],
+L20:["luz","Manos abiertas recibiendo luz cálida","3 guiones","Close-up of two open empty palms held up, warm golden light falling into them from above. Neutral dark background. Receiving, not asking. No religious symbols in frame. 9:16 vertical, cinematic."],
+L21:["comunidad","Círculo de personas sentadas, vistas desde arriba","3 guiones","Overhead wide shot of a circle of seated people in a simple room, seen from directly above so no faces are identifiable. Warm natural light. Presence and company without a single word. 9:16 vertical, cinematic."],
+L22:["comunidad","Sillas dispuestas en círculo en una sala vacía","2 guiones","A simple room with wooden chairs arranged in a circle, empty, morning light through tall windows. Waiting for people. Calm, uncluttered, no religious iconography. 9:16 vertical, cinematic."],
+L23:["silencio","Vela encendida sola en penumbra","3 guiones","A single lit candle on a plain surface in a dim room, flame steady, warm pool of light falling off into darkness. No altar, no religious objects — just the flame. Contemplative, patient. 9:16 vertical, cinematic."],
+L24:["silencio","Camino de tierra al amanecer entre árboles","2 guiones","An empty dirt path leading between trees at sunrise, mist low to the ground, warm light filtering through branches. Invitation to walk. No people. 9:16 vertical, cinematic."]
+};
+function c(id){return CLIPS[id]?`<span class="clip" onclick="verPrompt('${id}')">${id}</span>`:id;}
+
+/* Los diez guiones. Cada beat: [tiempo, lo que se dice, tipo, qué se ve, sonido, música] */
+const G=[
+{n:1,t:"Las tres de la mañana",rum:92,bloque:"Ansiedad",hook:"verbal",hooksegs:"0",cierresegs:"1.5",
+ hooktxt:"Mirada directa a cámara, sin preámbulo",
+ utileria:["Cama deshecha","Celular","Lámpara de mesa apagada"],
+ set:["Dormitorio a media luz","Luz fría lateral, casi de pantalla"],
+ tele:"Son las tres de la mañana y otra vez estás despierto. || No es insomnio. Es que es la única hora del día en que no tienes con qué distraerte. || Todo el día pusiste ruido encima: trabajo, música, pantalla, gente. Y a esta hora ya no queda nada que poner. || Y aparece esa pregunta que llevas meses esquivando. La que no se la haces a nadie porque no sabrías ni cómo terminarla. || No estás roto. Estás buscando. Y llevas tanto tiempo buscando en el lugar equivocado que ya te acostumbraste a no encontrar. || Hay un fin de semana para dejar de esquivarla.",
+ tomas:["Plano medio en la cama, luz de celular","Detalle de la mano girando el teléfono","Plano cerrado, mirada a cámara","Plano medio final, luz de amanecer"],
+ tl:[
+ ["0–3s","Son las tres de la mañana y otra vez estás despierto.","YO","Plano medio en penumbra, cara iluminada por el celular + banner de hook","—","entra 15-lofi-midnight-rain a −22 dB"],
+ ["3–7s","No es insomnio.","B-ROLL","L01 a pantalla completa","—","—"],
+ ["7–13s","Es que es la única hora del día en que no tienes con qué distraerte.","YO","Tu toma, plano medio","—","—"],
+ ["13–18s","Todo el día pusiste ruido encima: trabajo, música, pantalla, gente.","B-ROLL","L11 a pantalla completa","—","—"],
+ ["18–22s","Y a esta hora ya no queda nada que poner.","B-ROLL","L02 a pantalla completa","reverso_3 muy bajo","corta la música 1s"],
+ ["22–28s","Y aparece esa pregunta que llevas meses esquivando.","YO","Tu toma, plano cerrado","—","vuelve la música"],
+ ["28–33s","La que no se la haces a nadie porque no sabrías ni cómo terminarla.","YO","Tu toma, se sostiene","—","—"],
+ ["33–38s","No estás roto. Estás buscando.","ANIM","Texto destacado: NO ESTÁS ROTO","—","cambia a 23-inspiring-cinematic-piano"],
+ ["38–42s","Y llevas tanto tiempo buscando en el lugar equivocado que ya te acostumbraste a no encontrar.","B-ROLL","L19 a pantalla completa","—","—"],
+ ["42–46s","Hay un fin de semana para dejar de esquivarla.","YO","Tu toma + tarjeta de evento","—","—"],
+ ["46–50s","(silencio)","PIP","Tarjeta de evento: fecha, lugar, teléfono","—","cierra la música"]]},
+
+{n:2,t:"Todo bien",rum:90,bloque:"Máscara",hook:"fisico",hooksegs:"2",cierresegs:"1.5",
+ hooktxt:"Ensayas una sonrisa frente al espejo y la dejas caer",
+ utileria:["Espejo","Toalla"],
+ set:["Baño o entrada de casa","Luz de mañana, fría"],
+ tele:"¿Cuántas veces dijiste esta semana que estabas bien? || Contálas. Ahora contá cuántas eran verdad. || Lo peor no es mentir. Es que nadie preguntó dos veces. || Te volviste tan bueno en estar bien que ya nadie sospecha. Y esa es la trampa: mientras funcione, nadie te va a ayudar a soltarlo. || Vas a llegar a un punto en que no vas a poder sostener la cara. Todos llegamos. || Hay un lugar donde no hace falta que la sostengas.",
+ tomas:["Espejo, ensayo de sonrisa","Plano medio, mirada directa","Detalle de manos con la toalla","Plano final más suelto"],
+ tl:[
+ ["0–2s","(gesto: sonríes al espejo y la sonrisa se cae)","YO","Espejo, ensayo de sonrisa + banner de hook","—","entra 16-soft-ambient-lofi a −22 dB"],
+ ["2–7s","¿Cuántas veces dijiste esta semana que estabas bien?","YO","Tu toma, plano medio","—","—"],
+ ["7–11s","Cuéntalas. Ahora cuenta cuántas eran verdad.","B-ROLL","L07 a pantalla completa","—","—"],
+ ["11–17s","Lo peor no es mentir. Es que nadie preguntó dos veces.","YO","Tu toma, plano cerrado","impacto_latido muy bajo","—"],
+ ["17–23s","Te volviste tan bueno en estar bien que ya nadie sospecha.","B-ROLL","L08 a pantalla completa","—","—"],
+ ["23–29s","Y esa es la trampa: mientras funcione, nadie te va a ayudar a soltarlo.","YO","Tu toma","—","—"],
+ ["29–35s","Vas a llegar a un punto en que no vas a poder sostener la cara. Todos llegamos.","YO","Tu toma, se sostiene","—","cambia a 28-soft-inspirational"],
+ ["35–40s","Hay un lugar donde no hace falta que la sostengas.","B-ROLL","L21 a pantalla completa","—","—"],
+ ["40–45s","(silencio)","PIP","Tarjeta de evento: fecha, lugar, teléfono","—","cierra la música"]]},
+
+{n:3,t:"Ochocientos contactos",rum:91,bloque:"Soledad",hook:"verbal",hooksegs:"0",cierresegs:"1.5",
+ hooktxt:"Mirada directa, teléfono en la mano",
+ utileria:["Celular"],
+ set:["Sala o cocina de noche","Una sola lámpara"],
+ tele:"Tienes ochocientos contactos en el teléfono y hoy no supiste a quién llamar. || No es que no tengas gente. Es que no tienes a nadie a quien contarle cómo estás de verdad. || Hay una diferencia entre estar acompañado y estar acompañado. || Y lo raro es que esto le pasa a casi todos. Ocho de cada diez jóvenes dicen sentirse solos. Ocho de cada diez. Y todos creen que son los únicos. || No te falta gente. Te falta un lugar donde puedas dejar de actuar. || Ese lugar existe y es este fin de semana.",
+ tomas:["Plano medio con el teléfono","Detalle del pulgar sobre la lista","Plano cerrado, mirada a cámara","Plano final"],
+ tl:[
+ ["0–4s","Tienes ochocientos contactos en el teléfono y hoy no supiste a quién llamar.","YO","Plano medio con el celular + banner de hook","—","entra 16-soft-ambient-lofi a −22 dB"],
+ ["4–8s","No es que no tengas gente.","B-ROLL","L04 a pantalla completa","—","—"],
+ ["8–14s","Es que no tienes a nadie a quien contarle cómo estás de verdad.","YO","Tu toma, plano medio","—","—"],
+ ["14–19s","Hay una diferencia entre estar acompañado y estar acompañado.","B-ROLL","L03 a pantalla completa","—","—"],
+ ["19–25s","Y lo raro es que esto le pasa a casi todos.","YO","Tu toma","—","—"],
+ ["25–31s","Ocho de cada diez jóvenes dicen sentirse solos. Y todos creen que son los únicos.","ANIM","Texto destacado: 8 DE CADA 10","—","—"],
+ ["31–37s","No te falta gente. Te falta un lugar donde puedas dejar de actuar.","YO","Tu toma, plano cerrado","—","cambia a 24-uplifting-strings"],
+ ["37–42s","Ese lugar existe y es este fin de semana.","B-ROLL","L22 a pantalla completa","—","—"],
+ ["42–46s","(silencio)","PIP","Tarjeta de evento: fecha, lugar, teléfono","—","cierra la música"]]},
+
+{n:4,t:"Lo conseguiste",rum:88,bloque:"Vacío",hook:"verbal",hooksegs:"0",cierresegs:"1.5",
+ hooktxt:"Mirada directa, tono tranquilo",
+ utileria:["Un objeto que represente un logro (diploma, llave, trofeo)"],
+ set:["Sala ordenada","Luz de tarde"],
+ tele:"Conseguiste lo que querías. ¿Por qué no alcanza? || El trabajo, la casa, la pareja, el título. Lo que hace cinco años te parecía que te iba a cambiar la vida. || Y te cambió la vida. Pero no te cambió a ti. || Esto tiene nombre y no es desagradecimiento. Es que le pediste a algo finito que te diera algo infinito. Y ninguna cosa aguanta ese peso. || Hay un hueco en ti que no tiene el tamaño de nada de lo que puedas comprar. || Este fin de semana no vamos a llenarlo con otra cosa. Vamos a mirarlo de frente.",
+ tomas:["Plano medio, mirada directa","Detalle del objeto con polvo","Plano de la sala vacía","Plano final"],
+ tl:[
+ ["0–4s","Conseguiste lo que querías. ¿Por qué no alcanza?","YO","Plano medio + banner de hook","—","entra 46-cinematic-suspense-drone a −24 dB"],
+ ["4–10s","El trabajo, la casa, la pareja, el título.","B-ROLL","L06 a pantalla completa","—","—"],
+ ["10–15s","Lo que hace cinco años te parecía que te iba a cambiar la vida.","YO","Tu toma","—","—"],
+ ["15–20s","Y te cambió la vida. Pero no te cambió a ti.","YO","Tu toma, plano cerrado","impacto_latido muy bajo","corta 1s"],
+ ["20–26s","Esto tiene nombre y no es desagradecimiento.","B-ROLL","L05 a pantalla completa","—","vuelve la música"],
+ ["26–33s","Es que le pediste a algo finito que te diera algo infinito. Y ninguna cosa aguanta ese peso.","YO","Tu toma","—","—"],
+ ["33–39s","Hay un hueco en ti que no tiene el tamaño de nada de lo que puedas comprar.","ANIM","Texto destacado: NINGUNA COSA ALCANZA","—","cambia a 23-inspiring-cinematic-piano"],
+ ["39–45s","Este fin de semana no vamos a llenarlo con otra cosa. Vamos a mirarlo de frente.","B-ROLL","L20 a pantalla completa","—","—"],
+ ["45–49s","(silencio)","PIP","Tarjeta de evento: fecha, lugar, teléfono","—","cierra la música"]]},
+
+{n:5,t:"Lo que nadie sabe",rum:93,bloque:"Culpa",hook:"verbal",hooksegs:"0",cierresegs:"2",
+ hooktxt:"Mirada directa, voz baja, sin dramatismo",
+ utileria:["Ninguna"],
+ set:["Fondo neutro y oscuro","Una sola luz lateral suave"],
+ tele:"Hay algo que hiciste y no se lo contaste a nadie. || No hace falta que me digas qué. Pero apareció en tu cabeza apenas lo dije, y esa es toda la conversación. || Lo cargas hace años. Aprendiste a funcionar con eso encima, como quien camina con una piedra en el zapato y ya ni cojea. || Te voy a decir algo incómodo: eso no se va a ir solo. Y tampoco se va a ir contándoselo a cualquiera. || Pero hay un lugar donde se puede dejar. No donde te lo perdonan por buena onda. Donde se deja de verdad. || Este fin de semana.",
+ tomas:["Plano cerrado, mirada directa, luz lateral","Plano medio","Plano final, algo más de luz"],
+ tl:[
+ ["0–4s","Hay algo que hiciste y no se lo contaste a nadie.","YO","Plano cerrado, luz lateral + banner de hook","—","entra 46-cinematic-suspense-drone a −24 dB"],
+ ["4–10s","No hace falta que me digas qué.","YO","Tu toma, se sostiene","—","—"],
+ ["10–16s","Pero apareció en tu cabeza apenas lo dije, y esa es toda la conversación.","YO","Tu toma","impacto_latido muy bajo","corta 1s"],
+ ["16–23s","Lo cargas hace años. Aprendiste a funcionar con eso encima.","B-ROLL","L15 a pantalla completa","—","vuelve la música"],
+ ["23–29s","Como quien camina con una piedra en el zapato y ya ni cojea.","YO","Tu toma","—","—"],
+ ["29–35s","Te voy a decir algo incómodo: eso no se va a ir solo.","YO","Tu toma, plano cerrado","—","—"],
+ ["35–41s","Pero hay un lugar donde se puede dejar. No donde te lo perdonan por buena onda.","B-ROLL","L23 a pantalla completa","—","cambia a 28-soft-inspirational"],
+ ["41–46s","Donde se deja de verdad.","ANIM","Texto destacado: SE PUEDE DEJAR","—","—"],
+ ["46–50s","(silencio)","PIP","Tarjeta de evento: fecha, lugar, teléfono","—","cierra la música"]]},
+
+{n:6,t:"Ya lo intentaste todo",rum:87,bloque:"Intentos",hook:"verbal",hooksegs:"0",cierresegs:"1.5",
+ hooktxt:"Mirada directa, tono de complicidad",
+ utileria:["Libros de autoayuda","Cuaderno sin estrenar","Zapatillas nuevas"],
+ set:["Escritorio o dormitorio","Luz de día plana"],
+ tele:"Terapia, gimnasio, un viaje, levantarte a las cinco. Y a las dos semanas volvió. || Y volviste a pensar que el problema eras tú, que no tienes disciplina. || No es disciplina. Es que estabas tratando un síntoma. || Todo eso te ayuda a llevarlo mejor, y está bien. Pero ninguna de esas cosas responde la pregunta de para qué estás acá. Y esa es la pregunta que te despierta. || No te falta otro método. Te falta un sentido. || Este fin de semana no traemos otra técnica.",
+ tomas:["Plano medio, mirada directa","Detalle cenital del escritorio","Detalle de las zapatillas","Plano final"],
+ tl:[
+ ["0–5s","Terapia, gimnasio, un viaje, levantarte a las cinco. Y a las dos semanas volvió.","YO","Plano medio + banner de hook","—","entra 12-cozy-coffee-lofi a −22 dB"],
+ ["5–10s","Y volviste a pensar que el problema eras tú.","B-ROLL","L09 a pantalla completa","—","—"],
+ ["10–15s","Que no tienes disciplina.","B-ROLL","L10 a pantalla completa","—","—"],
+ ["15–21s","No es disciplina. Es que estabas tratando un síntoma.","YO","Tu toma, plano cerrado","impacto_latido muy bajo","—"],
+ ["21–28s","Todo eso te ayuda a llevarlo mejor, y está bien.","YO","Tu toma","—","—"],
+ ["28–35s","Pero ninguna de esas cosas responde la pregunta de para qué estás acá. Y esa es la que te despierta.","YO","Tu toma","—","—"],
+ ["35–40s","No te falta otro método. Te falta un sentido.","ANIM","Texto destacado: NO ES UN MÉTODO","—","cambia a 23-inspiring-cinematic-piano"],
+ ["40–45s","Este fin de semana no traemos otra técnica.","B-ROLL","L24 a pantalla completa","—","—"],
+ ["45–49s","(silencio)","PIP","Tarjeta de evento: fecha, lugar, teléfono","—","cierra la música"]]},
+
+{n:7,t:"Cinco minutos en silencio",rum:89,bloque:"Ruido",hook:"fisico",hooksegs:"2.5",cierresegs:"1.5",
+ hooktxt:"Dejas el celular boca abajo sobre la mesa y te quedas quieto",
+ utileria:["Celular","Mesa"],
+ set:["Mesa de cocina o escritorio","Luz natural"],
+ tele:"¿Hace cuánto no estás cinco minutos sin mirar nada? || Probá ahora. Deja el teléfono y no hagas nada durante cinco minutos. || Cuesta, ¿no? Y no es que estés muy ocupado. Es que cuando se hace silencio, aparece algo. || Por eso lo llenamos. Música al caminar, video al comer, pantalla al dormir. No es entretenimiento, es anestesia. || Lo que estás evitando no es el aburrimiento. Es quedarte a solas contigo. || Hay un fin de semana entero para eso. Suena a poco. Es lo más difícil que vas a hacer este año.",
+ tomas:["Detalle: dejas el teléfono boca abajo","Plano medio, quieto","Plano cerrado, mirada a cámara","Plano final"],
+ tl:[
+ ["0–2.5s","(gesto: dejas el celular boca abajo y te quedas quieto)","YO","Detalle del gesto + banner de hook","—","sin música todavía"],
+ ["2.5–7s","¿Hace cuánto no estás cinco minutos sin mirar nada?","YO","Tu toma, plano medio","—","entra 16-soft-ambient-lofi a −22 dB"],
+ ["7–12s","Prueba ahora. Deja el teléfono y no hagas nada durante cinco minutos.","B-ROLL","L11 a pantalla completa","—","—"],
+ ["12–18s","Cuesta, ¿no? Y no es que estés muy ocupado.","YO","Tu toma","—","—"],
+ ["18–23s","Es que cuando se hace silencio, aparece algo.","YO","Tu toma, plano cerrado","—","corta la música 1.5s"],
+ ["23–30s","Por eso lo llenamos. Música al caminar, video al comer, pantalla al dormir.","B-ROLL","L12 a pantalla completa","—","vuelve la música"],
+ ["30–35s","No es entretenimiento, es anestesia.","ANIM","Texto destacado: NO ES ENTRETENIMIENTO","—","—"],
+ ["35–41s","Lo que estás evitando no es el aburrimiento. Es quedarte a solas contigo.","YO","Tu toma","—","cambia a 45-acoustic-gentle-breeze"],
+ ["41–47s","Hay un fin de semana entero para eso. Es lo más difícil que vas a hacer este año.","B-ROLL","L23 a pantalla completa","—","—"],
+ ["47–51s","(silencio)","PIP","Tarjeta de evento: fecha, lugar, teléfono","—","cierra la música"]]},
+
+{n:8,t:"Y el lunes volviste a trabajar",rum:90,bloque:"Duelo",hook:"verbal",hooksegs:"0",cierresegs:"2",
+ hooktxt:"Mirada directa, voz contenida",
+ utileria:["Ninguna"],
+ set:["Cocina o comedor","Luz de ventana"],
+ tele:"Se murió, y el lunes siguiente volviste a trabajar. || Nadie te explicó qué se hace con eso. Te dieron tres días y una frase hecha. || Y aprendiste a no nombrarlo para no incomodar a nadie. Cambias de tema rápido, dices que ya estás mejor. || Pero hay días en que abres el teléfono para escribirle. Y te acuerdas a mitad de camino. || Eso no se supera. Se atraviesa. Y no se atraviesa solo, aunque llevas años intentándolo. || Este fin de semana no vamos a decirte que está en un lugar mejor. Vamos a acompañarte a mirarlo.",
+ tomas:["Plano medio, mirada directa","Detalle de la silla vacía","Detalle de la ropa colgada","Plano final"],
+ tl:[
+ ["0–4s","Se murió, y el lunes siguiente volviste a trabajar.","YO","Plano medio + banner de hook","—","entra 15-lofi-midnight-rain a −24 dB"],
+ ["4–10s","Nadie te explicó qué se hace con eso. Te dieron tres días y una frase hecha.","B-ROLL","L13 a pantalla completa","—","—"],
+ ["10–17s","Y aprendiste a no nombrarlo para no incomodar a nadie.","YO","Tu toma","—","—"],
+ ["17–23s","Cambias de tema rápido, dices que ya estás mejor.","YO","Tu toma, plano cerrado","—","—"],
+ ["23–30s","Pero hay días en que abres el teléfono para escribirle. Y te acuerdas a mitad de camino.","B-ROLL","L14 a pantalla completa","impacto_latido muy bajo","corta 1.5s"],
+ ["30–37s","Eso no se supera. Se atraviesa.","ANIM","Texto destacado: NO SE SUPERA, SE ATRAVIESA","—","vuelve con 23-inspiring-cinematic-piano"],
+ ["37–43s","Y no se atraviesa solo, aunque llevas años intentándolo.","B-ROLL","L21 a pantalla completa","—","—"],
+ ["43–49s","Este fin de semana no vamos a decirte que está en un lugar mejor. Vamos a acompañarte a mirarlo.","YO","Tu toma","—","—"],
+ ["49–53s","(silencio)","PIP","Tarjeta de evento: fecha, lugar, teléfono","—","cierra la música"]]},
+
+{n:9,t:"Decides con miedo",rum:91,bloque:"Miedo",hook:"verbal",hooksegs:"0",cierresegs:"1.5",
+ hooktxt:"Mirada directa, tono firme",
+ utileria:["Ninguna"],
+ set:["Exterior de noche o interior con ventana","Luz de calle"],
+ tele:"Hace años que tomas decisiones con miedo y le llamas ser realista. || El trabajo que no dejaste. La conversación que no tuviste. La llamada que no hiciste. || Cada una tenía un argumento sensato. Y todas juntas construyeron una vida que no elegiste. || El miedo no grita. El miedo te aconseja. Por eso le haces caso. || Y un día miras atrás y la lista de lo que no hiciste es más larga que la de lo que hiciste. || Hay una frase que dice: levántense, no tengan miedo. No dice que el miedo no exista. Dice que te levantes con él encima. || Este fin de semana empieza ahí.",
+ tomas:["Plano medio de noche","Detalle de la mano en el picaporte","Plano del cruce de calles","Plano final"],
+ tl:[
+ ["0–5s","Hace años que tomas decisiones con miedo y le llamas ser realista.","YO","Plano medio + banner de hook","—","entra 46-cinematic-suspense-drone a −24 dB"],
+ ["5–11s","El trabajo que no dejaste. La conversación que no tuviste. La llamada que no hiciste.","B-ROLL","L16 a pantalla completa","—","—"],
+ ["11–18s","Cada una tenía un argumento sensato.","YO","Tu toma","—","—"],
+ ["18–24s","Y todas juntas construyeron una vida que no elegiste.","B-ROLL","L15 a pantalla completa","impacto_latido muy bajo","corta 1s"],
+ ["24–30s","El miedo no grita. El miedo te aconseja. Por eso le haces caso.","YO","Tu toma, plano cerrado","—","vuelve la música"],
+ ["30–36s","Y un día miras atrás y la lista de lo que no hiciste es más larga.","YO","Tu toma","—","—"],
+ ["36–43s","Hay una frase que dice: levántense, no tengan miedo. No dice que el miedo no exista.","PIP","Cita en pantalla: «Levántense, no tengan miedo» — Mt 17,7","—","cambia a 24-uplifting-strings"],
+ ["43–48s","Dice que te levantes con él encima.","ANIM","Texto destacado: LEVÁNTATE CON ÉL ENCIMA","—","—"],
+ ["48–52s","Este fin de semana empieza ahí.","PIP","Tarjeta de evento: fecha, lugar, teléfono","—","cierra la música"]]},
+
+{n:10,t:"Dejaste de pedir ayuda",rum:95,bloque:"Náufrago",hook:"verbal",hooksegs:"0",cierresegs:"2",
+ hooktxt:"Mirada directa. Es el guion ancla: usa la imagen del arte del retiro",
+ utileria:["Ninguna"],
+ set:["Fondo oscuro y neutro","Una luz cálida lateral"],
+ tele:"Te estás hundiendo despacio y hace rato que dejaste de pedir ayuda. || Al principio avisabas. Decías que estabas cansado, que era una mala racha. Y la gente respondía con frases. || Entonces dejaste de avisar. No porque estés mejor: porque te cansaste de explicarlo. || Y ahora funcionas. Trabajas, respondes mensajes, te ríes en el momento correcto. Nadie diría que te estás ahogando. || Eso es lo peor de ahogarse despacio: que se puede hacer sin que se note. || Pero hay una diferencia entre hundirse y estar hundido. Mientras haya mano que se estira, hay a quién agarrarse. || Levántense, no tengan miedo. || Este fin de semana.",
+ tomas:["Plano cerrado, mirada directa","Plano medio","Plano final, más luz"],
+ tl:[
+ ["0–5s","Te estás hundiendo despacio y hace rato que dejaste de pedir ayuda.","YO","Plano cerrado, luz lateral + banner de hook","—","entra 46-cinematic-suspense-drone a −24 dB"],
+ ["5–11s","Al principio avisabas. Decías que estabas cansado, que era una mala racha.","YO","Tu toma","—","—"],
+ ["11–17s","Y la gente respondía con frases.","B-ROLL","L17 a pantalla completa","—","—"],
+ ["17–24s","Entonces dejaste de avisar. No porque estés mejor: porque te cansaste de explicarlo.","YO","Tu toma, plano cerrado","impacto_latido muy bajo","corta 1.5s"],
+ ["24–31s","Y ahora funcionas. Trabajas, respondes mensajes, te ríes en el momento correcto.","B-ROLL","L07 a pantalla completa","—","vuelve la música"],
+ ["31–37s","Nadie diría que te estás ahogando.","YO","Tu toma","—","—"],
+ ["37–43s","Eso es lo peor de ahogarse despacio: que se puede hacer sin que se note.","ANIM","Texto destacado: SIN QUE SE NOTE","—","—"],
+ ["43–50s","Pero hay una diferencia entre hundirse y estar hundido. Mientras haya mano que se estira, hay a quién agarrarse.","B-ROLL","L18 a pantalla completa","—","cambia a 24-uplifting-strings"],
+ ["50–55s","Levántense, no tengan miedo.","PIP","Cita en pantalla: «Levántense, no tengan miedo» — Mt 17,7","—","—"],
+ ["55–59s","Este fin de semana.","PIP","Tarjeta de evento: fecha, lugar, teléfono","—","cierra la música"]]}
+];
+
+const EVENTO={fecha:"6, 7 y 8 de agosto de 2026",lugar:"Casa de Retiros San Juan XXIII",
+              ofrenda:"Bs. 300",tel:"72113809",cita:"«Levántense, no tengan miedo» — Mt 17,7"};
+
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+function clsTipo(t){return t.replace("-","");}
+
+function renderGuiones(){
+  document.getElementById("listaG").innerHTML=G.map(g=>{
+    const beats=g.tl.map(b=>`<tr>
+      <td class="t">${esc(b[0])}</td>
+      <td>${esc(b[1])}</td>
+      <td><span class="tipo ${clsTipo(b[2])}">${esc(b[2])}</span></td>
+      <td>${b[3].replace(/\bL\d{2}\b/g,m=>c(m))}</td>
+      <td class="t">${esc(b[4])}</td>
+      <td class="t">${esc(b[5])}</td></tr>`).join("");
+    return `<div class="g" id="g${g.n}">
+      <div class="gh" onclick="toggle('${g.n}')">
+        <div class="gn">${g.n}</div>
+        <div class="gt">${esc(g.t)}</div>
+        <span class="gb">${esc(g.bloque)}</span>
+        <span class="rum">fuerza ${g.rum}</span>
+      </div>
+      <div class="gc">
+        <div class="hookbox">
+          <div class="lbl">Primeros 3 segundos</div>
+          <div class="txt">${esc(g.tl[0][1])}</div>
+        </div>
+        <div class="meta">
+          <div>Hook: <b>${esc(g.hook)}</b>${g.hooksegs!=="0"?` (${g.hooksegs}s de gesto)`:""}</div>
+          <div>Cierre: <b>${g.cierresegs}s</b></div>
+          <div>Duración: <b>${g.tl[g.tl.length-1][0].split("–")[1]}</b></div>
+        </div>
+        ${g.hooktxt?`<p class="sub" style="color:var(--fg2);font-size:13px">Gesto de apertura: ${esc(g.hooktxt)}</p>`:""}
+        <table>
+          <tr><th>Tiempo</th><th>Lo que dices</th><th>Tipo</th><th>Qué se ve</th><th>Sonido</th><th>Música</th></tr>
+          ${beats}
+        </table>
+        <div class="meta" style="margin-top:14px">
+          <div><b>Set:</b> ${g.set.map(esc).join(" · ")}</div>
+          <div><b>Utilería:</b> ${g.utileria.map(esc).join(" · ")}</div>
+        </div>
+        <div class="cta">
+          <span>📅 ${EVENTO.fecha}</span><span>📍 ${EVENTO.lugar}</span>
+          <span>🤝 ${EVENTO.ofrenda}</span><span>📞 ${EVENTO.tel}</span>
+        </div>
+        <button class="copiar" onclick="event.stopPropagation();abrirTele('${g.n}')">🎬 Teleprompter</button>
+        <button class="copiar" onclick="event.stopPropagation();copiarComando('${g.n}')">⧉ Copiar comando del pipeline</button>
+      </div></div>`;
+  }).join("");
+}
+
+function renderPrompts(){
+  document.getElementById("listaP").innerHTML=Object.entries(CLIPS).map(([id,v])=>
+    `<div class="pr" id="p${id}">
+      <div class="cat">${esc(v[0])}</div>
+      <h3>${id} — ${esc(v[1])}</h3>
+      <div class="usos">Se usa en ${esc(v[2])}</div>
+      <pre>${esc(v[3])}</pre>
+      <button class="copiar" onclick="copiar(CLIPS['${id}'][3],this)">⧉ Copiar prompt</button>
+    </div>`).join("");
+}
+
+function toggle(n){document.getElementById("g"+n).classList.toggle("abierto");}
+function irA(sec){
+  document.querySelectorAll("section").forEach(s=>s.classList.toggle("on",s.id===sec));
+  document.querySelectorAll("nav button").forEach((b,i)=>
+    b.classList.toggle("on",["guiones","prompts","criterio"][i]===sec));
+  window.scrollTo(0,0);
+}
+function verPrompt(id){
+  irA("prompts");
+  const el=document.getElementById("p"+id);
+  if(el){el.scrollIntoView({block:"center"});el.style.borderColor="var(--acento)";
+         setTimeout(()=>el.style.borderColor="",1800);}
+}
+function copiar(txt,btn){
+  navigator.clipboard.writeText(txt).then(()=>{
+    const o=btn.textContent;btn.textContent="✓ copiado";setTimeout(()=>btn.textContent=o,1400);});
+}
+function copiarComando(n){
+  const cmd=`C:\\ai-video\\venv312\\Scripts\\python.exe editor/editor.py "entrada/TU-VIDEO.mp4" --marca lazos --guion ${n}`;
+  navigator.clipboard.writeText(cmd);
+  alert("Comando copiado:\n\n"+cmd+"\n\nCambia TU-VIDEO.mp4 por el nombre de tu grabación.");
+}
+
+/* Teleprompter */
+let teleTimer=null,teleVelocidad=42,teleFont=44,telePos=0;
+function abrirTele(n){
+  const g=G.find(x=>x.n===n);
+  document.getElementById("teleTxt").innerHTML=
+    g.tele.split("||").map(p=>`<p>${esc(p.trim())}</p>`).join("");
+  document.getElementById("tele").classList.add("on");
+  telePos=0;document.getElementById("teleTxt").scrollTop=0;
+}
+function telePlay(){
+  const btn=document.getElementById("telePlayBtn");
+  if(teleTimer){clearInterval(teleTimer);teleTimer=null;btn.textContent="▶ Seguir";return;}
+  btn.textContent="⏸ Pausa";
+  const el=document.getElementById("teleTxt");
+  teleTimer=setInterval(()=>{telePos+=teleVelocidad/30;el.scrollTop=telePos;},33);
+}
+function teleVel(d){teleVelocidad=Math.max(10,teleVelocidad+d);}
+function teleFuente(d){teleFont=Math.max(20,teleFont+d);
+  document.getElementById("teleTxt").style.fontSize=teleFont+"px";}
+function teleEspejo(){document.getElementById("teleTxt").classList.toggle("espejo");}
+function teleCerrar(){
+  if(teleTimer){clearInterval(teleTimer);teleTimer=null;}
+  document.getElementById("telePlayBtn").textContent="▶ Empezar";
+  document.getElementById("tele").classList.remove("on");
+}
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape")teleCerrar();
+  if(e.key===" "&&document.getElementById("tele").classList.contains("on")){
+    e.preventDefault();telePlay();}
+});
+
+renderGuiones();
+renderPrompts();
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+{
+  "L01": {
+    "archivo": "L01.mp4",
+    "descripcion": "Techo de un cuarto a oscuras desde la cama",
+    "origen": "https://pixabay.com/videos/id-360921/",
+    "cdn": "https://cdn.pixabay.com/video/2026/06/27/360921_large.mp4",
+    "ancho": 1080,
+    "alto": 1920,
+    "duracion": 20.4,
+    "mb": 1.3,
+    "licencia": "Pixabay Content License — uso comercial libre, sin atribución"
+  },
+  "L03": {
+    "archivo": "L03.mp4",
+    "descripcion": "Persona sola entre gente",
+    "origen": "https://pixabay.com/videos/id-272239/",
+    "cdn": "https://cdn.pixabay.com/video/2025/04/16/272239_large.mp4",
+    "ancho": 1080,
+    "alto": 2048,
+    "duracion": 35.64,
+    "mb": 13.6,
+    "licencia": "Pixabay Content License — uso comercial libre, sin atribución"
+  },
+  "L13": {
+    "archivo": "L13.mp4",
+    "descripcion": "Silla vacía en una mesa puesta",
+    "origen": "https://pixabay.com/videos/id-215081/",
+    "cdn": "https://cdn.pixabay.com/video/2024/06/03/215081_medium.mp4",
+    "ancho": 1440,
+    "alto": 2730,
+    "duracion": 25.84,
+    "mb": 9.3,
+    "licencia": "Pixabay Content License — uso comercial libre, sin atribución"
+  },
+  "L19": {
+    "archivo": "L19.mp4",
+    "descripcion": "Primera luz por la ventana",
+    "origen": "https://pixabay.com/videos/id-343705/",
+    "cdn": "https://cdn.pixabay.com/video/2026/04/01/343705_large.mp4",
+    "ancho": 1080,
+    "alto": 1920,
+    "duracion": 8.04,
+    "mb": 2.4,
+    "licencia": "Pixabay Content License — uso comercial libre, sin atribución"
+  },
+  "L20": {
+    "archivo": "L20.mp4",
+    "descripcion": "Manos abiertas recibiendo luz",
+    "origen": "https://pixabay.com/videos/id-310921/",
+    "cdn": "https://cdn.pixabay.com/video/2025/10/19/310921_medium.mp4",
+    "ancho": 1440,
+    "alto": 2560,
+    "duracion": 7.88,
+    "mb": 12.0,
+    "licencia": "Pixabay Content License — uso comercial libre, sin atribución"
+  },
+  "L23": {
+    "archivo": "L23.mp4",
+    "descripcion": "Vela encendida en penumbra",
+    "origen": "https://pixabay.com/videos/id-229452/",
+    "cdn": "https://cdn.pixabay.com/video/2024/09/03/229452_large.mp4",
+    "ancho": 1080,
+    "alto": 1920,
+    "duracion": 12.03,
+    "mb": 3.8,
+    "licencia": "Pixabay Content License — uso comercial libre, sin atribución"
+  }
+}

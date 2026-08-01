@@ -89,6 +89,8 @@ def _guardar_subtitulos(datos: dict) -> Path:
     correcciones = datos.get("correcciones") or {}
     if correcciones:
         limpio["correcciones"] = {str(k): str(v) for k, v in correcciones.items() if str(v).strip()}
+    if datos.get("estilo") in config.SUB_ESTILOS:
+        limpio["estilo"] = datos["estilo"]
     return _escritura_atomica(DIR_TRABAJO / "ajustes.subtitulos.json", limpio)
 
 
@@ -128,6 +130,143 @@ def _guardar_silencios(datos: dict) -> Path:
         if entrada:
             limpio["cortes"][str(cid)] = entrada
     return _escritura_atomica(DIR_TRABAJO / "ajustes.silencios.json", limpio)
+
+
+def _guardar_transiciones(datos: dict) -> Path:
+    """Transición POR EMPALME: cada corte con su propio tipo e intensidad.
+
+    Formato: {"empalmes": {"<idx>": {"tipo": "...", "intensidad": 1.0}}}, donde
+    idx es la posición en la lista `empalmes_s` que f2_cortar dejó en
+    02_cortado.json. Un empalme ausente o con tipo 'ninguna' queda seco. Lo lee
+    f2_cortar al cortar (la transición se hornea en esa fase).
+
+    Se acepta también el formato viejo/global (tipo+intensidad+empalmes_quitados)
+    por si un ajuste guardado antes sigue en disco.
+    """
+    import f2b_transiciones
+    if "marcas" in datos:
+        # Formato LIBRE: transiciones puestas a mano en cualquier segundo (tira
+        # con aguja). Sirve para un video ya unido, donde el corte visual no cae
+        # en ningún empalme detectado.
+        marcas = []
+        for m in (datos.get("marcas") or []):
+            tipo = str((m or {}).get("tipo", "ninguna"))
+            if tipo not in f2b_transiciones.TRANSICIONES or tipo == "ninguna":
+                continue
+            marcas.append({
+                "t": round(float((m or {}).get("t", 0)), 3),
+                "tipo": tipo,
+                "intensidad": round(float((m or {}).get("intensidad", 1.0)), 2),
+            })
+        marcas.sort(key=lambda x: x["t"])
+        return _escritura_atomica(DIR_TRABAJO / "ajustes.transiciones.json", {"marcas": marcas})
+    if "empalmes" in datos:
+        limpio = {"empalmes": {}}
+        for idx, cfg in (datos.get("empalmes") or {}).items():
+            tipo = str((cfg or {}).get("tipo", "ninguna"))
+            if tipo not in f2b_transiciones.TRANSICIONES or tipo == "ninguna":
+                continue
+            limpio["empalmes"][str(int(idx))] = {
+                "tipo": tipo,
+                "intensidad": round(float((cfg or {}).get("intensidad", 1.0)), 2),
+            }
+        return _escritura_atomica(DIR_TRABAJO / "ajustes.transiciones.json", limpio)
+    # formato viejo
+    tipo = str(datos.get("tipo", "ninguna"))
+    if tipo not in f2b_transiciones.TRANSICIONES:
+        tipo = "ninguna"
+    limpio = {
+        "transicion": tipo,
+        "intensidad": round(float(datos.get("intensidad", 1.0)), 2),
+        "empalmes_quitados": sorted({int(i) for i in datos.get("empalmes_quitados", [])}),
+    }
+    return _escritura_atomica(DIR_TRABAJO / "ajustes.transiciones.json", limpio)
+
+
+def _estado_transiciones() -> dict:
+    """Lo que el panel del editor necesita: catálogos, empalmes y estado guardado."""
+    import f2b_transiciones
+    import f4b_pip_anim
+    empalmes = []
+    cortado = DIR_TRABAJO / "02_cortado.json"
+    if cortado.exists():
+        try:
+            datos_cortado = json.loads(cortado.read_text(encoding="utf-8"))
+            empalmes = datos_cortado.get("empalmes_s")
+            # Respaldo para videos cortados ANTES de que existieran los empalmes:
+            # se calculan de intervalos_conservados_original, que f2_cortar
+            # siempre guardó. Así las filas aparecen sin re-renderizar.
+            if not empalmes:
+                import f2_cortar
+                intervalos = datos_cortado.get("intervalos_conservados_original", [])
+                empalmes = f2_cortar.boundaries_de_cortes(intervalos) if intervalos else []
+        except Exception:
+            empalmes = []
+    # Duración de la línea de tiempo cortada (la que ve el reproductor del
+    # editor), para dibujar la tira de transiciones a escala.
+    duracion = 0.0
+    if cortado.exists():
+        try:
+            dc = json.loads(cortado.read_text(encoding="utf-8"))
+            duracion = float(dc.get("duracion_resultante_s") or 0.0)
+        except Exception:
+            duracion = 0.0
+
+    # Estado unificado en MARCAS (transiciones por tiempo). Todo lo viejo se migra
+    # a marcas para que la tira con aguja sea el único modelo de la UI.
+    marcas = []
+    f_trans = DIR_TRABAJO / "ajustes.transiciones.json"
+    if f_trans.exists():
+        try:
+            guardado = json.loads(f_trans.read_text(encoding="utf-8"))
+            if "marcas" in guardado:
+                marcas = guardado["marcas"]
+            elif "empalmes" in guardado:
+                for idx, cfg in (guardado["empalmes"] or {}).items():
+                    i = int(idx)
+                    if 0 <= i < len(empalmes):
+                        marcas.append({"t": empalmes[i], "tipo": cfg.get("tipo", "ninguna"),
+                                       "intensidad": cfg.get("intensidad", 1.0)})
+            elif guardado.get("transicion", "ninguna") != "ninguna":
+                quitados = set(guardado.get("empalmes_quitados", []))
+                for i, t in enumerate(empalmes):
+                    if i not in quitados:
+                        marcas.append({"t": t, "tipo": guardado["transicion"],
+                                       "intensidad": guardado.get("intensidad", 1.0)})
+        except Exception:
+            marcas = []
+    marcas = sorted(marcas, key=lambda m: m.get("t", 0))
+
+    pip = {"entrada": "fundido", "salida": "fundido", "intensidad": 1.0}
+    f_pip = DIR_TRABAJO / "ajustes.pip_anim.json"
+    if f_pip.exists():
+        try:
+            d = json.loads(f_pip.read_text(encoding="utf-8"))
+            pip.update(d.get("default", d))
+        except Exception:
+            pass
+    return {
+        "empalmes": empalmes,          # cortes detectados, como sugerencia
+        "duracion": round(duracion, 3),
+        "transiciones_catalogo": f2b_transiciones.TRANSICIONES,
+        "pip_catalogo": f4b_pip_anim.ANIMACIONES,
+        "marcas": marcas,
+        "pip_anim": pip,
+    }
+
+
+def _guardar_pip_anim(datos: dict) -> Path:
+    """Animación de entrada/salida por defecto de los PiP. Lo lee f4_retencion."""
+    import f4b_pip_anim
+    def _val(clave, defecto):
+        v = str(datos.get(clave, defecto))
+        return v if v in f4b_pip_anim.ANIMACIONES else defecto
+    limpio = {"default": {
+        "entrada": _val("entrada", "fundido"),
+        "salida": _val("salida", "fundido"),
+        "intensidad": round(float(datos.get("intensidad", 1.0)), 2),
+    }}
+    return _escritura_atomica(DIR_TRABAJO / "ajustes.pip_anim.json", limpio)
 
 
 def _limpiar_corrida(solo_ver: bool, a_fondo: bool) -> dict:
@@ -218,6 +357,7 @@ ARCHIVOS_AJUSTES = (
     "ajustes.animaciones.json", "ajustes.encuadre.json", "ajustes.hookcta.json",
     "ajustes.hook.json", "ajustes.sesion.json", "ajustes.subtitulos.json",
     "ajustes.musica.json", "ajustes.silencios.json",
+    "ajustes.transiciones.json", "ajustes.pip_anim.json",
 )
 
 # El PLAN sobre el que se hicieron esos ajustes. Va en la versión junto a ellos,
@@ -260,6 +400,20 @@ def _nombre_version(crudo: str) -> str | None:
 
 def _dir_versiones() -> Path:
     return DIR_TRABAJO / "_versiones"
+
+
+def _guardar_guion_tele(guion_n: int, nuevo_tele: str) -> bool:
+    path_html = config.RAIZ_PROYECTO / "PANEL-PRODUCCION.html"
+    if not path_html.exists():
+        return False
+    content = path_html.read_text(encoding="utf-8")
+    tele_js = nuevo_tele.replace("\\", "\\\\").replace("'", "\\'")
+    patron = re.compile(rf"(\{{n:{guion_n}\b[\s\S]*?tele:')([\s\S]*?)('[\s\S]*?tomas:)")
+    if patron.search(content):
+        nuevo_content = patron.sub(rf"\g<1>{tele_js}\g<3>", content, count=1)
+        path_html.write_text(nuevo_content, encoding="utf-8")
+        return True
+    return False
 
 
 def _listar_versiones() -> list:
@@ -439,6 +593,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if ruta == "/":
                 self._html(PAGINA)
+            elif ruta in ("/panel-device", "/panel-device.html", "/PANEL-PRODUCCION.html"):
+                self._archivo(config.RAIZ_PROYECTO / "PANEL-PRODUCCION.html", "text/html; charset=utf-8")
+            elif ruta in ("/panel-lam", "/panel-lam.html", "/marcas/lazos/panel.html"):
+                self._archivo(config.RAIZ_PROYECTO / "marcas" / "lazos" / "panel.html", "text/html; charset=utf-8")
             elif ruta == "/proyectos":
                 self._json({
                     "actual": DIR_TRABAJO.name if DIR_TRABAJO else "",
@@ -446,6 +604,10 @@ class Handler(BaseHTTPRequestHandler):
                 })
             elif ruta == "/datos":
                 self._json(f10.recolectar(DIR_TRABAJO))
+            elif ruta == "/transiciones-estado":
+                # Empalmes entre cortes + estado guardado de transiciones y de la
+                # animación de PiP, para poblar el panel del editor.
+                self._json(_estado_transiciones())
             elif ruta == "/silencios.js":
                 # El JS del editor de silencios vive en su propio archivo en vez
                 # de dentro de PAGINA: este módulo ya son 3500 líneas de Python
@@ -546,7 +708,21 @@ class Handler(BaseHTTPRequestHandler):
                         # ("anim-sol") la resuelve el vocabulario de f8.
                         import f8_hyperframes
                         plantilla = f8_hyperframes.plantilla_de(qs["nombre"][0])
-                    origen = f10.mov_de_plantilla(plantilla)
+                    estilo = (qs.get("estilo") or [None])[0]
+                    if plantilla == "texto-destacado" and estilo:
+                        # texto-destacado no tiene "el" MOV del inventario: son 6
+                        # estilos bien distintos. Se pide el render CON ese estilo
+                        # (texto de muestra fijo) — la primera vez cuesta un render
+                        # de Hyperframes real, pero queda cacheado por contenido
+                        # (f8_hyperframes._clave) para siempre, así que un mismo
+                        # estilo nunca se vuelve a renderizar.
+                        import f8_hyperframes
+                        origen = f8_hyperframes.render(
+                            plantilla,
+                            {"texto": config.TEXTO_DESTACADO_MUESTRA, "estilo": estilo},
+                        )
+                    else:
+                        origen = f10.mov_de_plantilla(plantilla)
                 if origen is None or not origen.exists():
                     self.send_error(404, "sin animación que previsualizar")
                     return
@@ -555,6 +731,20 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_error(404, "no se pudo generar el preview")
                     return
                 self._archivo(prev, "video/webm")
+            elif ruta == "/sub-estilo-preview":
+                # Captura real (PNG) de un estilo de subtítulo — Bloque 5c.
+                # A diferencia de /anim-preview, no hay conversión de por
+                # medio: es un frame del mismo motor ffmpeg+libass que quema
+                # el subtítulo real, cacheado por huella del preset.
+                estilo = (qs.get("estilo") or [None])[0]
+                if estilo not in config.SUB_ESTILOS:
+                    self.send_error(404, "estilo de subtitulo desconocido")
+                    return
+                prev = f10.preview_estilo_subtitulo(estilo)
+                if prev is None:
+                    self.send_error(404, "no se pudo generar el preview")
+                    return
+                self._archivo(prev, "image/png")
             else:
                 self.send_error(404, "Ruta desconocida")
         except FileNotFoundError as e:
@@ -588,6 +778,15 @@ class Handler(BaseHTTPRequestHandler):
             # quedan restaurados, y el editor tiene que enseñar ESO y no lo que
             # el navegador supone que pasó.
             self._json({"ok": True, "silencios": _datos_silencios_actuales()})
+
+        elif partes.path == "/guardar-guion-tele":
+            guion_n = datos.get("guion")
+            nuevo_tele = datos.get("tele")
+            if guion_n is not None and nuevo_tele is not None:
+                exito = _guardar_guion_tele(int(guion_n), str(nuevo_tele))
+                self._json({"ok": exito})
+            else:
+                self.send_error(400, "falta 'guion' o 'tele'")
 
         elif partes.path == "/cambiar-proyecto":
             nombre = datos.get("nombre")
@@ -648,6 +847,10 @@ class Handler(BaseHTTPRequestHandler):
                 resultado["ruta_subtitulos"] = str(_guardar_subtitulos(datos["subtitulos"]))
             if "musica" in datos:
                 resultado["ruta_musica"] = str(_guardar_musica(datos["musica"]))
+            if "transiciones" in datos:
+                resultado["ruta_transiciones"] = str(_guardar_transiciones(datos["transiciones"]))
+            if "pip_anim" in datos:
+                resultado["ruta_pip_anim"] = str(_guardar_pip_anim(datos["pip_anim"]))
             self._json(resultado)
 
         elif partes.path == "/guardar-portada":
@@ -804,7 +1007,7 @@ class Handler(BaseHTTPRequestHandler):
 
             if "subtitulos" in datos:
                 _guardar_subtitulos(datos["subtitulos"])
-            ajustes_sub_tamano, ajustes_sub_correcciones = None, None
+            ajustes_sub_tamano, ajustes_sub_correcciones, ajustes_sub_estilo = None, None, None
             candidato_sub = DIR_TRABAJO / "ajustes.subtitulos.json"
             if candidato_sub.exists():
                 try:
@@ -814,6 +1017,7 @@ class Handler(BaseHTTPRequestHandler):
                 ajustes_sub_tamano = datos_sub.get("tamano_px")
                 if datos_sub.get("correcciones"):
                     ajustes_sub_correcciones = candidato_sub
+                ajustes_sub_estilo = datos_sub.get("estilo")
 
             # editor.py solo necesita que "entrada" exista — en --reaplicar no
             # se lee: la transcripción/corte/análisis ya están en dir_trabajo.
@@ -879,6 +1083,8 @@ class Handler(BaseHTTPRequestHandler):
                 cmd += ["--sub-tamano", str(ajustes_sub_tamano)]
             if ajustes_sub_correcciones is not None:
                 cmd += ["--sub-correcciones", str(ajustes_sub_correcciones)]
+            if ajustes_sub_estilo:
+                cmd += ["--sub-estilo", ajustes_sub_estilo]
 
             # Silencios restaurados (Bloque B). Es la única bandera que hace que
             # --reaplicar vuelva a cortar, así que solo se pasa si de verdad hay
@@ -998,6 +1204,19 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
                pointer-events: none; z-index: 7; display: none;
                transform: translateY(-50%); }
 .sub-preview .activa { color: #4FD1D9; }
+.sub-preview .clave { color: #FFAA33; }
+.sub-preview .subrayada { text-decoration: underline; text-decoration-color: #4FD1D9;
+                           text-underline-offset: 4px; }
+.sub-preview .foco { color: #FFE500; font-size: 1.4em; display: inline-block; }
+/* Envoltorio inline-block: en los estilos con caja, el fondo abraza solo el
+   texto, no todo el ancho del contenedor absoluto que lo posiciona. */
+.sub-preview .bloque-interior { display: inline-block; }
+.sub-preview.caja .bloque-interior,
+.sub-preview.pildora .bloque-interior { padding: 6px 16px; border-radius: 10px;
+                                         background: rgba(0,0,0,0.5); }
+.sub-preview.pildora .bloque-interior { background: #0A2A3E; }
+.sub-preview.pop .bloque-interior { animation: subPop .18s ease-out; }
+@keyframes subPop { from { transform: scale(.55); } to { transform: scale(1); } }
 .controles { display: flex; gap: 8px; align-items: center; }
 .controles button { background: var(--panel); color: var(--fg); border: 1px solid var(--linea);
                      border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 14px; }
@@ -1108,7 +1327,25 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
    del doble. No es el tamaño real en el video — es solo la miniatura. */
 .hook-preview > div { flex: 0 0 170px; max-width: 170px; }
 .hook-preview video { width: 100%; height: auto; display: block; border-radius: 6px; }
+.btn-quitar-hc { margin-top: 6px; font: inherit; font-size: 12px; cursor: pointer;
+                 background: var(--bg); color: var(--fg); border: 1px solid var(--linea);
+                 border-radius: 6px; padding: 3px 8px; }
+.btn-quitar-hc:hover { border-color: #f472b6; }
+/* Tarjeta quitada: se atenúa el preview y el texto para que se vea de un
+   vistazo que ese hook/CTA no va a salir en el render. */
+.hook-preview > div.hc-oculto video,
+.hook-preview > div.hc-oculto .anim-sin-preview { opacity: .3; filter: grayscale(1); }
+.hook-preview > div.hc-oculto .hint { opacity: .5; }
+.btn-quitar-hc.esta-oculto { border-color: #10b981; color: #10b981; }
 .anim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+/* Grid de estilos de subtítulo: tarjetas más grandes que las de "Texto
+   llamativo" (~4 por fila en vez de ~8) — acá la captura ES la decisión,
+   no un adorno, así que tiene que leerse sin entrecerrar los ojos. */
+#gridEstilosSub { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+/* La miniatura ya viene RECORTADA a la franja del subtítulo (18:7, no el
+   9:16 del video completo) — sin esto el <img> se estira a la proporción
+   genérica de .anim-preview y dos franjas de fondo vacío arriba/abajo. */
+#gridEstilosSub .anim-preview { aspect-ratio: 18/7; background: #14181b; }
 .anim-card { border: 1px solid var(--linea); border-radius: 8px; padding: 8px; display: flex;
              flex-direction: column; gap: 6px; }
 .anim-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 4px; background: #000; }
@@ -1127,6 +1364,8 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
 .inventario-item:hover { border-color: var(--acento); }
 .inventario-item .nombre { font-weight: 600; }
 .inventario-item .detalle { font-size: 11px; color: var(--fg-2); display: block; }
+.inventario-item.seleccionado { border-color: var(--acento); border-width: 2px;
+                                 box-shadow: 0 0 0 1px var(--acento); }
 .fila-variantes { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
 .fila-variantes button { background: var(--panel); color: var(--fg); border: 1px solid var(--linea);
                           border-radius: 5px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
@@ -1150,10 +1389,21 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
     <h1 style="margin:0;">Editor visual v2 <span id="nombre"></span></h1>
     <span class="sub" id="resumen"></span>
   </div>
-  <div style="display:flex; gap:8px; align-items:center; background:var(--panel); padding:6px 12px; border-radius:8px; border:1px solid var(--linea);">
-    <label for="selProyecto" class="hint" style="font-weight:600; color:var(--fg);">🎬 Seleccionar Video:</label>
-    <select id="selProyecto" style="font:inherit; background:var(--bg); color:var(--fg); border:1px solid var(--linea); border-radius:6px; padding:5px 8px; min-width:180px;"></select>
-    <button id="btnCargarProyecto" class="btn-primario" type="button" style="margin-bottom:0;">📁 Cargar</button>
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <div style="display:flex; gap:6px; align-items:center; background:var(--panel); padding:6px 10px; border-radius:8px; border:1px solid var(--linea);">
+      <span class="hint" style="font-weight:600; color:var(--fg);">📑 HTMLs:</span>
+      <a href="/panel-device" target="_blank" style="color:var(--fg); background:var(--bg); border:1px solid var(--linea); border-radius:6px; padding:5px 10px; font-size:12px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="Abrir Panel de Producción DeviceShop">
+        📱 Device
+      </a>
+      <a href="/panel-lam" target="_blank" style="color:var(--fg); background:var(--bg); border:1px solid var(--linea); border-radius:6px; padding:5px 10px; font-size:12px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="Abrir Panel de Producción LAM (Lazos de Amor Mariano)">
+        ✝️ LAM
+      </a>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center; background:var(--panel); padding:6px 12px; border-radius:8px; border:1px solid var(--linea);">
+      <label for="selProyecto" class="hint" style="font-weight:600; color:var(--fg);">🎬 Seleccionar Video:</label>
+      <select id="selProyecto" style="font:inherit; background:var(--bg); color:var(--fg); border:1px solid var(--linea); border-radius:6px; padding:5px 8px; min-width:180px;"></select>
+      <button id="btnCargarProyecto" class="btn-primario" type="button" style="margin-bottom:0;">📁 Cargar</button>
+    </div>
   </div>
 </header>
 <main>
@@ -1264,7 +1514,10 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
     <p class="hint">Vista previa APROXIMADA sobre el reproductor: el tamaño y la posición reales
       los define el render y pueden no coincidir pixel a pixel. Si el video ya está renderizado,
       los subtítulos reales ya están quemados adentro — no se dibuja nada encima para no verlos doble.</p>
-    <div class="barra-sfx" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <p class="hint">Estilo — cada tarjeta es una CAPTURA real del subtítulo con ese estilo (mismo
+      motor que el render final), no una descripción: mirá y elegí sin tener que previsualizar.</p>
+    <div class="anim-grid" id="gridEstilosSub"></div>
+    <div class="barra-sfx" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px;">
       <label class="hint" for="subTamanoInput">Tamaño</label>
       <input type="range" id="subTamanoInput" min="50" max="140" step="2" value="88" style="width:160px;">
       <span class="hint" id="subTamanoValor"></span>
@@ -1340,10 +1593,12 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       <textarea id="hookTexto" maxlength="140"></textarea>
       <div class="hook-preview">
         <div id="hookMedio"><p class="hint">hook · <span id="hookRango">?</span>
-          <span class="badge aviso" id="hookZonaAviso" style="display:none;"></span></p></div>
+          <span class="badge aviso" id="hookZonaAviso" style="display:none;"></span></p>
+          <button type="button" class="btn-quitar-hc" id="btnQuitarHook">Quitar hook</button></div>
         <div id="ctaMedio"><p class="hint">cta · <span id="ctaRango">?</span><br>
           repite del hook: "<span id="ctaEco"></span>"
-          <span class="badge aviso" id="ctaZonaAviso" style="display:none;"></span></p></div>
+          <span class="badge aviso" id="ctaZonaAviso" style="display:none;"></span></p>
+          <button type="button" class="btn-quitar-hc" id="btnQuitarCta">Quitar CTA</button></div>
       </div>
     </div>
     <div class="pista-enc" id="pistaHookCta" style="margin-top:12px;">
@@ -1369,6 +1624,21 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       </div>
       <div class="anim-grid" id="gridInventario"></div>
     </div>
+  </div>
+
+  <div class="panel">
+    <h2>Texto llamativo</h2>
+    <p class="hint">Una frase corta que aparece 2.5s con un estilo bien vistoso (tipo CapCut) para
+      resaltar un punto puntual — no es el subtítulo de abajo del video, es un texto aparte.
+      Mirá cómo se ve cada estilo EN MOVIMIENTO antes de elegir (con un texto de muestra), escribí
+      tu frase y añadila en el segundo donde está el reproductor ahora.</p>
+    <div class="barra">
+      <label>Texto a destacar
+        <input type="text" id="textoDestacadoInput" placeholder="¡OJO A ESTO!" maxlength="60" style="width:260px;">
+      </label>
+    </div>
+    <div class="anim-grid" id="gridEstilosDestacado"></div>
+    <button class="btn-primario" id="btnAñadirTextoDestacado" type="button" style="margin-top:8px;">+ Añadir en el segundo actual</button>
   </div>
 
   <div class="panel" id="panelSilencios">
@@ -1416,6 +1686,50 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       <line id="curvaCursor" x1="0" y1="0" x2="0" y2="120" stroke="var(--fg-2)" stroke-width="1" />
     </svg>
     <div class="hint" id="leyendaZoom"></div>
+  </div>
+
+  <div class="panel" id="panelTransiciones">
+    <h2>Transiciones y animaciones <span class="hint" id="transResumen"></span></h2>
+    <p class="hint">Dos cosas. <b>Transición entre cortes</b>: qué se dibuja en un punto del
+      video (flash, glitch, zoom-punch…). Las ponés <b>donde vos quieras</b> sobre la tira:
+      llevá la aguja al segundo donde pausaste/cambiaste el zoom y agregala ahí. Se hornea en
+      el corte, así que al cambiarla hace falta un <b>render completo</b> (no basta el guardado
+      rápido). <b>Animación de PiP</b>: cómo entran y salen las tarjetas — esta sí se ve con el
+      render normal.</p>
+
+    <div style="display:flex; flex-direction:column; gap:18px; align-items:stretch;">
+      <div style="width:100%;">
+        <h3 style="margin:.2em 0;">Entre cortes — donde vos quieras</h3>
+        <div class="hint" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:6px 0;">
+          Nueva:
+          <select id="transTipoNueva"></select>
+          <input type="range" id="transIntNueva" min="0.5" max="1.5" step="0.1" value="1" style="width:80px;">
+          <span id="transIntNuevaVal">1.0</span>
+          <button class="btn-primario" id="btnTransAqui" type="button">＋ En el segundo actual</button>
+        </div>
+        <div id="transTira" style="position:relative; height:36px; background:var(--bg);
+             border:1px solid var(--linea); border-radius:4px; cursor:pointer; margin:6px 0;">
+          <div id="transAguja" style="position:absolute; top:0; bottom:0; width:2px;
+               background:var(--acento); left:0; pointer-events:none;"></div>
+        </div>
+        <p class="hint" id="transTiraHint" style="margin:.2em 0;">Clic en la tira para llevar
+          la aguja. Los puntos tenues son los cortes que detecté (podés usarlos o ignorarlos).</p>
+        <div id="transMarcasLista" style="margin-top:6px; display:flex; flex-direction:column; gap:4px;"></div>
+      </div>
+
+      <div style="width:100%; max-width:420px;">
+        <h3 style="margin:.2em 0;">PiP — por defecto</h3>
+        <p class="hint" style="margin:.2em 0;">Se aplica a los PiP que no configures aparte.
+          Cada PiP tiene además sus propios controles en «Colección de PiP y B-Rolls».</p>
+        <label class="hint" style="display:block; margin:6px 0;">Entrada
+          <select id="pipEntrada" style="width:100%;"></select></label>
+        <label class="hint" style="display:block; margin:6px 0;">Salida
+          <select id="pipSalida" style="width:100%;"></select></label>
+        <label class="hint" style="display:block; margin:6px 0;">Intensidad
+          <input type="range" id="pipIntensidad" min="0.5" max="1.5" step="0.1" value="1" style="width:100%;">
+          <span id="pipIntensidadVal">1.0</span></label>
+      </div>
+    </div>
   </div>
 
   <div class="panel">
@@ -1519,6 +1833,7 @@ let hookCtaModificado = false;  // si es false, los tiempos siguen saliendo auto
 let edicionAnimaciones = [];
 let animacionesModificado = false;  // si es false, no se manda --animaciones-manual: sigue automático
 let editandoAnimIdx = null;         // índice en edicionAnimaciones, o -1 para "nueva antes de agregar"
+let textoDestacadoEstilo = "contorno";  // estilo elegido en el panel "Texto llamativo"
 
 let encPunch = [];              // [{t, razon}]
 let encCerrados = [];           // [{ini, fin, zoom, razon}]
@@ -1681,20 +1996,47 @@ if (selDensidadSfx) {
   });
 }
 
-// --- Subtítulos: tamaño y correcciones de texto (BLOQUE 5) -----------------
+// --- Subtítulos: estilo, tamaño y correcciones de texto (BLOQUE 5 + 5b) ----
 let subTamano = 88;
 let subCorrecciones = {};   // {indice_global_de_la_palabra: texto_corregido}
+let subEstilo = "karaoke";
 let subModificado = false;  // si es false, ajustes.subtitulos.json no se reescribe
 let subBloques = [];        // precomputado en cargar(): [[{p, idx}, ...], ...]
 
-// Misma regla que f3_subtitulos.agrupar_en_bloques: de 2 a 4 palabras,
-// cerrando en pausas > 0.35s o en punto/interrogación/exclamación. Se
-// precalcula UNA vez al cargar, no en cada frame — solo depende de los
-// tiempos, que no cambian mientras se edita.
-function agruparEnBloquesSub(palabras) {
+// Espejo de config.SUB_ESTILOS (f3_subtitulos.AGRUPACION_BOUNDS): nombre y
+// descripción SÍ vienen del servidor (DATA.sub_estilos, única fuente de
+// verdad), pero cómo se agrupa/resalta cada uno para la vista previa vive
+// acá — mismo patrón que agruparEnBloquesSub ya espejaba el 2-4 de Python.
+const CATALOGO_ESTILOS_SUB = {
+  karaoke:       { agrupacion: "bloque_corto", resaltado: "dinamico",  caja: false, pildora: false, animacion: "ninguna" },
+  palabra_pop:   { agrupacion: "palabra",      resaltado: "ninguno",   caja: false, pildora: false, animacion: "pop" },
+  caja_frase:    { agrupacion: "bloque_largo", resaltado: "ninguno",   caja: true,  pildora: false, animacion: "ninguna" },
+  pildora_marca: { agrupacion: "bloque_corto", resaltado: "ninguno",   caja: true,  pildora: true,  animacion: "ninguna" },
+  palabra_clave: { agrupacion: "bloque_largo", resaltado: "estatico",  caja: false, pildora: false, animacion: "ninguna" },
+  // Los 5 de abajo (Bloque 5c) caen a texto plano en esta vista previa
+  // APROXIMADA sobre el reproductor — glow/glitch/shake no tienen equivalente
+  // CSS barato y honesto; la captura real del grid es la que muestra el look.
+  neon:          { agrupacion: "bloque_corto", resaltado: "ninguno",   caja: false, pildora: false, animacion: "ninguna" },
+  glitch_rgb:    { agrupacion: "bloque_corto", resaltado: "ninguno",   caja: false, pildora: false, animacion: "ninguna" },
+  impacto:       { agrupacion: "bloque_corto", resaltado: "ninguno",   caja: false, pildora: false, animacion: "ninguna" },
+  subrayado:     { agrupacion: "bloque_corto", resaltado: "subrayado", caja: false, pildora: false, animacion: "ninguna" },
+  pegatina:      { agrupacion: "bloque_corto", resaltado: "ninguno",   caja: false, pildora: false, animacion: "ninguna" },
+  foco:          { agrupacion: "bloque_corto", resaltado: "foco",      caja: false, pildora: false, animacion: "ninguna", mayusculas: true },
+};
+const AGRUPACION_BOUNDS_SUB = { palabra: [1, 1], bloque_corto: [2, 4], bloque_largo: [3, 6] };
+
+function presetSubActual() {
+  return CATALOGO_ESTILOS_SUB[subEstilo] || CATALOGO_ESTILOS_SUB.karaoke;
+}
+
+// Misma regla que f3_subtitulos.agrupar_en_bloques: de `minimo` a `maximo`
+// palabras, cerrando en pausas > 0.35s o en punto/interrogación/exclamación.
+// Se precalcula UNA vez al cargar o al cambiar de estilo, no en cada frame —
+// solo depende de los tiempos y del estilo elegido, no de lo que se edita.
+function agruparEnBloquesSub(palabras, minimo, maximo) {
   const bloques = [];
   let actual = [];
-  const MIN = 2, MAX = 4;
+  const MIN = minimo != null ? minimo : 2, MAX = maximo != null ? maximo : 4;
   for (let i = 0; i < palabras.length; i++) {
     const p = palabras[i];
     actual.push({ p, idx: i });
@@ -1717,6 +2059,16 @@ function bloqueSubEnT(t) {
   return null;
 }
 
+// Palabra de más impacto del bloque para el estilo "Palabra clave fija":
+// la más larga, empate a la primera — misma heurística que f3_subtitulos._palabra_clave.
+function palabraClaveIdxSub(bloque) {
+  let mejor = 0;
+  for (let i = 1; i < bloque.length; i++) {
+    if (bloque[i].p.texto.length > bloque[mejor].p.texto.length) mejor = i;
+  }
+  return mejor;
+}
+
 // Aproximación del sitio donde el ASS real dibuja el subtítulo (BorderStyle
 // centrado en config.SUB_POSICION_ALTURA_PCT, 88% del ancho). No es pixel a
 // pixel — la vista previa lo dice explícitamente en su texto de ayuda.
@@ -1728,16 +2080,33 @@ function pintarSubPreview(t) {
   if (DATA.es_renderizado) { el.style.display = "none"; return; }
   const bloque = bloqueSubEnT(t);
   if (!bloque) { el.style.display = "none"; return; }
+  const preset = presetSubActual();
   const s = lienzo.clientWidth / DATA.ancho;
   el.style.display = "block";
   el.style.top = (DATA.sub_posicion_altura_pct * 100) + "%";
   el.style.fontSize = Math.max(8, subTamano * s) + "px";
-  el.innerHTML = bloque.map(({ p, idx }) => {
+  el.className = "sub-preview"
+    + (preset.caja ? " caja" : "") + (preset.pildora ? " pildora" : "")
+    + (preset.animacion === "pop" ? " pop" : "");
+  const idxClave = preset.resaltado === "estatico" ? palabraClaveIdxSub(bloque) : -1;
+  const interior = bloque.map(({ p, idx }, j) => {
     const corregido = subCorrecciones[idx];
     const texto = (corregido != null && corregido !== "") ? corregido : p.texto;
-    const escapado = texto.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-    return (t >= p.t && t < p.fin) ? `<span class="activa">${escapado}</span>` : escapado;
+    let escapado = texto.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    if (preset.mayusculas) escapado = escapado.toUpperCase();
+    if (preset.resaltado === "dinamico") {
+      return (t >= p.t && t < p.fin) ? `<span class="activa">${escapado}</span>` : escapado;
+    }
+    if (preset.resaltado === "subrayado") {
+      return (t >= p.t && t < p.fin) ? `<span class="subrayada">${escapado}</span>` : escapado;
+    }
+    if (preset.resaltado === "foco") {
+      return (t >= p.t && t < p.fin) ? `<span class="foco">${escapado}</span>` : escapado;
+    }
+    if (j === idxClave) return `<span class="clave">${escapado}</span>`;
+    return escapado;
   }).join(" ");
+  el.innerHTML = `<span class="bloque-interior">${interior}</span>`;
 }
 
 // Caja aproximada del bloque de subtítulo al tamaño actual, en el espacio de
@@ -1789,7 +2158,40 @@ function pintarTablaCorreccionesSub() {
 }
 
 function subtitulosParaGuardar() {
-  return { tamano_px: subTamano, correcciones: subCorrecciones };
+  return { tamano_px: subTamano, correcciones: subCorrecciones, estilo: subEstilo };
+}
+
+// Grid de miniaturas del estilo de subtítulo (Bloque 5c): cada tarjeta es
+// una CAPTURA real servida por /sub-estilo-preview (mismo motor ffmpeg+libass
+// del render final), pre-renderizada y cacheada por contenido — igual patrón
+// que renderGridEstilosDestacado() (panel "Texto llamativo"), pero con <img>
+// en vez de <video> porque el pedido fue una captura, no una animación.
+function renderGridEstilosSub() {
+  const grid = document.getElementById("gridEstilosSub");
+  if (!grid || !DATA || !DATA.sub_estilos) return;
+  grid.innerHTML = "";
+  Object.entries(DATA.sub_estilos).forEach(([clave, info]) => {
+    const item = document.createElement("div");
+    item.className = "inventario-item" + (clave === subEstilo ? " seleccionado" : "");
+    const img = document.createElement("img");
+    img.src = `/sub-estilo-preview?estilo=${encodeURIComponent(clave)}`;
+    img.className = "anim-preview";
+    img.loading = "lazy";
+    img.alt = info.nombre;
+    item.appendChild(img);
+    const txt = document.createElement("div");
+    txt.innerHTML = `<span class="nombre">${info.nombre}</span><span class="detalle">${info.descripcion}</span>`;
+    item.appendChild(txt);
+    item.addEventListener("click", () => {
+      subEstilo = clave;
+      subModificado = true;
+      const [minimo, maximo] = AGRUPACION_BOUNDS_SUB[presetSubActual().agrupacion];
+      subBloques = agruparEnBloquesSub(DATA.palabras, minimo, maximo);
+      renderGridEstilosSub();
+      actualizarSubZonaAviso();
+    });
+    grid.appendChild(item);
+  });
 }
 
 const subTamanoInput = document.getElementById("subTamanoInput");
@@ -1999,6 +2401,7 @@ async function cargar() {
     asset_id: m.asset_catalogo ? m.asset : null,
     asset: m.asset, tag: m.tag, codigo: m.codigo,
     broll_fullscreen: m.broll_fullscreen,
+    modo_broll: m.modo_broll || "completo",
     archivo: m.archivo, tarjeta: m.overlay, miniatura: m.miniatura, medio: m.medio, tipo: m.tipo,
     palabra: m.palabra,
     // Tramo elegido del clip fuente (bloque 4): null si nunca se eligió uno.
@@ -2049,7 +2452,8 @@ async function cargar() {
   const hcGuardado = DATA.hook_cta_guardado;
   edicionHookCta = hcBase.map(o => {
     const g = (hcGuardado || []).find(x => x.tipo === o.tipo);
-    return { tipo: o.tipo, ini: g ? g.ini : o.ini, fin: g ? g.fin : o.fin, archivo: o.archivo };
+    return { tipo: o.tipo, ini: g ? g.ini : o.ini, fin: g ? g.fin : o.fin,
+             oculto: g ? !!g.oculto : false, archivo: o.archivo };
   });
   hookCtaModificado = !!(hcGuardado && hcGuardado.length);
   pintarHookCta();
@@ -2057,8 +2461,13 @@ async function cargar() {
 
   subTamano = DATA.sub_tamano_px || DATA.sub_tamano_defecto || 88;
   subCorrecciones = { ...(DATA.sub_correcciones || {}) };
+  subEstilo = DATA.sub_estilo || DATA.sub_estilo_defecto || "karaoke";
   subModificado = false;
-  subBloques = agruparEnBloquesSub(DATA.palabras);
+  renderGridEstilosSub();
+  {
+    const [minimo, maximo] = AGRUPACION_BOUNDS_SUB[presetSubActual().agrupacion];
+    subBloques = agruparEnBloquesSub(DATA.palabras, minimo, maximo);
+  }
   if (subTamanoInput) subTamanoInput.value = subTamano;
   const subTamanoValorEl = document.getElementById("subTamanoValor");
   if (subTamanoValorEl) subTamanoValorEl.textContent = subTamano + "px";
@@ -2081,11 +2490,15 @@ async function cargar() {
   if (animGuardadas && animGuardadas.length) {
     edicionAnimaciones = animGuardadas.map(a => {
       const ref = animDelRender.find(o => o.nombre === a.nombre) || {};
-      const dur = ref.dur || 2.4;
+      // Antes caía siempre a 2.4s fijo si todavía no se había renderizado — la
+      // barra mentía en la línea de tiempo para cualquier animación cuya
+      // duración real fuera otra (stickers 2.5s, texto-destacado 2.5s, etc.).
+      const dur = ref.dur || (DATA.anim_duraciones && DATA.anim_duraciones[a.nombre]) || 2.4;
       return {
         nombre: a.nombre, ini: a.ini, fin: a.ini + dur, dur,
         variante: a.variante ?? ref.variante ?? null, palabra: a.palabra || "",
         miniatura_archivo: ref.miniatura_archivo || null, archivo: ref.archivo || null,
+        variables: a.variables || null,
       };
     });
   } else {
@@ -2094,6 +2507,7 @@ async function cargar() {
   animacionesModificado = !!(animGuardadas && animGuardadas.length);
   editandoAnimIdx = null;
   renderAnimGrid();
+  renderGridEstilosDestacado();
 
   // Volver al segundo en el que se dejo el video.
   if (DATA.sesion && typeof DATA.sesion.t === "number") {
@@ -2185,7 +2599,9 @@ function renderPipsLista() {
     // de lo mismo que decide dónde se guarda el evento.
     const esVideo = ev.medio === "video";
     const tipoTag = esBroll(ev)
-      ? `<span class="badge" style="background:#8b5cf6;color:#fff">B-Roll pantalla completa</span>`
+      ? (esRecorte(ev)
+          ? `<span class="badge" style="background:#10b981;color:#fff">B-Roll detrás de mí (70%)</span>`
+          : `<span class="badge" style="background:#8b5cf6;color:#fff">B-Roll pantalla completa</span>`)
       : (esVideo ? `<span class="badge" style="background:#0ea5e9;color:#fff">PiP video</span>`
                  : `<span class="badge">PiP imagen</span>`);
 
@@ -2199,16 +2615,23 @@ function renderPipsLista() {
     if (esVideo) {
       const sel = document.createElement("select");
       sel.className = "sel-modo-video";
-      for (const [val, txt] of [["broll", "A pantalla completa"], ["pip", "Como tarjeta PiP"]]) {
+      for (const [val, txt] of [["broll", "A pantalla completa"],
+                                ["recorte", "Detrás de mí (70%)"],
+                                ["pip", "Como tarjeta PiP"]]) {
         const o = document.createElement("option");
         o.value = val; o.textContent = txt;
-        if ((val === "broll") === esBroll(ev)) o.selected = true;
+        if (val === modoDe(ev)) o.selected = true;
         sel.appendChild(o);
       }
       sel.addEventListener("change", () => {
-        const aBroll = sel.value === "broll";
+        const aBroll = sel.value !== "pip";
         ev.broll_fullscreen = aBroll;
         ev.tipo = aBroll ? "broll" : "pip-producto";
+        // "recorte" NO es un B-roll aparte: es el mismo clip compuesto en la
+        // franja de arriba con José por delante. Por eso viaja como B-roll con
+        // un modo, y no como un tipo nuevo que el resto del pipeline no
+        // conocería.
+        ev.modo_broll = sel.value === "recorte" ? "recorte" : "completo";
         // Un B-roll ocupa el cuadro entero: su posición no significa nada.
         // Al volverlo tarjeta hay que darle un sitio, o se compone en 0,0.
         if (aBroll) { ev.x = 0; ev.y = 0; }
@@ -2217,8 +2640,45 @@ function renderPipsLista() {
       });
       info.appendChild(sel);
     }
+
+    // Animación de entrada/salida propia de este PiP. No para los B-roll a
+    // pantalla completa ni "detrás de mí": esos son fondo y deben quedarse
+    // quietos (igual que los excluye f4_retencion).
+    if (!esBroll(ev)) {
+      const wrap = document.createElement("div");
+      wrap.className = "hint";
+      wrap.style.cssText = "margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;";
+      const selAnim = (clave, valor) => {
+        const s = document.createElement("select");
+        s.style.cssText = "font-size:11px; max-width:130px;";
+        for (const [k, v] of Object.entries(PIP_ANIM_CAT)) {
+          const o = document.createElement("option");
+          o.value = k; o.textContent = v; if (k === (valor || "fundido")) o.selected = true;
+          s.appendChild(o);
+        }
+        s.addEventListener("change", () => { ev[clave] = s.value; agendarGuardado(); });
+        return s;
+      };
+      wrap.appendChild(Object.assign(document.createElement("span"), { textContent: "entra:" }));
+      wrap.appendChild(selAnim("anim_entrada", ev.anim_entrada));
+      wrap.appendChild(Object.assign(document.createElement("span"), { textContent: "sale:" }));
+      wrap.appendChild(selAnim("anim_salida", ev.anim_salida));
+      const rng = document.createElement("input");
+      rng.type = "range"; rng.min = "0.5"; rng.max = "1.5"; rng.step = "0.1";
+      rng.value = ev.anim_intensidad || 1; rng.style.width = "70px";
+      const val = Object.assign(document.createElement("span"),
+        { textContent: (ev.anim_intensidad || 1).toFixed(1) });
+      rng.addEventListener("input", () => {
+        ev.anim_intensidad = parseFloat(rng.value);
+        val.textContent = ev.anim_intensidad.toFixed(1);
+        agendarGuardado();
+      });
+      wrap.appendChild(Object.assign(document.createElement("span"), { textContent: "fuerza:" }));
+      wrap.appendChild(rng); wrap.appendChild(val);
+      info.appendChild(wrap);
+    }
     div.appendChild(info);
-    
+
     const btnSust = document.createElement("button");
     btnSust.className = "sustituir"; btnSust.textContent = "Sustituir";
     btnSust.addEventListener("click", () => abrirCatalogo(i));
@@ -2250,7 +2710,9 @@ function renderPipsLista() {
   const info = document.getElementById("infoPips");
   if (info) {
     const nB = edicionPip.filter(esBroll).length;
+    const nR = edicionPip.filter(esRecorte).length;
     info.textContent = `${edicionPip.length - nB} PiP · ${nB} B-roll` +
+      (nR ? ` (${nR} detrás de mí)` : "") +
       (DATA.insertos_manuales ? " · ajustados a mano" : " · del guion / automáticos");
   }
   pintarPipTimeline();
@@ -2624,9 +3086,17 @@ function sfxParaGuardar() {
 // color del panel. Si no hay ninguno (plantilla nunca renderizada), se cae a
 // una ficha de texto en vez de dejar un hueco.
 function medioAnimacion(a) {
-  const src = a.archivo
-    ? `/anim-preview?ruta=${encodeURIComponent(a.archivo)}`
-    : `/anim-preview?nombre=${encodeURIComponent(a.nombre)}`;
+  let src;
+  if (a.archivo) {
+    src = `/anim-preview?ruta=${encodeURIComponent(a.archivo)}`;
+  } else if (a.nombre === "texto-destacado" && a.variables && a.variables.estilo) {
+    // texto-destacado no tiene "el" MOV del inventario: son 6 estilos bien
+    // distintos con el mismo nombre de plantilla. Sin decir cuál, el servidor
+    // devolvería cualquiera de los 6 ya cacheados — hace falta el estilo.
+    src = `/anim-preview?nombre=texto-destacado&estilo=${encodeURIComponent(a.variables.estilo)}`;
+  } else {
+    src = `/anim-preview?nombre=${encodeURIComponent(a.nombre)}`;
+  }
   const v = document.createElement("video");
   v.src = src;
   v.autoplay = true; v.loop = true; v.muted = true;
@@ -2659,8 +3129,18 @@ function pintarHookCta() {
       caja.insertBefore(medioAnimacion({ nombre: bloque.tipo, archivo: bloque.archivo }),
                         caja.firstChild);
     }
+    if (caja) caja.classList.toggle("hc-oculto", !!bloque.oculto);
+    const btn = document.getElementById(bloque.tipo === "hook" ? "btnQuitarHook" : "btnQuitarCta");
+    if (btn) {
+      const nombre = bloque.tipo === "hook" ? "hook" : "CTA";
+      btn.textContent = bloque.oculto ? `Restaurar ${nombre}` : `Quitar ${nombre}`;
+      btn.classList.toggle("esta-oculto", !!bloque.oculto);
+    }
     const et = document.getElementById(bloque.tipo === "hook" ? "hookRango" : "ctaRango");
-    if (et) et.textContent = `${bloque.ini.toFixed(1)}-${bloque.fin.toFixed(1)}s`;
+    if (et) et.textContent = bloque.oculto ? "quitado" : `${bloque.ini.toFixed(1)}-${bloque.fin.toFixed(1)}s`;
+
+    // Quitado a mano: no se dibuja su barra en la pista (no hay nada que mover).
+    if (bloque.oculto) continue;
 
     const barra = document.createElement("div");
     barra.className = "enc-cerrado";
@@ -2718,9 +3198,25 @@ document.getElementById("pistaHookCta").addEventListener("click", (ev) => {
   video.currentTime = tiempoDesdeEvento(ev, ev.currentTarget);
 });
 
+// Quitar / restaurar el hook o el CTA. Quitado = no se compone en el render
+// (marca oculto en ajustes.hookcta.json). Es reversible: el mismo botón lo
+// vuelve a poner con sus tiempos automáticos.
+function alternarOcultoHookCta(tipo) {
+  const bloque = edicionHookCta.find(b => b.tipo === tipo);
+  if (!bloque) return;
+  bloque.oculto = !bloque.oculto;
+  hookCtaModificado = true;
+  pintarHookCta();
+}
+const btnQuitarHook = document.getElementById("btnQuitarHook");
+if (btnQuitarHook) btnQuitarHook.addEventListener("click", () => alternarOcultoHookCta("hook"));
+const btnQuitarCta = document.getElementById("btnQuitarCta");
+if (btnQuitarCta) btnQuitarCta.addEventListener("click", () => alternarOcultoHookCta("cta"));
+
 function hookCtaParaGuardar() {
   return edicionHookCta.map(b => ({
     tipo: b.tipo, ini: Math.round(b.ini * 100) / 100, fin: Math.round(b.fin * 100) / 100,
+    oculto: !!b.oculto,
   }));
 }
 
@@ -2741,13 +3237,26 @@ function renderAnimGrid() {
     card.appendChild(medioAnimacion(a));
     const info = document.createElement("div");
     info.className = "info";
-    // La variante va en la etiqueta: `anim-apps` son DOS animaciones distintas
-    // (una enseña TikTok/WhatsApp/Facebook y la otra Instagram/YouTube) y con
-    // el mismo nombre las dos tarjetas parecian repetidas.
-    const vtag = (a.variante !== null && a.variante !== undefined)
-      ? ` <span class="badge">v${a.variante + 1}</span>` : "";
-    info.innerHTML = `<b>${a.nombre}</b>${vtag}${a.palabra ? ` · "${a.palabra}"` : ""}<br>` +
-      `ini: <input type="number" step="0.1" min="0" max="${DATA.duracion}" value="${a.ini.toFixed(1)}" data-idx="${i}" class="in-ini-anim" style="width:60px;">s`;
+    if (a.nombre === "texto-destacado" && a.variables) {
+      // Texto libre escrito por José: nunca por innerHTML, para no interpretar
+      // comillas o ángulos que escriba como si fueran HTML.
+      const b = document.createElement("b");
+      b.textContent = `"${a.variables.texto}"`;
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = (DATA.texto_destacado_estilos || {})[a.variables.estilo] || a.variables.estilo;
+      info.append(b, " ", badge, document.createElement("br"));
+    } else {
+      // La variante va en la etiqueta: `anim-apps` son DOS animaciones distintas
+      // (una enseña TikTok/WhatsApp/Facebook y la otra Instagram/YouTube) y con
+      // el mismo nombre las dos tarjetas parecian repetidas.
+      const vtag = (a.variante !== null && a.variante !== undefined)
+        ? ` <span class="badge">v${a.variante + 1}</span>` : "";
+      info.innerHTML = `<b>${a.nombre}</b>${vtag}${a.palabra ? ` · "${a.palabra}"` : ""}<br>`;
+    }
+    const filaIni = document.createElement("span");
+    filaIni.innerHTML = `ini: <input type="number" step="0.1" min="0" max="${DATA.duracion}" value="${a.ini.toFixed(1)}" data-idx="${i}" class="in-ini-anim" style="width:60px;">s`;
+    info.appendChild(filaIni);
     card.appendChild(info);
     const botones = document.createElement("div");
     botones.className = "fila-botones";
@@ -2770,13 +3279,36 @@ function renderAnimGrid() {
   pintarAnimTimeline();
 }
 
-// Una animación no se estira: dura lo que dura su clip. Mover = trasladar, y
-// el fin se recalcula siempre desde la duración real (antes eran 2.4s fijos,
-// así que la barra mentía para todas las que no midieran eso).
+// Mover = trasladar: la duración (a.dur) no cambia, arrastrar el CUERPO del
+// bloque solo corre el ini (y el fin, para conservar el largo).
 function moverAnimacion(a, ini) {
   const dur = a.dur || 2.4;
   a.ini = Math.max(0, Math.min(DATA.duracion - dur, ini));
   a.fin = a.ini + dur;
+  animacionesModificado = true;
+}
+
+// Tope de estiramiento: una animación de Hyperframes es un clip YA
+// renderizado a una duración fija (DATA.anim_duraciones[nombre]) — pasado
+// ese punto, `overlay` se queda sin frames y congela el último cuadro (mismo
+// problema, y misma solución, que duracionMaximaClip() para B-roll/PiP: ahí
+// también se descubrió mirando el video, no leyendo el código).
+function duracionMaximaAnimacion(a) {
+  return (DATA.anim_duraciones || {})[a.nombre] || a.dur || 2.4;
+}
+
+// Redimensionar = estirar o achicar arrastrando un borde: cambia SOLO ese
+// borde (ini o fin), el otro queda fijo. `t` es el tiempo bajo el mouse.
+function redimensionarAnimacion(a, lado, t) {
+  const maxDur = duracionMaximaAnimacion(a);
+  if (lado === "izq") {
+    const minIni = Math.max(0, a.fin - maxDur);
+    a.ini = Math.max(minIni, Math.min(t, a.fin - 0.3));
+  } else {
+    const maxFin = Math.min(DATA.duracion, a.ini + maxDur);
+    a.fin = Math.min(maxFin, Math.max(t, a.ini + 0.3));
+  }
+  a.dur = a.fin - a.ini;
   animacionesModificado = true;
 }
 
@@ -2812,6 +3344,25 @@ function pintarAnimTimeline() {
         if (inp) inp.value = a.ini.toFixed(1);
       });
     });
+
+    for (const lado of ["izq", "der"]) {
+      const tir = document.createElement("div");
+      tir.className = "enc-tirador " + lado;
+      tir.title = `Arrastrar para ${lado === "izq" ? "adelantar/atrasar el inicio" : "estirar/achicar la duración"}`
+        + ` (máximo ${duracionMaximaAnimacion(a).toFixed(1)}s, lo que dura el clip)`;
+      tir.addEventListener("pointerdown", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        arrastrar((mv) => {
+          redimensionarAnimacion(a, lado, tiempoDesdeEvento(mv, pista));
+          // Mismo motivo que el arrastre de cuerpo: solo la pista y la
+          // casilla, no la rejilla entera (reiniciaría los <video>).
+          pintarAnimTimeline();
+          const inp = document.querySelector(`.in-ini-anim[data-idx="${i}"]`);
+          if (inp) inp.value = a.ini.toFixed(1);
+        });
+      });
+      barra.appendChild(tir);
+    }
     cont.appendChild(barra);
   });
 
@@ -2895,12 +3446,59 @@ document.getElementById("btnCancelarAnim").addEventListener("click", () => {
 
 function animacionesParaGuardar() {
   return edicionAnimaciones.map(a => {
-    const base = { nombre: a.nombre, ini: Math.round(a.ini * 100) / 100 };
+    // dur SIEMPRE viaja (Bloque 5d): f6_overlays ya sabe usar un "dur" propio
+    // por entrada (si no viene, cae solo en config.ANIMACION_DURACION), así
+    // que mandarlo no cambia nada para una animación sin redimensionar --
+    // pero sin esto, estirarla con el mouse se perdía al guardar.
+    const base = {
+      nombre: a.nombre,
+      ini: Math.round(a.ini * 100) / 100,
+      dur: Math.round((a.dur || 2.4) * 100) / 100,
+    };
     if (a.variante !== null && a.variante !== undefined) base.variante = a.variante;
     if (a.palabra) base.palabra = a.palabra;
+    if (a.variables) base.variables = a.variables;
     return base;
   });
 }
+
+// Panel "Texto llamativo": los 6 estilos de la plantilla texto-destacado, cada
+// uno mostrado EN MOVIMIENTO (con un texto de muestra fijo) para elegir
+// mirando, no adivinando por el nombre. Los 6 previews ya vienen renderizados
+// de antemano (cacheados por contenido en f8_hyperframes), así que esto nunca
+// dispara un render nuevo ni hace esperar.
+function renderGridEstilosDestacado() {
+  const grid = document.getElementById("gridEstilosDestacado");
+  if (!grid || !DATA) return;
+  grid.innerHTML = "";
+  const estilos = DATA.texto_destacado_estilos || {};
+  for (const clave of Object.keys(estilos)) {
+    const item = document.createElement("div");
+    item.className = "inventario-item" + (clave === textoDestacadoEstilo ? " seleccionado" : "");
+    item.appendChild(medioAnimacion({ nombre: "texto-destacado", variables: { estilo: clave } }));
+    const txt = document.createElement("div");
+    txt.innerHTML = `<span class="nombre">${estilos[clave]}</span>`;
+    item.appendChild(txt);
+    item.addEventListener("click", () => {
+      textoDestacadoEstilo = clave;
+      renderGridEstilosDestacado();
+    });
+    grid.appendChild(item);
+  }
+}
+
+document.getElementById("btnAñadirTextoDestacado").addEventListener("click", () => {
+  const input = document.getElementById("textoDestacadoInput");
+  const texto = input.value.trim() || DATA.texto_destacado_muestra || "¡OJO A ESTO!";
+  const dur = DATA.texto_destacado_duracion || 2.5;
+  edicionAnimaciones.push({
+    nombre: "texto-destacado", ini: video.currentTime, fin: video.currentTime + dur, dur,
+    variante: null, palabra: "", miniatura_archivo: null, archivo: null,
+    variables: { texto, estilo: textoDestacadoEstilo },
+  });
+  animacionesModificado = true;
+  renderAnimGrid();
+});
 
 async function abrirCatalogo(idx) {
   editandoIdx = idx;
@@ -2963,6 +3561,7 @@ function elegirAsset(asset) {
         fin: Math.min(DATA.duracion, video.currentTime + (asset.duracion_s || 3)),
         x: 0, y: 0, asset_id: null, asset: asset.id, archivo: asset.archivo,
         tarjeta: null, tipo: "broll", medio: "video", broll_fullscreen: true,
+        modo_broll: "completo",
       }
     : {
         ini: video.currentTime, fin: Math.min(DATA.duracion, video.currentTime + 2.8),
@@ -3075,6 +3674,7 @@ document.getElementById("btnUsarSegmento").addEventListener("click", () => {
     fin: Math.min(DATA.duracion, video.currentTime + duracionTramo),
     x: 0, y: 0, asset_id: null, asset: asset.id, archivo: asset.archivo,
     tarjeta: null, tipo: "broll", medio: "video", broll_fullscreen: true,
+    modo_broll: "completo",
     recorte_inicio: recorteIni, recorte_fin: recorteFin,
   };
   if (editandoIdx === -1) {
@@ -3112,6 +3712,18 @@ function esBroll(ev) {
   return ev.broll_fullscreen === true || ev.tipo === "broll";
 }
 
+// El B-roll "detrás de mí" ocupa el 70% de arriba y se compone con José
+// recortado por delante (f4_retencion._preparar_recorte). Sigue siendo un
+// B-roll a todos los efectos: mismo archivo de guardado, misma lista.
+function esRecorte(ev) {
+  return esBroll(ev) && ev.modo_broll === "recorte";
+}
+
+function modoDe(ev) {
+  if (!esBroll(ev)) return "pip";
+  return ev.modo_broll === "recorte" ? "recorte" : "broll";
+}
+
 // `archivo` va SIEMPRE, incluso junto a asset_id: es el respaldo con el que el
 // pipeline puede recuperar el inserto si el id no resuelve.
 function eventoBase(ev) {
@@ -3128,6 +3740,12 @@ function eventoBase(ev) {
   // olvidaba el recorte y el render volvía a leer desde el segundo 0.
   if (ev.recorte_inicio != null) base.recorte_inicio = ev.recorte_inicio;
   if (ev.recorte_fin != null) base.recorte_fin = ev.recorte_fin;
+  // Animación de entrada/salida propia de este PiP (f4b_pip_anim). Solo se
+  // manda si se apartó del default: un 'fundido/fundido' no ensucia el JSON.
+  if (ev.anim_entrada && ev.anim_entrada !== "fundido") base.anim_entrada = ev.anim_entrada;
+  if (ev.anim_salida && ev.anim_salida !== "fundido") base.anim_salida = ev.anim_salida;
+  if (ev.anim_intensidad != null && ev.anim_intensidad !== 1)
+    base.anim_intensidad = ev.anim_intensidad;
   return base;
 }
 
@@ -3140,6 +3758,7 @@ function brollParaGuardar() {
     const base = eventoBase(ev);
     base.broll_fullscreen = true;
     base.medio = "video";
+    base.modo_broll = ev.modo_broll === "recorte" ? "recorte" : "completo";
     return base;
   });
 }
@@ -3168,8 +3787,183 @@ function cuerpoAjustes() {
       sin_musica: edicionSinMusica
     };
   }
+  if (transModificado && estadoTrans) cuerpo.transiciones = estadoTrans;
+  if (pipAnimModificado && estadoPipAnim) cuerpo.pip_anim = estadoPipAnim;
   return cuerpo;
 }
+
+// ---- Panel de transiciones (POR EMPALME) y animación de PiP ---------------
+// Catálogos duplicados aquí a propósito: los usan tanto este panel como las
+// tarjetas de PiP, y así se pintan sin depender de que /transiciones-estado
+// haya respondido. Las CLAVES son la fuente de verdad (coinciden con f2b/f4b);
+// las etiquetas son solo para mostrar.
+const TRANS_CAT = { "ninguna": "— (corte seco)", "flash-blanco": "Flash blanco",
+  "flash-negro": "Flash negro", "flash-marca": "Flash cian", "desenfoque": "Whip / desenfoque",
+  "glitch": "Glitch RGB", "zoom-punch": "Zoom punch", "shake": "Sacudida",
+  "barrido": "Barrido de luz", "zoom-desenfoque": "Zoom + desenfoque",
+  "destello-glitch": "Flash + glitch" };
+const PIP_ANIM_CAT = { "fundido": "Fundido", "desliza-izquierda": "Desliza ←",
+  "desliza-derecha": "Desliza →", "desliza-arriba": "Desliza ↑",
+  "desliza-abajo": "Desliza ↓", "diagonal": "Diagonal", "resorte-arriba": "Cae con rebote",
+  "resorte-lateral": "Lado con rebote", "latigazo": "Latigazo", "subir-fundido": "Sube y aparece" };
+
+let transModificado = false, pipAnimModificado = false;
+let estadoTrans = null, estadoPipAnim = null;
+let transMarcas = [];        // [{t, tipo, intensidad}] — transiciones puestas a mano
+let transEmpSug = [];        // cortes detectados, solo como sugerencia visual
+let transDur = 0;            // duración de la línea de tiempo cortada
+
+function opcionesSelect(sel, catalogo, valor) {
+  sel.innerHTML = "";
+  for (const [k, v] of Object.entries(catalogo)) {
+    const o = document.createElement("option");
+    o.value = k; o.textContent = v;
+    if (k === (valor || Object.keys(catalogo)[0])) o.selected = true;
+    sel.appendChild(o);
+  }
+}
+
+function transDurActual() {
+  let d = transDur;
+  if (!d) { try { d = DATA && DATA.duracion; } catch (e) { d = 0; } }
+  return d || 0;
+}
+
+function transRecolectar() {
+  estadoTrans = { marcas: transMarcas
+    .filter(m => m.tipo && m.tipo !== "ninguna")
+    .map(m => ({ t: Math.round(m.t * 1000) / 1000, tipo: m.tipo, intensidad: m.intensidad })) };
+}
+
+function pipRecolectar() {
+  estadoPipAnim = {
+    entrada: document.getElementById("pipEntrada").value,
+    salida: document.getElementById("pipSalida").value,
+    intensidad: parseFloat(document.getElementById("pipIntensidad").value),
+  };
+}
+
+function marcarTrans() { transModificado = true; transRecolectar(); pintarTira(); agendarGuardado(); }
+
+function actualizarAguja() {
+  const dur = transDurActual();
+  const aguja = document.getElementById("transAguja");
+  if (aguja && dur > 0) aguja.style.left = (Math.min(video.currentTime, dur) / dur * 100).toFixed(3) + "%";
+}
+
+function pintarTira() {
+  const tira = document.getElementById("transTira");
+  if (!tira) return;
+  [...tira.querySelectorAll(".tick-emp,.tick-marca")].forEach(e => e.remove());
+  const dur = transDurActual();
+  if (dur > 0) {
+    transEmpSug.forEach(t => {
+      const d = document.createElement("div"); d.className = "tick-emp";
+      d.title = "corte detectado en " + t.toFixed(2) + "s";
+      d.style.cssText = "position:absolute; top:3px; bottom:3px; width:1px; background:var(--fg-2);" +
+        "opacity:.45; pointer-events:none; left:" + (t / dur * 100).toFixed(2) + "%;";
+      tira.appendChild(d);
+    });
+    transMarcas.forEach((m, i) => {
+      const d = document.createElement("div"); d.className = "tick-marca"; d.dataset.i = i;
+      d.title = m.t.toFixed(2) + "s · " + (TRANS_CAT[m.tipo] || m.tipo);
+      d.style.cssText = "position:absolute; top:0; bottom:0; width:3px; background:var(--acento);" +
+        "border-radius:2px; cursor:pointer; left:" + (m.t / dur * 100).toFixed(2) + "%;";
+      d.addEventListener("click", (e) => {
+        e.stopPropagation();
+        try { if (DATA) video.currentTime = Math.max(0, m.t - 0.15); } catch (err) {}
+      });
+      tira.appendChild(d);
+    });
+  }
+  actualizarAguja();
+}
+
+function pintarMarcasLista() {
+  const cont = document.getElementById("transMarcasLista");
+  cont.innerHTML = "";
+  if (!transMarcas.length) {
+    cont.innerHTML = '<span class="hint">Sin transiciones. Llevá la aguja a un punto y tocá ' +
+      '«＋ En el segundo actual».</span>';
+    return;
+  }
+  transMarcas.forEach((m, i) => {
+    const row = document.createElement("div"); row.className = "fila-marca"; row.dataset.i = i;
+    row.style.cssText = "display:flex; gap:8px; align-items:center; flex-wrap:wrap;";
+    const etq = document.createElement("span"); etq.className = "hint";
+    etq.style.cssText = "width:56px; cursor:pointer; color:var(--acento);";
+    etq.textContent = m.t.toFixed(2) + "s"; etq.title = "Ir ahí";
+    etq.addEventListener("click", () => { try { if (DATA) video.currentTime = Math.max(0, m.t - 0.15); } catch (e) {} });
+    const selT = document.createElement("select"); selT.style.cssText = "font-size:11px;";
+    opcionesSelect(selT, TRANS_CAT, m.tipo);
+    selT.addEventListener("change", () => { m.tipo = selT.value; marcarTrans(); });
+    const rng = document.createElement("input");
+    rng.type = "range"; rng.min = "0.5"; rng.max = "1.5"; rng.step = "0.1";
+    rng.value = m.intensidad || 1; rng.style.width = "80px";
+    const val = document.createElement("span"); val.className = "hint";
+    val.textContent = (m.intensidad || 1).toFixed(1);
+    rng.addEventListener("input", () => { m.intensidad = parseFloat(rng.value); val.textContent = m.intensidad.toFixed(1); marcarTrans(); });
+    const del = document.createElement("button"); del.className = "quitar";
+    del.textContent = "Quitar"; del.style.cssText = "font-size:11px; padding:2px 8px;";
+    del.addEventListener("click", () => { transMarcas.splice(i, 1); marcarTrans(); pintarMarcasLista(); });
+    row.appendChild(etq); row.appendChild(selT); row.appendChild(rng); row.appendChild(val); row.appendChild(del);
+    cont.appendChild(row);
+  });
+}
+
+function agregarMarcaEn(t) {
+  const dur = transDurActual();
+  if (dur > 0) t = Math.max(0, Math.min(t, dur));
+  let tipo = document.getElementById("transTipoNueva").value;
+  if (tipo === "ninguna") tipo = "glitch";
+  const intensidad = parseFloat(document.getElementById("transIntNueva").value);
+  transMarcas.push({ t: Math.round(t * 100) / 100, tipo, intensidad });
+  transMarcas.sort((a, b) => a.t - b.t);
+  marcarTrans(); pintarMarcasLista();
+}
+
+async function initTransiciones() {
+  let est;
+  try { est = await (await fetch("/transiciones-estado")).json(); } catch (e) { return; }
+  transEmpSug = est.empalmes || [];
+  transDur = est.duracion || 0;
+  transMarcas = (est.marcas || []).map(m => ({ t: +m.t, tipo: m.tipo, intensidad: +(m.intensidad || 1) }));
+
+  opcionesSelect(document.getElementById("transTipoNueva"), TRANS_CAT, "glitch");
+  const inNueva = document.getElementById("transIntNueva");
+  inNueva.addEventListener("input", () => {
+    document.getElementById("transIntNuevaVal").textContent = parseFloat(inNueva.value).toFixed(1);
+  });
+  document.getElementById("btnTransAqui").addEventListener("click", () => agregarMarcaEn(video.currentTime));
+
+  const tira = document.getElementById("transTira");
+  tira.addEventListener("click", (e) => {
+    const dur = transDurActual(); if (dur <= 0) return;
+    const r = tira.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    try { if (DATA) video.currentTime = frac * dur; } catch (err) {}
+    actualizarAguja();
+  });
+  video.addEventListener("timeupdate", actualizarAguja);
+
+  pintarTira(); pintarMarcasLista();
+
+  opcionesSelect(document.getElementById("pipEntrada"), PIP_ANIM_CAT, est.pip_anim.entrada);
+  opcionesSelect(document.getElementById("pipSalida"), PIP_ANIM_CAT, est.pip_anim.salida);
+  const inPint = document.getElementById("pipIntensidad");
+  inPint.value = est.pip_anim.intensidad || 1;
+  document.getElementById("pipIntensidadVal").textContent = (est.pip_anim.intensidad || 1).toFixed(1);
+
+  transRecolectar(); pipRecolectar();
+  const tocarPip = () => {
+    document.getElementById("pipIntensidadVal").textContent = parseFloat(inPint.value).toFixed(1);
+    pipAnimModificado = true; pipRecolectar(); agendarGuardado();
+  };
+  document.getElementById("pipEntrada").addEventListener("change", tocarPip);
+  document.getElementById("pipSalida").addEventListener("change", tocarPip);
+  inPint.addEventListener("input", tocarPip);
+}
+initTransiciones();
 
 document.getElementById("btnAddPunch").addEventListener("click", () => {
   encPunch.push({ t: Math.round(video.currentTime * 100) / 100, razon: "manual" });
@@ -3307,6 +4101,16 @@ function estadoSerializado() {
 function marcarGuardado(txt) {
   const el = document.getElementById("estadoGuardado");
   if (el) el.textContent = txt;
+}
+
+// Guardado con rebote: al tocar un control (una animación de PiP, una
+// transición) no se dispara un POST por cada tecla del slider; se espera medio
+// segundo de calma. El autoguardado de cada 2s es la red de seguridad.
+let _guardarPendiente = null;
+function agendarGuardado() {
+  marcarGuardado("cambios sin guardar…");
+  clearTimeout(_guardarPendiente);
+  _guardarPendiente = setTimeout(() => guardarAhora(true), 600);
 }
 
 async function guardarAhora(auto = true) {

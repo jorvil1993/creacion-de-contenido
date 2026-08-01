@@ -397,6 +397,24 @@ def plan_encuadre(guion_dict: dict, palabras: list, beats_alineados: list) -> di
     return {"punch_ins": punch_ins, "planos_cerrados": cerrados}
 
 
+# Cómo se pide en el panel que un B-roll vaya DETRÁS de José en vez de taparlo.
+# La marca vive en el texto de "qué se ve" y no en una columna nueva a propósito:
+# el panel se edita a mano tan seguido como con el selector, y una columna más
+# obligaría a tocar las ~40 filas ya escritas. El selector del panel escribe
+# exactamente una de estas frases.
+MARCAS_BROLL_RECORTE = ("detras de mi", "detras mio", "al 70")
+
+
+def modo_broll_de(texto_ve: str) -> str:
+    """"recorte" si el guion pide el B-roll detrás de José; si no, "completo"."""
+    import unicodedata
+    sin_tildes = "".join(
+        c for c in unicodedata.normalize("NFD", (texto_ve or "").lower())
+        if unicodedata.category(c) != "Mn"
+    )
+    return "recorte" if any(m in sin_tildes for m in MARCAS_BROLL_RECORTE) else "completo"
+
+
 def resolver_codigo_asset(texto_ve: str, clips_map: dict) -> tuple[str | None, Path | None, str]:
     """Extrae el código (F16, P02) o el nombre de asset directo de 'qué se ve' y busca su archivo.
 
@@ -707,10 +725,12 @@ def procesar_guion(numero_guion: int, json_cortado_path: Path, dir_trabajo: Path
             if asset_path is None or asset_path.suffix.lower() not in (".mp4", ".mov", ".webm"):
                 print(f"  AVISO [Beat {idx:2d} - B-ROLL]: Clip de video {codigo} ({slug}) no encontrado -> OMITIDO")
             else:
+                modo = modo_broll_de(ve)
                 ordenes_broll.append({
                     "tipo": "broll",
                     "medio": "video",
                     "broll_fullscreen": True,
+                    "modo_broll": modo,
                     "archivo": str(asset_path),
                     "x": 0,
                     "y": 0,

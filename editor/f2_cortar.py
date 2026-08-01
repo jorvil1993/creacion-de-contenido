@@ -324,7 +324,34 @@ def detectar_todos_los_cortes(datos_transcripcion: dict, duracion_total: float,
     return cortes, hook_s, cierre_s
 
 
-def cortar_video_ffmpeg(ruta_entrada: Path, ruta_salida: Path, intervalos: list):
+def boundaries_de_cortes(intervalos: list) -> list:
+    """Instantes de corte en la línea de tiempo YA concatenada.
+
+    Cada empalme entre dos tramos conservados es un salto de plano visible. El
+    tiempo de ese empalme en el video resultante es la suma de las duraciones de
+    todos los tramos anteriores. El último tramo no genera empalme (es el final).
+    Estos son los puntos donde f2b_transiciones dibuja la transición, y los que
+    el editor visual enseña para quitar o ajustar.
+    """
+    limites = []
+    acum = 0.0
+    for iv in intervalos[:-1]:
+        acum += iv["fin"] - iv["inicio"]
+        limites.append(round(acum, 3))
+    return limites
+
+
+def _resolucion_video(ruta: Path) -> tuple:
+    cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+           "stream=width,height", "-of", "csv=p=0:s=x", str(ruta)]
+    salida = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    w, h = salida.stdout.strip().split("x")
+    return int(w), int(h)
+
+
+def cortar_video_ffmpeg(ruta_entrada: Path, ruta_salida: Path, intervalos: list,
+                        transicion: str = "ninguna", intensidad_trans: float = 1.0,
+                        boundaries: list = None, specs: list = None):
     n = len(intervalos)
     if n == 0:
         raise ValueError("No quedaron intervalos para conservar — revisar umbrales de corte")
@@ -343,13 +370,48 @@ def cortar_video_ffmpeg(ruta_entrada: Path, ruta_salida: Path, intervalos: list)
         labels_a.append(f"[a{i}]")
 
     concat_inputs = "".join(l1 + l2 for l1, l2 in zip(labels_v, labels_a))
-    partes_filtro.append(f"{concat_inputs}concat=n={n}:v=1:a=1[vout][aout]")
+    # El video concatenado sale por [vc]; si hay transición, se le encadenan los
+    # filtros ventaneados en los empalmes y el resultado sale por [vout]. Los
+    # filtros NO cambian la duración (ver f2b_transiciones), así que el mapeo de
+    # tiempos de aguas abajo no se entera.
+    partes_filtro.append(f"{concat_inputs}concat=n={n}:v=1:a=1[vc][aout]")
+    map_v = "[vc]"
+    if boundaries is None:
+        boundaries = boundaries_de_cortes(intervalos)
+    filtro_trans = ""
+    if specs:
+        # Formato por empalme: cada corte con su propia transición e intensidad.
+        import f2b_transiciones
+        try:
+            w_src, h_src = _resolucion_video(ruta_entrada)
+        except Exception:
+            w_src, h_src = config.ANCHO, config.ALTO
+        filtro_trans = f2b_transiciones.construir_filtro_multi(specs, w_src, h_src, config.FPS)
+        if filtro_trans:
+            n = len({s["tipo"] for s in specs if s.get("tipo", "ninguna") != "ninguna"})
+            print(f"Transiciones por empalme: {len(specs)} corte(s) con transición "
+                  f"({n} tipo(s) distinto(s))")
+    elif transicion and transicion != "ninguna" and boundaries:
+        # Formato global (bandera CLI): una sola transición para todos los empalmes.
+        import f2b_transiciones
+        try:
+            w_src, h_src = _resolucion_video(ruta_entrada)
+        except Exception:
+            w_src, h_src = config.ANCHO, config.ALTO
+        filtro_trans = f2b_transiciones.construir_filtro(
+            transicion, boundaries, w_src, h_src, intensidad_trans, config.FPS)
+        if filtro_trans:
+            print(f"Transición entre cortes: '{transicion}' (intensidad {intensidad_trans:.1f}) "
+                  f"en {len(boundaries)} empalme(s)")
+    if filtro_trans:
+        partes_filtro.append(f"[vc]{filtro_trans}[vout]")
+        map_v = "[vout]"
     filtro = ";".join(partes_filtro)
 
     cmd = [
         "ffmpeg", "-y", "-i", str(ruta_entrada),
         "-filter_complex", filtro,
-        "-map", "[vout]", "-map", "[aout]",
+        "-map", map_v, "-map", "[aout]",
         *config.args_video(),
         "-c:a", "aac", "-b:a", "192k",
         str(ruta_salida),
@@ -393,6 +455,15 @@ def main():
                         help="Lista de segundos donde empieza cada toma real, en la línea de "
                              "tiempo del archivo de entrada (la escribe editor.py al unir "
                              "varias grabaciones). Se remapean al video ya cortado")
+    parser.add_argument("--transicion", type=str, default="ninguna",
+                        help="Transición a dibujar en los empalmes entre cortes "
+                             "(flash-blanco, glitch, zoom-punch, ...). 'ninguna' = corte "
+                             "seco de siempre. Ver f2b_transiciones.TRANSICIONES")
+    parser.add_argument("--intensidad-transicion", type=float, default=1.0, metavar="K",
+                        help="Fuerza de la transición: 0.5 suave, 1.0 normal, 1.5 agresiva")
+    parser.add_argument("--transiciones-json", type=str, default=None, metavar="JSON",
+                        help="ajustes.transiciones.json del editor visual: tipo, intensidad "
+                             "y qué empalmes quitar. Manda sobre --transicion/--intensidad")
     args = parser.parse_args()
 
     global PERFIL
@@ -448,7 +519,62 @@ def main():
     duracion_resultante = sum(iv["fin"] - iv["inicio"] for iv in intervalos_conservados)
     print(f"\nDuración original: {duracion_total:.1f}s -> resultante: {duracion_resultante:.1f}s")
 
-    cortar_video_ffmpeg(ruta_video, ruta_salida, intervalos_conservados)
+    # Transiciones entre cortes. El editor visual, si lo tocó José, manda por
+    # encima de las banderas: puede cambiar el tipo, la intensidad y quitar
+    # empalmes sueltos. Los empalmes se cuentan por índice sobre la lista
+    # completa `todos_los_empalmes`, que es determinista dada la selección de
+    # cortes — así el editor y el render hablan del mismo empalme.
+    transicion = args.transicion
+    intensidad_transicion = args.intensidad_transicion
+    todos_los_empalmes = boundaries_de_cortes(intervalos_conservados)
+    empalmes_activos = list(todos_los_empalmes)
+    specs = None
+    marcas_guardadas = None          # lista [{t,tipo,intensidad}] para reescribir en el JSON
+    transiciones_por_empalme = {}    # {idx: {tipo, intensidad}} (formato viejo por empalme)
+    dur_cortada = duracion_resultante
+    if args.transiciones_json and Path(args.transiciones_json).exists():
+        cfg = json.loads(Path(args.transiciones_json).read_text(encoding="utf-8"))
+        if "marcas" in cfg:
+            # Formato LIBRE: transiciones en cualquier segundo de la línea de
+            # tiempo cortada, puestas a mano en el editor (una tira con aguja).
+            # Es el que sirve para un video ya unido, donde el corte visual no
+            # cae en ningún empalme que el pipeline detecte.
+            specs = []
+            marcas_guardadas = []
+            for m in (cfg.get("marcas") or []):
+                tipo = m.get("tipo", "ninguna")
+                if tipo in (None, "", "ninguna"):
+                    continue
+                t = float(m.get("t", -1))
+                if not (0 <= t <= dur_cortada):
+                    continue
+                intens = float(m.get("intensidad", 1.0))
+                specs.append({"t": round(t, 3), "tipo": tipo, "intensidad": intens})
+                marcas_guardadas.append({"t": round(t, 3), "tipo": tipo,
+                                         "intensidad": round(intens, 2)})
+        elif "empalmes" in cfg:
+            # Formato por empalme detectado: cada corte con su propia transición.
+            specs = []
+            for idx, ecfg in (cfg.get("empalmes") or {}).items():
+                i = int(idx)
+                if not (0 <= i < len(todos_los_empalmes)):
+                    continue
+                tipo = ecfg.get("tipo", "ninguna")
+                if tipo in (None, "", "ninguna"):
+                    continue
+                intens = float(ecfg.get("intensidad", 1.0))
+                specs.append({"t": todos_los_empalmes[i], "tipo": tipo, "intensidad": intens})
+                transiciones_por_empalme[i] = {"tipo": tipo, "intensidad": round(intens, 2)}
+        else:
+            # Formato VIEJO/global: un tipo para todos, con empalmes quitados.
+            transicion = cfg.get("transicion", transicion)
+            intensidad_transicion = float(cfg.get("intensidad", intensidad_transicion))
+            quitados = set(cfg.get("empalmes_quitados", []))
+            empalmes_activos = [t for i, t in enumerate(todos_los_empalmes) if i not in quitados]
+
+    cortar_video_ffmpeg(ruta_video, ruta_salida, intervalos_conservados,
+                        transicion=transicion, intensidad_trans=intensidad_transicion,
+                        boundaries=empalmes_activos, specs=specs)
 
     palabras_recalculadas = recalcular_timestamps_palabras(palabras, intervalos_conservados)
 
@@ -481,6 +607,24 @@ def main():
     # (no se dice nada mientras se entra al cuadro).
     salida_datos["hook_conservado_s"] = hook_conservado_s
     salida_datos["cierre_conservado_s"] = cierre_conservado_s
+
+    # Empalmes entre cortes (línea de tiempo YA cortada) y la transición aplicada.
+    # El editor visual los lee para dibujar un marcador en cada uno y dejar
+    # quitarlo o cambiar el estilo/intensidad.
+    salida_datos["empalmes_s"] = todos_los_empalmes
+    if marcas_guardadas is not None:
+        salida_datos["transicion"] = {"marcas": marcas_guardadas}
+    elif specs is not None:
+        salida_datos["transicion"] = {"empalmes": {str(i): c for i, c in
+                                                   transiciones_por_empalme.items()}}
+    else:
+        salida_datos["transicion"] = {
+            "tipo": transicion,
+            "intensidad": round(intensidad_transicion, 2),
+            "empalmes_quitados": sorted(set(range(len(todos_los_empalmes))) -
+                                        {todos_los_empalmes.index(t) for t in empalmes_activos})
+                                  if len(empalmes_activos) != len(todos_los_empalmes) else [],
+        }
 
     if args.tomas:
         tomas_orig = json.loads(Path(args.tomas).read_text(encoding="utf-8"))

@@ -158,9 +158,11 @@ def reanclar_sfx(eventos_sfx: list, eventos_overlay: list) -> int:
     """Devuelve cada SFX anclado al segundo donde HOY está su evento visual.
 
     Se llama al cargar una lista manual: si José movió un PiP en el editor, su
-    `pop` se mueve con él sin que tenga que arrastrar las dos cosas. Si borró el
-    evento visual, el sonido se queda donde estaba y se avisa — borrarle el
-    sonido por su cuenta sería decidir por él.
+    `pop` se mueve con él sin que tenga que arrastrar las dos cosas. Si quitó el
+    evento visual (PiP, hook, CTA, animación), su sonido se quita también: el
+    sonido acompaña al evento, y un pop sin nada en pantalla se oye a error.
+    Solo se tocan los SFX ANCLADOS a un overlay; los sueltos (cortes, punch-ins,
+    los puestos a mano sin ancla) no se mueven ni se borran.
     """
     if not eventos_overlay:
         return 0
@@ -168,20 +170,27 @@ def reanclar_sfx(eventos_sfx: list, eventos_overlay: list) -> int:
     posiciones = {clave_ancla(ev, vistas): float(ev["ini"]) for ev in eventos_overlay}
 
     movidos = 0
+    huerfanos = []
     for ev in eventos_sfx:
         ancla = ev.get("ancla")
         if not ancla:
             continue
         if ancla not in posiciones:
-            _log(f"AVISO: el sonido de {ev['t']:.2f}s estaba anclado a '{ancla}', que ya no "
-                 f"existe — se queda donde está.")
+            # Su evento visual (PiP, hook, CTA, animación) fue quitado en el
+            # editor: el sonido va con él. Antes se quedaba huérfano sonando en
+            # el segundo viejo — un pop sin nada en pantalla que lo justifique.
+            _log(f"  sonido quitado: el de {ev['t']:.2f}s seguía a '{ancla}', que ya no "
+                 f"aparece en pantalla.")
+            huerfanos.append(ev)
             continue
         nuevo = round(posiciones[ancla] + float(ev.get("desfase", 0.0)), 3)
         if abs(nuevo - float(ev["t"])) > 0.01:
             _log(f"  sonido reanclado: {ev['t']:.2f}s -> {nuevo:.2f}s (sigue a '{ancla}')")
             ev["t"] = nuevo
             movidos += 1
-    if movidos:
+    for ev in huerfanos:
+        eventos_sfx.remove(ev)
+    if movidos or huerfanos:
         eventos_sfx.sort(key=lambda e: e["t"])
     return movidos
 
@@ -290,7 +299,16 @@ def construir_eventos_sfx(plan_retencion: dict, eventos_overlay: list = None) ->
     por prioridad y se asigna un sonido distinto según el tipo, rotando entre
     variantes.
     """
-    candidatos = [{"t": 0.0, "tipo": "hook", "prioridad": 100, "ancla": "hook#0"}]
+    # El whoosh de entrada acompaña la tarjeta del hook. Si el hook fue quitado
+    # a mano en el editor no llega en los overlays, y entonces no hay entrada que
+    # subrayar: el sonido va con la tarjeta. Sin lista de overlays (None) se
+    # mantiene el comportamiento previo y se pone igual.
+    if eventos_overlay is None:
+        hay_hook = True
+    else:
+        hay_hook = any(ev.get("tipo") == "hook" for ev in eventos_overlay)
+    candidatos = ([{"t": 0.0, "tipo": "hook", "prioridad": 100, "ancla": "hook#0"}]
+                  if hay_hook else [])
 
     # Overlays que aparecen en pantalla (PiP de producto, CTA, animaciones)
     vistas = {}

@@ -190,6 +190,12 @@ def inventario_animaciones() -> list:
     hf = disponible()
     inv = []
     for nombre in sorted(config.ANIMACION_DURACION):
+        # texto-destacado necesita texto libre y un estilo elegido a propósito
+        # (6 looks bien distintos) — este grid genérico solo sabe "añadir con
+        # los valores por defecto", así que tiene su propio panel dedicado en
+        # el editor (con preview de cada estilo) en vez de aparecer acá.
+        if nombre == "texto-destacado":
+            continue
         plantilla = plantilla_de(nombre)
         tiene_html = (DIR_PLANTILLAS / "compositions" / f"{plantilla}.html").exists()
         inv.append({

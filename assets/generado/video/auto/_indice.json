@@ -97,5 +97,16 @@
     "frames": 73,
     "fps": 24.0,
     "desde_imagen": ""
+  },
+  "a2c611c60f76": {
+    "archivo": "assets/generado/video/auto/foto-insomnio-vertical-1785465484316_a2c611c60f76.mp4",
+    "prompt": "the object stays exactly as it is while the light shifts gently across its surface, subtle realistic motion, no shape changes, scene inspired by: Te acuestas cansado y sigues despierto a las 3:47 am con los ojos ardiendo, cinematic natural lighting, subtle gentle motion, static camera, shallow depth of field, no text, no watermark, no people's faces",
+    "tag": "",
+    "nombre": "foto-insomnio-vertical-1785465484316",
+    "semilla": 280145897140205,
+    "tamano": "704x1280",
+    "frames": 73,
+    "fps": 24.0,
+    "desde_imagen": "C:\\Users\\devic\\.gemini\\antigravity-ide\\brain\\54ffde53-0e89-49b2-a669-9003a77319cf\\insomnio_vertical_1785465484316.png"
   }
 }
