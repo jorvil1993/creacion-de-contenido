@@ -177,6 +177,32 @@ def escribir_fila(fuente: str, n: int, ri: int, tipo: str, ve: str) -> str:
     return fuente[:a] + nueva + fuente[b:]
 
 
+def escribir_tele(fuente: str, n: int, tele: str) -> str:
+    """Devuelve el fuente con el campo `tele:` del guion `n` reemplazado.
+
+    El texto llega desde el navegador con párrafos separados por ' || ' y se
+    escribe tal cual en la cadena `'…'` del fuente, con los escapes mínimos
+    (barra invertida y comilla simple). Los saltos de línea no se permiten
+    porque cada guion ocupa exactamente una línea del fuente y el parser de
+    posiciones de `_lineas_filas` se rompería.
+    """
+    if "\n" in tele or "\r" in tele:
+        raise ValueError("El texto del teleprompter no puede tener saltos de línea")
+    if not tele.strip():
+        raise ValueError("El texto del teleprompter no puede estar vacío")
+
+    ini, fin = _bloque_guion(fuente, n)
+    bloque = fuente[ini:fin]
+    # El campo tele puede estar en cualquier línea del bloque, siempre como:
+    #   tele:'contenido aquí',
+    m = re.search(r" tele:'((?:[^'\\]|\\.)*)',", bloque)
+    if not m:
+        raise ValueError(f"El guion {n} no tiene campo `tele:`")
+    tele_escapado = _escapar(tele)
+    nuevo_bloque = bloque[:m.start(1)] + tele_escapado + bloque[m.end(1):]
+    return fuente[:ini] + nuevo_bloque + fuente[fin:]
+
+
 def escribir_segundos(fuente: str, n: int, campo: str, valor: float) -> str:
     """Devuelve el fuente con `hooksegs`/`cierresegs` del guion `n` cambiado."""
     if campo not in CAMPOS_SEGUNDOS:
@@ -207,7 +233,47 @@ def leer_panel() -> str:
         return f.read()
 
 
-def _guardar_panel(fuente_nuevo: str, comprobacion) -> None:
+def _hacer_push_git(mensaje: str = "Actualizar PANEL-PRODUCCION.html") -> None:
+    """Ejecuta git add, commit y push de PANEL-PRODUCCION.html en segundo plano.
+
+    Así GitHub Pages recibe inmediatamente la actualización sin demorar la
+    respuesta HTTP en la pantalla.
+    """
+    def _run():
+        try:
+            raiz = config.RAIZ_PROYECTO
+            # 1. git add PANEL-PRODUCCION.html
+            res_add = subprocess.run(["git", "add", "PANEL-PRODUCCION.html"],
+                                     cwd=str(raiz), capture_output=True, text=True)
+            if res_add.returncode != 0:
+                print(f"  AVISO: `git add` falló: {res_add.stderr.strip()}")
+                return
+
+            # 2. git commit (específico para PANEL-PRODUCCION.html)
+            res_commit = subprocess.run(["git", "commit", "-m", mensaje, "PANEL-PRODUCCION.html"],
+                                        cwd=str(raiz), capture_output=True, text=True)
+            if res_commit.returncode != 0:
+                if "nothing to commit" in res_commit.stdout or "no changes added to commit" in res_commit.stdout:
+                    return
+                print(f"  AVISO: `git commit` falló: {res_commit.stderr.strip()}")
+                return
+
+            print(f"  [Git] Commit realizado: \"{mensaje}\"")
+
+            # 3. git push a la rama master (la que sirve GitHub Pages)
+            res_push = subprocess.run(["git", "push", "origin", "HEAD:master"],
+                                      cwd=str(raiz), capture_output=True, text=True)
+            if res_push.returncode == 0:
+                print("  [Git] Push a GitHub Pages (master) completado exitosamente.")
+            else:
+                print(f"  AVISO: `git push` falló: {res_push.stderr.strip()}")
+        except Exception as e:
+            print(f"  AVISO: Error en auto-push git: {e}")
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
+def _guardar_panel(fuente_nuevo: str, comprobacion, mensaje_commit: str = "Actualizar PANEL-PRODUCCION.html", auto_push: bool = False) -> None:
     """Escribe el panel solo si el fuente nuevo se relee como se esperaba.
 
     `comprobacion(fuente_nuevo)` tiene que devolver True. Es una red barata
@@ -221,6 +287,10 @@ def _guardar_panel(fuente_nuevo: str, comprobacion) -> None:
     with open(tmp, "w", encoding="utf-8", newline="") as f:
         f.write(fuente_nuevo)
     os.replace(tmp, PANEL)
+    if auto_push:
+        _hacer_push_git(mensaje_commit)
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -472,7 +542,7 @@ class Handler(BaseHTTPRequestHandler):
                     fila = leer_fila(f, n, ri)
                     return fila["tipo"] == tipo and fila["ve"] == ve
 
-                _guardar_panel(nuevo, releida_ok)
+                _guardar_panel(nuevo, releida_ok, f"Actualizar fila {ri} de guion {n} en panel")
                 self._json({"ok": True, "fila": leer_fila(nuevo, n, ri)})
 
             elif ruta == "/api/segundos":
@@ -485,8 +555,22 @@ class Handler(BaseHTTPRequestHandler):
                     m = re.search(campo + r":([0-9.]+)", f[i:j])
                     return bool(m) and float(m.group(1)) == valor
 
-                _guardar_panel(nuevo, releida_ok)
+                _guardar_panel(nuevo, releida_ok, f"Actualizar {campo} de guion {n} en panel")
                 self._json({"ok": True, "valor": valor})
+
+            elif ruta == "/guardar-guion-tele":
+                n = int(datos["guion"])
+                tele = str(datos["tele"])
+                fuente_actual = leer_panel()
+                nuevo = escribir_tele(fuente_actual, n, tele)
+
+                def releida_tele(f, n=n, tele=tele):
+                    i, j = _bloque_guion(f, n)
+                    m = re.search(r" tele:'((?:[^'\\]|\\.)*)',", f[i:j])
+                    return bool(m) and _desescapar(m.group(1)) == tele
+
+                _guardar_panel(nuevo, releida_tele, f"Actualizar texto teleprompter guion {n} en panel", auto_push=True)
+                self._json({"ok": True})
 
             elif ruta == "/api/elegir-video":
                 elegido = elegir_video_nativo(datos.get("desde"))
