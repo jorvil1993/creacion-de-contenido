@@ -272,8 +272,7 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == "/api/abrir-subir":
             SUBIR.mkdir(parents=True, exist_ok=True)
             try:
-                import subprocess
-                subprocess.run(["explorer.exe", str(SUBIR)], check=False)
+                os.startfile(SUBIR)
                 return self._json({"ok": True})
             except Exception as e:
                 return self._json({"ok": False, "error": str(e)}, 500)
@@ -283,11 +282,10 @@ class Handler(BaseHTTPRequestHandler):
             ruta = FOTOS_AMAZON / f if f else FOTOS_AMAZON
             target = ruta if ruta.exists() else FOTOS_AMAZON
             try:
-                import subprocess
                 if target.is_file():
-                    subprocess.run(["explorer.exe", f"/select,{target}"], check=False)
+                    os.system(f'start "" explorer.exe /select,"{target}"')
                 else:
-                    subprocess.run(["explorer.exe", str(target)], check=False)
+                    os.startfile(target)
                 return self._json({"ok": True})
             except Exception as e:
                 return self._json({"ok": False, "error": str(e)}, 500)
