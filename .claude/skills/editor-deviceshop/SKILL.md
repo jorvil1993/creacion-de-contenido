@@ -54,17 +54,17 @@ sin B-roll y sin los efectos del guion.
 | `--sfx-manual JSON` | Efectos de sonido elegidos a mano (reemplaza los automáticos o del guion) |
 | `--posiciones-manual JSON` | Posiciones de los insertos elegidas a mano en el editor visual |
 | `--sin-musica` | Sin cama musical |
-| `--sin-editor-visual` | No generar el HTML del editor al terminar |
+| `--con-editor-visual` | Generar además el editor v1 (HTML autocontenido, sin servidor) — no se genera por defecto |
 
 ### Qué produce
 
 ```
 C:\ai-video\salida\<nombre>\            (trabajo — FUERA de OneDrive)
   01_transcripcion.json    05_overlays.eventos.json   08_hoja-sonido.md
-  02_cortado.mp4/.json     06_video.mp4               09_editor-visual.html
-  03_retencion.plan.json   07_FINAL.mp4  <- el bueno
+  02_cortado.mp4/.json     06_video.mp4               09_editor-visual.html (solo con --con-editor-visual)
+  03_retencion.plan.json   07_FINAL.mp4  <- el de trabajo
   04_subtitulos.ass
-salida\<nombre>.mp4                     (copia final, esta sí en OneDrive)
+salida\<nombre>.mp4                     (copia final — la única que José revisa, en OneDrive)
 ```
 
 **Regla dura:** los intermedios NUNCA van a OneDrive (sección 3 del plan). Ya
@@ -178,20 +178,26 @@ siempre la misma imagen** y queda cacheada en `assets/generado/auto/`.
 
 ## Ajustar un video sin reeditar a mano
 
-Cada corrida deja `09_editor-visual.html` en la carpeta de trabajo. Se abre con
-doble clic (es autocontenido, con los sonidos y los fotogramas embebidos) y
-permite:
-
-- arrastrar los efectos de sonido sobre la línea de tiempo, con la transcripción
-  a la vista, y escucharlos antes de elegir;
-- mover los insertos sobre el fotograma real donde aparecen;
-- exportar `ajustes.sfx.json` y `ajustes.pos.json`.
-
-Después:
+Al terminar una corrida se abre solo el **editor visual vivo** (servidor
+`f11_servidor.py`, en el navegador) sobre ese video — es donde José hace
+todos los ajustes: SFX, subtítulos, PiP/B-roll (con arrastre en la línea de
+tiempo Y sobre el propio video para su posición en pantalla), hook/CTA,
+animaciones, encuadre, transiciones. Se vuelve a abrir sin re-renderizar con:
 
 ```bash
-python editor\editor.py "contexto\VIDEO.mp4" --sfx-manual ajustes.sfx.json --posiciones-manual ajustes.pos.json
+python editor/abrir_editor.py <nombre>        # por nombre de corrida
+python editor/abrir_editor.py                 # la más reciente
 ```
+
+Todo se guarda solo cada par de segundos en `ajustes.*.json` dentro de la
+carpeta de trabajo; el editor los reenvía solo al re-renderizar (botones
+«Previsualizar» / «Renderizar final»).
+
+`09_editor-visual.html` (el HTML autocontenido, sin servidor, "editor v1") es
+un remanente que **ya no se genera por defecto** — nadie lo usa, y cuesta
+hasta ~40s y varios MB por corrida. Sigue disponible con `--con-editor-visual`
+por si hiciera falta un entregable sin servidor (por ejemplo, para revisar
+sonidos y posiciones de insertos desde una máquina sin poder correr Python).
 
 También existe `08_hoja-sonido.md` para revisar por chat ("el pop de 14.9 s
 muévelo a 15.4").

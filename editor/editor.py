@@ -247,8 +247,12 @@ def main():
     parser.add_argument("--sin-video-ambiente", action="store_true",
                         help="Forzar insertos de ambiente como foto fija aunque config.LTX_HABILITADO "
                              "esté en True")
-    parser.add_argument("--sin-editor-visual", action="store_true",
-                        help="No generar el editor visual HTML al terminar")
+    parser.add_argument("--con-editor-visual", action="store_true",
+                        help="Generar además el editor v1 (09_editor-visual.html, autocontenido "
+                             "en base64) al terminar. Por defecto NO se genera: nadie lo abre, el "
+                             "que se usa es el servidor vivo (f11_servidor.py / abrir_editor.py), "
+                             "y generarlo cuesta hasta ~40s y varios MB por corrida. Ver AUDITORIA "
+                             "2026-08-01")
     parser.add_argument("--preview", action="store_true",
                         help="Render de prueba: misma composición exacta pero a media resolución "
                              "y sin publicar. Sale en 07_PREVIEW.mp4 y NO toca 07_FINAL.mp4 ni "
@@ -657,11 +661,14 @@ def main():
         publicado = _ruta_versionada(config.DIR_PUBLICADOS, nombre)
         shutil.copy2(video_final, publicado)
 
-    # Editor visual: se genera siempre al final para que José pueda retocar los
-    # sonidos y las posiciones de los insertos arrastrando, en vez de leyendo
-    # una tabla de tiempos en markdown.
-    if not args.sin_editor_visual:
-        paso("EXTRA: Editor visual (sonidos + posiciones de insertos)", [
+    # Editor v1 (HTML autocontenido en base64): NO se genera por defecto — José
+    # ya no lo usa, trabaja siempre con el servidor vivo (f11_servidor.py /
+    # abrir_editor.py), y generarlo cuesta hasta ~40s y varios MB por corrida
+    # sin que nadie los aproveche (auditoría 2026-08-01). Queda disponible con
+    # --con-editor-visual por si alguna vez hiciera falta un entregable sin
+    # servidor.
+    if args.con_editor_visual:
+        paso("EXTRA: Editor visual v1 (HTML autocontenido)", [
             "f10_editor_visual.py", str(dir_trabajo)
         ])
 
@@ -674,10 +681,7 @@ def main():
         # editor (--reaplicar, re-render), no una segunda entrega que haya
         # que mirar dos veces (pedido de José, 2026-08-01).
         print(f"\nVideo: {publicado}")
-    if not args.sin_editor_visual:
-        # Se aclara que este es el HTML suelto (v1: solo sonidos y posiciones).
-        # Sin la aclaración parecía ser "el editor" a secas, y el que sirve para
-        # trabajar —B-roll, animaciones, encuadre, re-renderizar— es el v2.
+    if args.con_editor_visual:
         print(f"Editor v1 (HTML suelto): {dir_trabajo / '09_editor-visual.html'}")
 
     # El editor se abre SOLO: terminar un video y quedarte sin saber que el
