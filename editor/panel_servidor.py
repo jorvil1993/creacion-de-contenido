@@ -178,12 +178,13 @@ def escribir_fila(fuente: str, n: int, ri: int, tipo: str, ve: str) -> str:
 
 
 def escribir_tele(fuente: str, n: int, tele: str) -> str:
-    """Devuelve el fuente con `tele:` y `tomas:[...]` del guion `n` reemplazados.
+    """Devuelve el fuente con `t:`, `tele:`, `tomas:[...]` y `tl:[...]` del guion `n` reemplazados.
 
-    El texto llega desde el navegador con párrafos separados por ' || ' y se
-    escribe tal cual en la cadena `'…'` del fuente. Además de `tele:`, actualiza
-    los textos de cada toma en `tomas:[...]` para que la vista del Teleprompter
-    en la tablet (`teleCargarGuion`) muestre el texto actualizado.
+    Sincroniza absolutamente todas las secciones del guion en PANEL-PRODUCCION.html:
+    1. `tele`: Texto completo del teleprompter.
+    2. `t`: Título/Hook principal en el encabezado del guion.
+    3. `tomas`: Lista de tomas para el teleprompter de la tablet.
+    4. `tl`: Línea de tiempo que lee f13_guion para alinear los beats con el audio.
     """
     if "\n" in tele or "\r" in tele:
         raise ValueError("El texto del teleprompter no puede tener saltos de línea")
@@ -194,17 +195,27 @@ def escribir_tele(fuente: str, n: int, tele: str) -> str:
     if not parrafos:
         raise ValueError("Sin párrafos válidos en tele")
 
+    frases = [f.strip() for f in re.split(r"(?<=[.?!])\s+", tele.replace(" || ", " ")) if f.strip()]
+    if not frases:
+        frases = parrafos
+
     ini, fin = _bloque_guion(fuente, n)
     bloque = fuente[ini:fin]
 
     # 1. Reemplazar tele:'...'
-    m = re.search(r" tele:'((?:[^'\\]|\\.)*)',", bloque)
-    if not m:
+    m_tele = re.search(r" tele:'((?:[^'\\]|\\.)*)',", bloque)
+    if not m_tele:
         raise ValueError(f"El guion {n} no tiene campo `tele:`")
     tele_escapado = _escapar(tele)
-    bloque = bloque[:m.start(1)] + tele_escapado + bloque[m.end(1):]
+    bloque = bloque[:m_tele.start(1)] + tele_escapado + bloque[m_tele.end(1):]
 
-    # 2. Reemplazar tomas:[...]
+    # 2. Reemplazar t:'...' (Título / Hook principal)
+    m_t = re.search(r"t:'((?:[^'\\]|\\.)*)',", bloque)
+    if m_t:
+        nuevo_titulo = parrafos[0]
+        bloque = bloque[:m_t.start(1)] + _escapar(nuevo_titulo) + bloque[m_t.end(1):]
+
+    # 3. Reemplazar tomas:[...]
     m_tomas = re.search(r"tomas:\[\r?\n([\s\S]*?)\],\r?\n\s*tl:", bloque)
     if m_tomas:
         lineas_tomas = m_tomas.group(1).splitlines()
@@ -224,6 +235,27 @@ def escribir_tele(fuente: str, n: int, tele: str) -> str:
             nuevas_lineas.append(linea)
         nuevo_tomas_str = "\n".join(nuevas_lineas)
         bloque = bloque[:m_tomas.start(1)] + nuevo_tomas_str + bloque[m_tomas.end(1):]
+
+    # 4. Reemplazar tl:[...] (Línea de tiempo para f13_guion)
+    m_tl = re.search(r"tl:\[\r?\n([\s\S]*?)\]\]", bloque)
+    if m_tl:
+        lineas_tl = m_tl.group(1).splitlines()
+        nuevas_lineas_tl = []
+        num_beats = len(lineas_tl)
+        for r, linea in enumerate(lineas_tl):
+            campos = _campos(linea)
+            if len(campos) >= 2:
+                idx_start = int(r * len(frases) / num_beats)
+                idx_end = int((r + 1) * len(frases) / num_beats)
+                sub = frases[idx_start:idx_end]
+                if not sub and frases:
+                    sub = [frases[-1]]
+                nuevo_texto_beat = " ".join(sub)
+                x, y = campos[1]
+                linea = linea[:x] + _escapar(nuevo_texto_beat) + linea[y:]
+            nuevas_lineas_tl.append(linea)
+        nuevo_tl_str = "\n".join(nuevas_lineas_tl)
+        bloque = bloque[:m_tl.start(1)] + nuevo_tl_str + bloque[m_tl.end(1):]
 
     return fuente[:ini] + bloque + fuente[fin:]
 
