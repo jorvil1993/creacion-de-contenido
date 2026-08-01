@@ -1237,6 +1237,39 @@ def pruebas_densidad_sfx():
     chk("el contador se pinta en rojo cuando la densidad supera lo recomendado",
         "sfx-denso" in fuente_srv and "cada < umbral" in fuente_srv)
 
+    # --- El sonido acompaña al evento visual: si se quita, se quita el pop -----
+    # (hook/CTA/PiP quitados en el editor no deben dejar su SFX huérfano)
+    plan_min = {"planos": [], "picos_energia": []}
+    con_hook = f5_audio.construir_eventos_sfx(plan_min, [{"tipo": "hook", "ini": 0.0}])
+    chk("con hook presente, el whoosh de entrada en t=0 se pone",
+        any(e.get("razon") == "hook" or e.get("t") == 0.0 for e in con_hook),
+        f"razones: {[e.get('razon') for e in con_hook]}")
+    sin_hook = f5_audio.construir_eventos_sfx(plan_min, [{"tipo": "pip-producto", "ini": 4.0, "asset": "x"}])
+    chk("hook quitado (no llega en overlays) -> no hay whoosh de entrada en t=0",
+        not any(abs(e["t"] - 0.0) < 0.01 and e.get("razon") == "hook" for e in sin_hook),
+        f"tiempos/razones: {[(e['t'], e.get('razon')) for e in sin_hook]}")
+    compat = f5_audio.construir_eventos_sfx(plan_min, None)
+    chk("sin lista de overlays (None) se mantiene el comportamiento previo: hook en t=0",
+        any(e["t"] == 0.0 for e in compat))
+
+    # reanclar_sfx: el SFX cuyo overlay se quitó se elimina; el suelto no se toca
+    sfx = [
+        {"t": 4.0, "archivo": "pop.mp3", "ancla": "pip|x#0"},   # su PiP sigue -> se mueve
+        {"t": 9.0, "archivo": "pop.mp3", "ancla": "pip|y#0"},   # su PiP se quitó -> se elimina
+        {"t": 12.0, "archivo": "whoosh.mp3"},                    # sin ancla -> intacto
+    ]
+    overlays_hoy = [{"tipo": "pip-producto", "ini": 5.0, "asset": "x"}]
+    f5_audio.reanclar_sfx(sfx, overlays_hoy)
+    anclas = [e.get("ancla") for e in sfx]
+    chk("reanclar quita el SFX cuyo evento visual ya no existe",
+        "pip|y#0" not in anclas,
+        f"anclas tras reanclar: {anclas}")
+    chk("reanclar mueve el SFX cuyo evento visual sigue, a su nuevo segundo",
+        any(abs(e["t"] - 5.0) < 0.01 and e.get("ancla") == "pip|x#0" for e in sfx),
+        f"tiempos: {[(e['t'], e.get('ancla')) for e in sfx]}")
+    chk("reanclar no toca los SFX sueltos (sin ancla)",
+        any(e["archivo"] == "whoosh.mp3" and e["t"] == 12.0 for e in sfx))
+
 
 # ===========================================================================
 # 13. Elegir el tramo de un clip de B-roll (f4_retencion + f6_overlays + editor)
@@ -1428,6 +1461,85 @@ def pruebas_subtitulos():
         f3_subtitulos.generar_ass(palabras, tamano_px=None, correcciones=None) == base,
         "los dos parametros son opcionales: una corrida que no toca subtitulos no cambia")
 
+    # --- estilos (Bloque 5b): 5 presets, "karaoke" tiene que ser el de siempre ---
+    chk("el estilo 'karaoke' explicito es byte a byte igual que no pasar estilo",
+        f3_subtitulos.generar_ass(palabras, estilo="karaoke") == base
+        and f3_subtitulos.generar_ass(palabras, estilo=None) == base,
+        "config.SUB_ESTILO_DEFECTO tiene que reproducir EXACTO el .ass de antes de "
+        "que existieran los estilos -- una corrida vieja no puede cambiar de golpe")
+
+    otros_estilos = [e for e in config.SUB_ESTILOS if e != "karaoke"]
+    chk("hay 11 estilos definidos en config.SUB_ESTILOS",
+        len(config.SUB_ESTILOS) == 11 and len(otros_estilos) == 10,
+        f"estilos: {sorted(config.SUB_ESTILOS)}")
+
+    for estilo_id in otros_estilos:
+        ass_estilo = f3_subtitulos.generar_ass(palabras, estilo=estilo_id)
+        preset = config.SUB_ESTILOS[estilo_id]
+        chk(f"el estilo '{estilo_id}' genera un .ass valido y distinto del karaoke",
+            len(dialogos(ass_estilo)) > 0 and ass_estilo != base,
+            f"{len(dialogos(ass_estilo))} lineas Dialogue")
+
+        n_bloques_esperado = len(f3_subtitulos.agrupar_en_bloques(
+            palabras, *f3_subtitulos.AGRUPACION_BOUNDS[preset["agrupacion"]]))
+        if preset["resaltado"] in ("dinamico", "subrayado", "foco"):
+            chk(f"'{estilo_id}' (resaltado {preset['resaltado']!r}) emite un evento por PALABRA activa",
+                len(dialogos(ass_estilo)) == len(palabras),
+                f"{len(dialogos(ass_estilo))} eventos == {len(palabras)} palabras")
+        else:
+            chk(f"'{estilo_id}' (resaltado {preset['resaltado']!r}) emite UN evento por bloque, no por palabra",
+                len(dialogos(ass_estilo)) == n_bloques_esperado,
+                f"{len(dialogos(ass_estilo))} eventos == {n_bloques_esperado} bloques -- "
+                "si emitiera uno por palabra, el resaltado estatico repetiria el mismo bloque de mas")
+
+        if preset.get("borderstyle") == 3:
+            chk(f"'{estilo_id}' usa BorderStyle=3 (caja opaca) en la cabecera",
+                re.search(r",3,24,0,2,60,60,", ass_estilo) is not None,
+                "BorderStyle 3 + Outline de padding es lo que dibuja el fondo detras del texto")
+        if preset["resaltado"] == "estatico":
+            chk(f"'{estilo_id}' colorea exactamente una palabra por bloque en ambar",
+                ass_estilo.count(config.SUB_COLOR_KEYWORD) == n_bloques_esperado,
+                f"{ass_estilo.count(config.SUB_COLOR_KEYWORD)} usos de {config.SUB_COLOR_KEYWORD} "
+                f"== {n_bloques_esperado} bloques")
+        if preset["resaltado"] == "subrayado":
+            chk(f"'{estilo_id}' subraya con \\u1 nativo, una vez por palabra",
+                ass_estilo.count("\\u1\\c") == len(palabras) and ass_estilo.count("\\u0\\c") == len(palabras),
+                f"{ass_estilo.count(chr(92) + 'u1' + chr(92) + 'c')} aperturas \\u1 == {len(palabras)} palabras")
+        if preset["resaltado"] == "foco":
+            chk(f"'{estilo_id}' agranda la palabra activa a 145% y la devuelve a 100%, una vez por palabra",
+                ass_estilo.count("\\fscx145\\fscy145") == len(palabras)
+                and ass_estilo.count("\\fscx100\\fscy100") == len(palabras),
+                f"{ass_estilo.count(chr(92) + 'fscx145')} crecidas == {len(palabras)} palabras -- si no vuelve "
+                "a 100%, el escalado se le queda pegado a toda la palabra que sigue en la linea")
+        if preset.get("mayusculas"):
+            chk(f"'{estilo_id}' pasa el texto a MAYUSCULAS",
+                "kindle" not in ass_estilo and "KINDLE" in ass_estilo,
+                "el estilo pide mayusculas=True; el texto de muestra tiene que salir gritado, no en case de oracion")
+        if preset["animacion"] == "pop":
+            chk(f"'{estilo_id}' antepone el tag de escala \\t a cada evento",
+                ass_estilo.count("\\fscx55\\fscy55\\t(0,120,\\fscx100\\fscy100)") == n_bloques_esperado,
+                "una palabra por evento (agrupacion 'palabra'): el pop tiene que repetirse una vez por palabra")
+        if preset["animacion"] == "glow":
+            chk(f"'{estilo_id}' antepone el tag de blur, una vez por bloque",
+                ass_estilo.count("\\blur2") == n_bloques_esperado,
+                f"{ass_estilo.count(chr(92) + 'blur2')} usos == {n_bloques_esperado} bloques")
+        if preset["animacion"] == "shake":
+            chk(f"'{estilo_id}' antepone el sacudon encadenado de \\t, una vez por bloque",
+                ass_estilo.count("\\frz-3") == n_bloques_esperado,
+                f"{ass_estilo.count(chr(92) + 'frz-3')} usos == {n_bloques_esperado} bloques")
+        if estilo_id == "glitch_rgb":
+            chk("'glitch_rgb' tiñe OutlineColour de rojo y BackColour/Shadow de cian, sin capas duplicadas",
+                (f"Style: Default,{config.SUB_FUENTE},{config.SUB_TAMANO_PX},{config.SUB_COLOR_TEXTO},"
+                 f"{config.SUB_COLOR_RESALTADO},{config.SUB_COLOR_GLITCH_ROJO},{config.SUB_COLOR_RESALTADO},"
+                 "-1,0,0,0,100,100,0,0,1,3,4,2,60,60,") in ass_estilo,
+                "el filo cromatico sale de dos colores en la cabecera (outline + sombra), "
+                "no de duplicar el texto en varias capas con offsets a mano")
+        if estilo_id == "pegatina":
+            chk("'pegatina' usa un contorno blanco bien grueso (Outline=14) y relleno rosa",
+                re.search(r",1,14,0,2,60,60,", ass_estilo) is not None
+                and config.SUB_COLOR_PEGATINA in ass_estilo,
+                "el halo tipo sticker es un Outline ancho, no una capa de fondo")
+
     # --- round-trip por ajustes.subtitulos.json -> recolectar() -------------
     import f10_editor_visual as f10
     tmp = Path(tempfile.mkdtemp())
@@ -1439,15 +1551,24 @@ def pruebas_subtitulos():
         datos_sin["sub_tamano_px"] == config.SUB_TAMANO_PX
         and datos_sin["sub_correcciones"] == {},
         f"sub_tamano_px = {datos_sin['sub_tamano_px']} (config.SUB_TAMANO_PX)")
+    chk("sin ajustes.subtitulos.json, recolectar() cae en el estilo 'karaoke'",
+        datos_sin["sub_estilo"] == config.SUB_ESTILO_DEFECTO == "karaoke",
+        f"sub_estilo = {datos_sin['sub_estilo']!r}")
+    chk("recolectar() expone los 10 estilos con nombre y descripcion, no solo el id",
+        set(datos_sin["sub_estilos"]) == set(config.SUB_ESTILOS)
+        and all("nombre" in v and "descripcion" in v for v in datos_sin["sub_estilos"].values()),
+        "el grid del editor arma sus tarjetas con esto, no con una lista hardcodeada en el HTML")
 
     dir_con = tmp / "corrida_con_ajustes"
     dir_con.mkdir(parents=True)
     (dir_con / "ajustes.subtitulos.json").write_text(
-        json.dumps({"tamano_px": 104, "correcciones": {"2": "Colorsoft"}}), encoding="utf-8")
+        json.dumps({"tamano_px": 104, "correcciones": {"2": "Colorsoft"}, "estilo": "palabra_pop"}),
+        encoding="utf-8")
     datos_con = f10.recolectar(dir_con)
-    chk("recolectar() expone los 4 campos de subtitulos que el editor necesita",
+    chk("recolectar() expone los campos de subtitulos que el editor necesita",
         all(k in datos_con for k in
-            ("sub_tamano_px", "sub_tamano_defecto", "sub_posicion_altura_pct", "sub_correcciones")),
+            ("sub_tamano_px", "sub_tamano_defecto", "sub_posicion_altura_pct", "sub_correcciones",
+             "sub_estilo", "sub_estilo_defecto", "sub_estilos")),
         "el editor no hardcodea ninguno: mismo patron que los picos de SFX (bloque 1) "
         "y la zona segura (bloque 2)")
     chk("el tamano y las correcciones guardadas mandan sobre el defecto de config",
@@ -1455,28 +1576,41 @@ def pruebas_subtitulos():
         and datos_con["sub_correcciones"] == {"2": "Colorsoft"}
         and datos_con["sub_tamano_defecto"] == config.SUB_TAMANO_PX,
         "sin esto, abrir el editor despues de guardar mostraria el subtitulo al tamano viejo")
+    chk("el estilo guardado manda sobre el defecto de config",
+        datos_con["sub_estilo"] == "palabra_pop" and datos_con["sub_estilo_defecto"] == "karaoke",
+        "sin esto, abrir el editor despues de elegir un estilo lo mostraria de nuevo en karaoke")
     chk("la posicion del subtitulo sale de config, no de un numero suelto en el JS",
         datos_con["sub_posicion_altura_pct"] == config.SUB_POSICION_ALTURA_PCT,
         "la vista previa dibuja donde el ASS ancla de verdad; si config cambia, la previa la sigue")
 
     # --- las banderas del pipeline ------------------------------------------
     fuente_f3 = (AQUI / "f3_subtitulos.py").read_text(encoding="utf-8")
-    chk("f3_subtitulos acepta --tamano y --correcciones por linea de comandos",
-        '"--tamano"' in fuente_f3 and '"--correcciones"' in fuente_f3)
+    chk("f3_subtitulos acepta --tamano, --correcciones y --estilo por linea de comandos",
+        '"--tamano"' in fuente_f3 and '"--correcciones"' in fuente_f3 and '"--estilo"' in fuente_f3)
 
     fuente_editor = (AQUI / "editor.py").read_text(encoding="utf-8")
-    chk("editor.py acepta --sub-tamano y --sub-correcciones",
-        '"--sub-tamano"' in fuente_editor and '"--sub-correcciones"' in fuente_editor)
+    chk("editor.py acepta --sub-tamano, --sub-correcciones y --sub-estilo",
+        '"--sub-tamano"' in fuente_editor and '"--sub-correcciones"' in fuente_editor
+        and '"--sub-estilo"' in fuente_editor)
     chk("editor.py se los PASA a la FASE 2, no solo los acepta",
         '"--tamano", str(args.sub_tamano)' in fuente_editor
-        and '"--correcciones", args.sub_correcciones' in fuente_editor,
+        and '"--correcciones", args.sub_correcciones' in fuente_editor
+        and '"--estilo", args.sub_estilo' in fuente_editor,
         "aceptar una bandera y no reenviarla es fallo silencioso puro: el render corre "
-        "igual y el subtitulo sale del tamano de siempre")
+        "igual y el subtitulo sale del tamano/estilo de siempre")
 
     # --- el editor ----------------------------------------------------------
     fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
     chk("existe el slider de tamano y la tabla de correccion de texto",
         'id="subTamanoInput"' in fuente_srv and 'id="tablaCorreccionesSub"' in fuente_srv)
+    chk("existe el grid de miniaturas de estilo (no un <select> de texto)",
+        'id="gridEstilosSub"' in fuente_srv and "function renderGridEstilosSub()" in fuente_srv
+        and 'id="subEstiloInput"' not in fuente_srv,
+        "renderGridEstilosSub arma las tarjetas desde DATA.sub_estilos, no de una lista "
+        "hardcodeada en el HTML -- y ya no queda el <select> a medio reemplazar")
+    chk("cada tarjeta del grid pide su captura real a /sub-estilo-preview",
+        '/sub-estilo-preview?estilo=' in fuente_srv,
+        "sin esto el grid se pintaria vacio o con la miniatura de otro estilo")
     chk("la vista previa del subtitulo se dibuja sobre el reproductor",
         'id="subPreview"' in fuente_srv and "function pintarSubPreview(t)" in fuente_srv)
     chk("la vista previa se apaga sobre un video ya renderizado",
@@ -1484,20 +1618,28 @@ def pruebas_subtitulos():
         is not None,
         "mismo caso que los SFX del bloque 1: 07_FINAL.mp4 ya trae los subtitulos "
         "quemados, dibujar encima se veria doble")
-    chk("la vista previa agrupa las palabras con la misma regla que el render",
-        "function agruparEnBloquesSub(palabras)" in fuente_srv,
+    chk("la vista previa agrupa las palabras con la misma regla que el render, ahora segun el estilo",
+        "function agruparEnBloquesSub(palabras, minimo, maximo)" in fuente_srv,
         "si la previa mostrara bloques distintos a los del ASS, serviria para elegir "
         "el tamano pero mentiria sobre que se lee junto")
 
     # Coherencia real JS <-> Python: los numeros del agrupado estan escritos en
     # los dos lados. Si alguien cambia config y no el JS, la previa deja de
     # coincidir con el render sin que nada falle.
-    m_minmax = re.search(r"const MIN = (\d+), MAX = (\d+);", fuente_srv)
-    chk("el agrupado del JS usa los mismos MIN/MAX que config",
+    m_minmax = re.search(r"const MIN = minimo != null \? minimo : (\d+), MAX = maximo != null \? maximo : (\d+);",
+                          fuente_srv)
+    chk("el agrupado del JS cae en los mismos MIN/MAX que config cuando no se pide otro estilo",
         m_minmax is not None
         and int(m_minmax.group(1)) == config.SUB_PALABRAS_POR_BLOQUE_MIN
         and int(m_minmax.group(2)) == config.SUB_PALABRAS_POR_BLOQUE_MAX,
         f"JS = {m_minmax.groups() if m_minmax else None}, config = "
+        f"({config.SUB_PALABRAS_POR_BLOQUE_MIN}, {config.SUB_PALABRAS_POR_BLOQUE_MAX})")
+    m_bloque_corto = re.search(r"bloque_corto:\s*\[(\d+),\s*(\d+)\]", fuente_srv)
+    chk("el estilo 'bloque_corto' del catalogo JS usa los mismos MIN/MAX que config",
+        m_bloque_corto is not None
+        and int(m_bloque_corto.group(1)) == config.SUB_PALABRAS_POR_BLOQUE_MIN
+        and int(m_bloque_corto.group(2)) == config.SUB_PALABRAS_POR_BLOQUE_MAX,
+        f"JS = {m_bloque_corto.groups() if m_bloque_corto else None}, config = "
         f"({config.SUB_PALABRAS_POR_BLOQUE_MIN}, {config.SUB_PALABRAS_POR_BLOQUE_MAX})")
     chk("el corte por pausa del JS usa el mismo umbral que f3_subtitulos",
         "pausaSig > 0.35" in fuente_srv and "pausa_siguiente > 0.35" in fuente_f3,
@@ -1520,14 +1662,42 @@ def pruebas_subtitulos():
         "sin esto, restaurar una version devolveria los PiP y los SFX de entonces "
         "pero el subtitulo del tamano actual -- el hibrido que arreglo el bloque 'Que una "
         "version restaure la edicion exacta'")
-    chk("el re-render pasa el tamano y las correcciones guardadas al pipeline",
+    chk("el re-render pasa el tamano, las correcciones y el estilo guardados al pipeline",
         '"--sub-tamano", str(ajustes_sub_tamano)' in fuente_srv
-        and '"--sub-correcciones", str(ajustes_sub_correcciones)' in fuente_srv,
+        and '"--sub-correcciones", str(ajustes_sub_correcciones)' in fuente_srv
+        and '"--sub-estilo", ajustes_sub_estilo' in fuente_srv,
         "es el tramo que convierte lo elegido en el editor en pixeles del video final")
     chk("las claves de las correcciones se guardan como texto, igual que las lee generar_ass",
         "{str(k): str(v) for k, v in correcciones.items() if str(v).strip()}" in fuente_srv,
         "generar_ass busca correcciones.get(str(indice)): una clave numerica guardada "
         "en el JSON no encontraria su palabra y la correccion se perderia en silencio")
+    chk("_guardar_subtitulos valida el estilo contra config.SUB_ESTILOS antes de guardarlo",
+        'datos.get("estilo") in config.SUB_ESTILOS' in fuente_srv,
+        "un ajustes.subtitulos.json corrupto o de una version vieja con un id de estilo "
+        "que ya no existe se ignora solo, en vez de reventar generar_ass con KeyError")
+    chk("el endpoint /sub-estilo-preview esta servido por f11_servidor.py",
+        '"/sub-estilo-preview"' in fuente_srv and "f10.preview_estilo_subtitulo(estilo)" in fuente_srv,
+        "sin esto el grid de miniaturas pide una imagen que el servidor no sabe servir")
+
+    # --- miniaturas reales (Bloque 5c): ffmpeg de verdad, cacheadas en disco -
+    # Mismo criterio que las pruebas de f0_preparar: llaman a ffmpeg de verdad
+    # en vez de mockearlo, porque justo el header ASS (un color en el campo
+    # equivocado) es lo que NO se nota leyendo texto y SI se nota en un PNG.
+    for estilo_id in ("karaoke", "caja_frase", "glitch_rgb", "pegatina"):
+        png1 = f10.preview_estilo_subtitulo(estilo_id)
+        chk(f"preview_estilo_subtitulo('{estilo_id}') genera un PNG real",
+            png1 is not None and png1.exists() and png1.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n",
+            str(png1))
+        if png1 is None:
+            continue
+        mtime_1 = png1.stat().st_mtime
+        png2 = f10.preview_estilo_subtitulo(estilo_id)
+        chk(f"pedir la miniatura de '{estilo_id}' dos veces reusa el cache, no re-invoca ffmpeg",
+            png2 == png1 and png2.stat().st_mtime == mtime_1,
+            "cachea por huella del preset (SHA1 de config.SUB_ESTILOS[estilo]) -- abrir el "
+            "editor no puede disparar un render de ffmpeg por cada estilo cada vez")
+    chk("preview_estilo_subtitulo(estilo desconocido) no revienta, devuelve None",
+        f10.preview_estilo_subtitulo("no-existe") is None)
 
 
 def pruebas_texto_destacado():
@@ -1861,6 +2031,537 @@ def pruebas_preparacion():
     _shutil.rmtree(tmp, ignore_errors=True)
 
 
+def pruebas_texto_destacado_editor():
+    seccion("19. Añadir texto llamativo desde el editor (panel + preview de estilos)")
+    import json
+    import tempfile
+    import time
+
+    import f6_overlays
+    import f10_editor_visual as f10
+
+    estilos_esperados = ["contorno", "pildora", "neon", "degradado", "sombra", "marcador"]
+    chk("config.TEXTO_DESTACADO_ESTILOS tiene los 6 estilos, con etiqueta legible",
+        list(config.TEXTO_DESTACADO_ESTILOS.keys()) == estilos_esperados
+        and all(isinstance(v, str) and v for v in config.TEXTO_DESTACADO_ESTILOS.values()),
+        "el editor pinta estas etiquetas en el selector, nunca la clave cruda del CSS")
+
+    chk("config.TEXTO_DESTACADO_MUESTRA coincide con el default embebido en el HTML",
+        config.TEXTO_DESTACADO_MUESTRA == "¡OJO A ESTO!",
+        "si difieren, el preview de cada estilo (pre-renderizado con este texto) "
+        "no coincidiria con la clave de cache que arma el endpoint /anim-preview")
+
+    # --- texto-destacado NO debe aparecer en el grid generico ----------------
+    inventario = f8_hyperframes.inventario_animaciones()
+    chk("texto-destacado no aparece en el inventario generico de animaciones",
+        all(a["nombre"] != "texto-destacado" for a in inventario),
+        "ese flujo solo sabe anadir con los valores por defecto (mismo texto y "
+        "estilo siempre) -- tiene su propio panel dedicado con preview de estilos")
+
+    # --- los 6 previews ya estan cacheados: ningun clic debe disparar un ------
+    # --- render de Hyperframes real (eso tarda segundos, no querer eso) ------
+    t0 = time.monotonic()
+    rutas = {}
+    for estilo in estilos_esperados:
+        rutas[estilo] = f8_hyperframes.render(
+            "texto-destacado", {"texto": config.TEXTO_DESTACADO_MUESTRA, "estilo": estilo})
+    elapsed = time.monotonic() - t0
+    chk("los 6 estilos de muestra ya estan renderizados (cache-hit, no un render nuevo)",
+        all(r is not None and r.exists() for r in rutas.values()) and elapsed < 5.0,
+        f"{elapsed:.2f}s para los 6 -- un render real de Hyperframes tarda varios "
+        "segundos POR estilo; si esto tardara de mas, el panel se sentiria trabado "
+        "la primera vez que Jose lo abre")
+    chk("cada estilo cae en un archivo MOV distinto (6 clips, no 1 repetido)",
+        len({r for r in rutas.values() if r is not None}) == 6,
+        "si dos estilos compartieran archivo, el preview de uno mostraria el otro")
+
+    # --- variables sobrevive el viaje por ajustes.animaciones.json -----------
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        entrada = {"nombre": "texto-destacado", "ini": 4.2,
+                   "variables": {"texto": "Envio gratis hoy", "estilo": "neon"}}
+        (tmp / "ajustes.animaciones.json").write_text(
+            json.dumps({"animaciones": [entrada]}), encoding="utf-8")
+        cargadas = f6_overlays.cargar_animaciones_manual(tmp / "ajustes.animaciones.json")
+        chk("cargar_animaciones_manual conserva 'variables' (texto y estilo)",
+            cargadas is not None and len(cargadas) == 1
+            and cargadas[0].get("variables") == {"texto": "Envio gratis hoy", "estilo": "neon"},
+            f"cargadas: {cargadas} -- sin esto, _construir_animacion() siempre recibia "
+            "variables_extra=None y el render ignoraba el texto que Jose escribio")
+
+        # --- round-trip por recolectar(): las 4 claves nuevas del panel ------
+        datos = f10.recolectar(tmp)
+        chk("recolectar() expone anim_duraciones, texto_destacado_estilos/muestra/duracion",
+            datos.get("anim_duraciones") == config.ANIMACION_DURACION
+            and datos.get("texto_destacado_estilos") == config.TEXTO_DESTACADO_ESTILOS
+            and datos.get("texto_destacado_muestra") == config.TEXTO_DESTACADO_MUESTRA
+            and datos.get("texto_destacado_duracion") == 2.5,
+            "mismo patron que los picos de SFX (bloque 1) y el tamano de subtitulo "
+            "(bloque 14): nada hardcodeado en el JS")
+    finally:
+        import shutil as _shutil
+        _shutil.rmtree(tmp, ignore_errors=True)
+
+    # --- el editor: panel, preview por estilo y persistencia -----------------
+    fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+    chk("existe el panel 'Texto llamativo' con input de texto y grid de estilos",
+        'id="textoDestacadoInput"' in fuente_srv
+        and 'id="gridEstilosDestacado"' in fuente_srv
+        and 'id="btnAñadirTextoDestacado"' in fuente_srv)
+    chk("hay una funcion que pinta los 6 estilos y otra que los guarda al elegir",
+        "function renderGridEstilosDestacado()" in fuente_srv
+        and "renderGridEstilosDestacado();" in fuente_srv,
+        "tiene que pintarse tanto al elegir un estilo como al recargar la pagina "
+        "(en cargar()), o el grid quedaria vacio hasta el primer clic")
+    chk("el grid de estilos pide el preview de CADA estilo, no uno generico",
+        'medioAnimacion({ nombre: "texto-destacado", variables: { estilo: clave } })' in fuente_srv,
+        "sin pasar 'estilo', las 6 tarjetas del selector mostrarian todas el mismo "
+        "clip (el ultimo cacheado), y elegir a ciegas es justo lo que se pidio evitar")
+    chk("medioAnimacion pide el estilo puntual cuando el nombre es texto-destacado",
+        'a.nombre === "texto-destacado" && a.variables && a.variables.estilo' in fuente_srv,
+        "sin esto, la tarjeta ya anadida al video (o la del selector de estilos) "
+        "mostraria un estilo cualquiera de los 6 ya cacheados, no el elegido")
+    chk("el boton de anadir arma el evento con variables:{texto, estilo}",
+        "variables: { texto, estilo: textoDestacadoEstilo }" in fuente_srv,
+        "es la forma en que el texto libre de Jose llega hasta ajustes.animaciones.json")
+    chk("animacionesParaGuardar() incluye 'variables' cuando existe",
+        "if (a.variables) base.variables = a.variables;" in fuente_srv,
+        "sin esto, guardar el video se olvidaria del texto y el estilo elegidos")
+    chk("recargar la pagina no pierde las variables de una animacion ya guardada",
+        "variables: a.variables || null," in fuente_srv,
+        "el mapeo de animGuardadas -> edicionAnimaciones tiene que preservarlas")
+    chk("la duracion por defecto de una animacion sin renderizar usa config, no 2.4s fijo",
+        "DATA.anim_duraciones && DATA.anim_duraciones[a.nombre]" in fuente_srv,
+        "2.4s a ciegas mentia en la linea de tiempo para cualquier animacion cuya "
+        "duracion real fuera otra (texto-destacado y stickers duran 2.5s)")
+    chk("el endpoint /anim-preview renderiza el estilo puntual para texto-destacado",
+        'if plantilla == "texto-destacado" and estilo:' in fuente_srv,
+        "sin esto, pedir un estilo especifico devolveria 'cualquier MOV ya cacheado "
+        "de esa plantilla' (mov_de_plantilla), no el que el usuario esta mirando")
+
+    # --- f8_hyperframes: el filtro que saca texto-destacado del grid generico
+    fuente_f8 = (AQUI / "f8_hyperframes.py").read_text(encoding="utf-8")
+    chk('inventario_animaciones() salta "texto-destacado" a proposito, con el motivo escrito',
+        'if nombre == "texto-destacado":' in fuente_f8 and "continue" in fuente_f8)
+
+    # --- f6_overlays: variables declarada y documentada en la firma ----------
+    fuente_f6 = (AQUI / "f6_overlays.py").read_text(encoding="utf-8")
+    chk('cargar_animaciones_manual conserva la clave "variables" en el JSON limpio',
+        '"variables": variables if isinstance(variables, dict) else None,' in fuente_f6)
+
+
+def pruebas_broll_detras():
+    """B-roll DETRAS de Jose: el modo "recorte" (franja del 70% + persona encima).
+
+    La clase de fallo que cazan: el modo se elige en el panel o en el editor y
+    se PIERDE en algun salto — al guardar, al recargar, al planificar — sin que
+    nada falle. El video sale, con el B-roll tapandole la cara, que es
+    exactamente lo que el modo venia a evitar.
+    """
+    seccion("15. B-roll detras de Jose (modo recorte)")
+
+    # --- la marca en el texto del panel ---
+    casos = [
+        ("F14 a pantalla completa: scroll", "completo"),
+        ("F14 detras de mi: scroll", "recorte"),
+        ("F33 DETRAS DE MI", "recorte"),
+        ("F31 al 70% del cuadro", "recorte"),
+        ("F05", "completo"),
+    ]
+    malos = [(t, f13_guion.modo_broll_de(t), esp) for t, esp in casos
+             if f13_guion.modo_broll_de(t) != esp]
+    chk("modo_broll_de() lee la marca del panel (con y sin tildes)", not malos,
+        f"fallan: {malos}" if malos else f"{len(casos)}/{len(casos)} casos")
+
+    # El texto que ESCRIBE el selector del panel tiene que ser el mismo que lee
+    # el pipeline. Si uno escribe "detras mio" y el otro busca "detras de mi",
+    # el selector queda de adorno.
+    panel = (AQUI.parent / "PANEL-PRODUCCION.html").read_text(encoding="utf-8")
+    m = re.search(r"MARCA_RECORTE\s*=\s*'([^']+)'", panel)
+    chk("la marca que escribe el panel es la que lee f13_guion",
+        bool(m) and f13_guion.modo_broll_de(f"F14 {m.group(1)}") == "recorte",
+        f"el panel escribe {m.group(1)!r}" if m else "no encontre MARCA_RECORTE en el panel")
+
+    # --- el campo sobrevive el viaje editor -> JSON -> pipeline ---
+    import json
+    import f6_overlays
+    with tempfile.TemporaryDirectory() as td:
+        ruta = Path(td) / "broll.json"
+        clip = AQUI.parent / "assets" / "generado" / "video" / "manual" / "rendicion.mp4"
+        ruta.write_text(json.dumps({"broll": [
+            {"ini": 1.0, "fin": 4.0, "archivo": str(clip), "modo_broll": "recorte"},
+            {"ini": 6.0, "fin": 9.0, "archivo": str(clip)},
+        ]}), encoding="utf-8")
+        cargados = f6_overlays.cargar_broll_manual(ruta) or []
+        modos = [ev.get("modo_broll") for ev in cargados]
+        chk("cargar_broll_manual conserva modo_broll y asume 'completo' si falta",
+            modos == ["recorte", "completo"],
+            f"modos cargados: {modos} (el clip existe: {clip.exists()})")
+
+    # --- f10 se lo pasa a la web ---
+    f10 = (AQUI / "f10_editor_visual.py").read_text(encoding="utf-8")
+    chk("f10_editor_visual expone modo_broll al editor",
+        '"modo_broll"' in f10,
+        "sin esto, elegir 'detras de mi' se pierde al recargar el editor")
+
+    # --- el editor visual: selector de 3 y guardado ---
+    f11 = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+    chk("el selector del editor ofrece las tres formas del clip",
+        '"recorte", "Detrás de mí (70%)"' in f11 and '"broll", "A pantalla completa"' in f11
+        and '"pip", "Como tarjeta PiP"' in f11)
+    chk("brollParaGuardar() manda modo_broll al pipeline",
+        re.search(r"brollParaGuardar\(\)[\s\S]{0,400}?base\.modo_broll", f11) is not None,
+        "es lo que hace que la eleccion llegue a ajustes.broll.json")
+
+    # --- el render: dos capas, y la de Jose ENCIMA del clip ---
+    ev = {"tipo": "broll", "medio": "video", "modo_broll": "recorte",
+          "archivo": "x.mp4", "ini": 1.0, "fin": 3.0, "x": 0, "y": 0}
+    sin_modelo = None
+    with tempfile.TemporaryDirectory() as td:
+        # Sin GPU ni modelo, _preparar_recorte tiene que DEGRADAR, no reventar:
+        # el video sale igual, solo que sin la capa recortada.
+        try:
+            sin_modelo, _ = f4_retencion._preparar_recorte(
+                [dict(ev, archivo=str(AQUI / "no-existe.mp4"))],
+                Path(td) / "v.mp4", Path(td), 1080, 1920, 30.0, lambda f, t: f)
+        except Exception as e:
+            sin_modelo = f"EXCEPCION: {e}"
+    chk("_preparar_recorte no revienta si el clip o el modelo no estan",
+        isinstance(sin_modelo, list) and len(sin_modelo) == 1,
+        f"devolvio: {sin_modelo if not isinstance(sin_modelo, list) else 'lista de 1 evento'}")
+
+    # El orden importa: la capa de la persona va DESPUES del B-roll en la lista,
+    # porque el filter_complex apila en ese orden. Al reves, el clip taparia a
+    # Jose y el modo no serviria de nada.
+    fuente = (AQUI / "f4_retencion.py").read_text(encoding="utf-8")
+    i_broll = fuente.find('salida.append(ev_broll)')
+    i_matte = fuente.find('"tipo": "matte-persona"')
+    chk("la capa de la persona se apila DESPUES del clip",
+        0 < i_broll < i_matte,
+        "si se invirtiera, el B-roll taparia a Jose y el modo no haria nada")
+    # "fade=t=" y no "fade" a secas: el comentario de esa rama explica por que NO
+    # lleva fade, y buscar la palabra suelta daba por rota una rama que esta bien.
+    rama_matte = fuente[fuente.find('== "matte-persona"'):
+                        fuente.find('elif ev.get("tipo") == "broll-recorte"')]
+    chk("la capa de la persona se compone SIN fade",
+        "[ov{i}]" in rama_matte and "fade=t=" not in rama_matte,
+        "con fade se veria a Jose medio transparente sobre el B-roll al entrar y salir")
+
+    # --- la cache de las capas distingue resolucion ---
+    chk("el nombre de las capas incluye la resolucion",
+        re.search(r'base = f"recorte_\{i\}_\{[^}]+\}_\{w_out\}x\{h_out\}"', fuente) is not None,
+        "sin esto un --preview reutilizaria las capas del render final, al doble de tamano")
+
+    # --- la mascara de degradado ---
+    import f17_matte
+    with tempfile.TemporaryDirectory() as td:
+        png = f17_matte.mascara_degradado(64, 400, 100, Path(td) / "m.png")
+        from PIL import Image
+        import numpy as _np
+        col = _np.asarray(Image.open(png).convert("L"))[:, 0]
+        chk("la mascara es opaca arriba y transparente en el borde de abajo",
+            col[0] == 255 and col[250] == 255 and col[-1] <= 2 and col[350] < 255,
+            f"arriba={col[0]}, en el arranque del degradado={col[300]}, abajo={col[-1]}")
+        chk("el degradado es suave (smoothstep), no una rampa recta",
+            abs(int(col[350]) - 128) <= 12 and col[310] > col[350] > col[390],
+            f"a mitad del degradado: {col[350]} (una rampa recta daria 128 exacto "
+            f"y dos codos visibles en los extremos)")
+
+
+def pruebas_transiciones_pip():
+    """Transiciones entre cortes (f2b) y animaciones de PiP (f4b).
+
+    La clase de fallo que cazan: que el motor cambie el default y un video sin
+    transicion pedida salga distinto, o que una expresion de posicion se cuele
+    cuando el PiP es 'fundido' (deberia quedar estatico como siempre), o que los
+    empalmes se calculen en el sitio equivocado y la transicion caiga donde no
+    hay corte.
+    """
+    seccion("19. Transiciones entre cortes y animacion de PiP (f2b/f4b)")
+    import f2_cortar
+    import f2b_transiciones
+    import f4b_pip_anim
+
+    # empalmes = suma acumulada de duraciones, sin el ultimo tramo
+    iv = [{"inicio": 0, "fin": 2.0}, {"inicio": 5, "fin": 6.5}, {"inicio": 10, "fin": 11.0}]
+    emp = f2_cortar.boundaries_de_cortes(iv)
+    chk("los empalmes caen en la suma acumulada de tramos (no en tiempos del original)",
+        emp == [2.0, 3.5],
+        f"esperado [2.0, 3.5], obtenido {emp} — un empalme mal ubicado pone la "
+        f"transicion donde no hay corte")
+
+    # default seguro: sin transicion o sin cortes -> cadena vacia (no toca el video)
+    chk("transicion 'ninguna' no anade ningun filtro (camino de regresion)",
+        f2b_transiciones.construir_filtro("ninguna", [2.0], 1080, 1920) == "")
+    chk("sin empalmes no hay filtro aunque se pida una transicion",
+        f2b_transiciones.construir_filtro("glitch", [], 1080, 1920) == "")
+
+    # una transicion real produce un filtro con una ventana por empalme
+    f = f2b_transiciones.construir_filtro("flash-blanco", [2.0, 3.5], 1080, 1920)
+    chk("flash-blanco dibuja una ventana 'enable' por empalme",
+        f.count("enable=") == 2 and "drawbox" in f, f[:120])
+    # tipo desconocido: falla ruidosa, no en silencio
+    try:
+        f2b_transiciones.construir_filtro("no-existe", [2.0], 1080, 1920)
+        ruidosa = False
+    except ValueError:
+        ruidosa = True
+    chk("una transicion inexistente lanza error (no cae a un default en silencio)", ruidosa)
+
+    # PiP 'fundido/fundido' -> posicion estatica (None,None): el llamador deja el
+    # overlay como siempre. Este es el default y NO debe animar nada.
+    x, y = f4b_pip_anim.expr_posicion(800, 1200, 5.0, 9.0, "fundido", "fundido")
+    chk("PiP fundido/fundido no genera expresion de posicion (queda estatico)",
+        x is None and y is None)
+
+    # un preset de movimiento SI genera expresion y arranca desde la base
+    x, y = f4b_pip_anim.expr_posicion(800, 1200, 5.0, 9.0, "desliza-izquierda", "fundido")
+    chk("un PiP con animacion de entrada genera expresion de x dependiente de t",
+        x is not None and "t-5.000" in x and x.startswith("800"), (x or "")[:90])
+
+    # las diez animaciones y las once transiciones estan todas nombradas
+    chk("hay 10 animaciones de PiP en el catalogo",
+        len(f4b_pip_anim.ANIMACIONES) == 10, str(list(f4b_pip_anim.ANIMACIONES)))
+    chk("hay 10 transiciones + 'ninguna' en el catalogo",
+        len(f2b_transiciones.TRANSICIONES) == 11, str(list(f2b_transiciones.TRANSICIONES)))
+
+    # --- POR EMPALME: cada corte con SU propia transicion (construir_filtro_multi) ---
+    specs = [{"t": 1.3, "tipo": "flash-blanco", "intensidad": 1.0},
+             {"t": 2.0, "tipo": "zoom-punch", "intensidad": 1.2},
+             {"t": 2.7, "tipo": "glitch", "intensidad": 0.8},
+             {"t": 3.2, "tipo": "shake", "intensidad": 1.0}]
+    fm = f2b_transiciones.construir_filtro_multi(specs, 540, 960, 30)
+    chk("por-empalme: mezcla familias (drawbox/glitch en cadena + un solo zoompan)",
+        "drawbox" in fm and "rgbashift" in fm and fm.count("zoompan") == 1, fm[:80])
+    chk("por-empalme: cada corte de cadena pone su ventana en SU tiempo",
+        "between(t,1.180,1.420)" in fm and "2.588" in fm, "las ventanas no caen en el tiempo del corte")
+    chk("por-empalme: sin comas escapadas dentro de las comillas (van en filter_complex)",
+        "\\," not in fm, "una coma escapada rompe la expresion dentro de comillas simples")
+    chk("por-empalme: todo 'ninguna' no dibuja nada",
+        f2b_transiciones.construir_filtro_multi(
+            [{"t": 1.0, "tipo": "ninguna"}], 540, 960, 30) == "")
+
+    # --- POR PiP: f6 deja pasar la animacion propia de cada evento ---
+    import json
+    import tempfile
+    from PIL import Image
+    import f6_overlays
+    with tempfile.TemporaryDirectory() as td:
+        tdp = Path(td)
+        Image.new("RGBA", (10, 10)).save(tdp / "x.png")
+        (tdp / "ev.json").write_text(json.dumps({"eventos": [{
+            "ini": 5.0, "fin": 9.0, "x": 800, "y": 1200, "archivo": str(tdp / "x.png"),
+            "anim_entrada": "desliza-abajo", "anim_salida": "latigazo", "anim_intensidad": 1.3,
+        }]}), encoding="utf-8")
+        cargados = f6_overlays.cargar_eventos_manual(tdp / "ev.json", tdp, catalogo=[])
+        ok = (cargados and cargados[0].get("anim_entrada") == "desliza-abajo"
+              and cargados[0].get("anim_salida") == "latigazo"
+              and cargados[0].get("anim_intensidad") == 1.3)
+        chk("por-PiP: cargar_eventos_manual conserva anim_entrada/salida/intensidad",
+            ok, "sin esto el editor guarda la animacion del PiP pero el render la ignora")
+
+
+def pruebas_panel_conectado():
+    """El panel escribiendo sobre si mismo: selector de tipo de fila y servidor.
+
+    La clase de fallo que cazan: el panel es la ENTRADA del pipeline, un archivo
+    que se parsea con eval(). Un selector que escribe mal deja el archivo o bien
+    corrupto (y entonces revienta lejos, en f13, sin apuntar aqui) o bien valido
+    pero con OTRA fila cambiada, que es peor: el video sale, distinto, y nadie
+    se entera.
+
+    Y hay DOS escritores del mismo archivo — panel_servidor.py cuando el
+    pipeline esta detras, y el JS del panel cuando se abre como file:// — que
+    tienen que producir exactamente lo mismo.
+    """
+    seccion("17. Panel conectado (selector de fila y escritura del panel)")
+
+    import json
+    import panel_servidor as ps
+
+    fuente = ps.leer_panel()
+    datos = f13_guion.cargar_datos_html()
+    guiones = datos["G"]
+
+    # --- leer: lo que ve el editor de fuente es lo que ve el pipeline --------
+    claves = ("momento", "dice", "tipo", "ve", "sonido", "musica")
+    malos = []
+    total = 0
+    for g in guiones:
+        for ri, r in enumerate(g["tl"]):
+            total += 1
+            leida = ps.leer_fila(fuente, g["n"], ri)
+            if leida != dict(zip(claves, r)):
+                malos.append(f"G{g['n']}/{ri}")
+    chk("leer_fila() ve las mismas 120 filas que el parser del pipeline",
+        not malos, f"difieren: {malos[:5]}" if malos else f"{total} filas")
+
+    # --- escribir lo mismo no cambia el archivo -----------------------------
+    # Sin esto, abrir un desplegable y elegir la opcion que ya estaba reescribia
+    # el panel: diffs enormes en git y, cuando el guion tenia la frase en otro
+    # orden, el texto reordenado sin que nadie lo pidiera.
+    distintos = [f"G{g['n']}/{ri}"
+                 for g in guiones for ri, r in enumerate(g["tl"])
+                 if ps.escribir_fila(fuente, g["n"], ri, r[2], r[3]) != fuente]
+    chk("reescribir una fila con lo que ya tenia deja el archivo intacto",
+        not distintos, f"cambian: {distintos[:5]}" if distintos else f"{total} filas")
+
+    # --- escribir de verdad: cambia esa fila y SOLO esa ---------------------
+    malos = []
+    for g in guiones:
+        ri = len(g["tl"]) - 1
+        nuevo = ps.escribir_fila(fuente, g["n"], ri, "PIP", "P05 arriba a la izquierda: x")
+        try:
+            releidos = _guiones_de_fuente(nuevo)
+        except Exception as e:
+            malos.append(f"G{g['n']}: el panel ya no parsea ({e})")
+            continue
+        cambiadas = sum(1 for a, b in zip(guiones, releidos)
+                        for x, y in zip(a["tl"], b["tl"]) if x != y)
+        fila = next(x for x in releidos if x["n"] == g["n"])["tl"][ri]
+        if cambiadas != 1 or fila[2] != "PIP" or fila[3] != "P05 arriba a la izquierda: x":
+            malos.append(f"G{g['n']}: {cambiadas} filas cambiadas, quedo {fila[2:4]}")
+    chk("escribir una fila toca esa fila y ninguna otra, en los 10 guiones",
+        not malos, "; ".join(malos[:3]) if malos else f"{len(guiones)} guiones")
+
+    # --- comillas y apostrofos sobreviven -----------------------------------
+    # La fila 9 del guion 8 lleva comillas escapadas en el fuente (punch-in en
+    # \"celular\"): por eso la fila se ubica por POSICION y no buscando su texto.
+    raro = "Con 'apostrofo', \"comillas\" y una barra \\ suelta"
+    con_raro = ps.escribir_fila(fuente, 8, 9, "ANIM", raro)
+    try:
+        fila = next(x for x in _guiones_de_fuente(con_raro) if x["n"] == 8)["tl"][9]
+        ok = fila[3] == raro
+    except Exception as e:
+        ok, fila = False, str(e)
+    chk("un texto con comillas, apostrofos y barras se relee tal cual", ok,
+        f"quedo: {fila!r}")
+
+    # --- un tipo inventado no llega al archivo ------------------------------
+    try:
+        ps.escribir_fila(fuente, 7, 0, "CUALQUIERA", "x")
+        ok = False
+    except ValueError:
+        ok = True
+    chk("un tipo fuera de YO/B-ROLL/PIP/ANIM se rechaza antes de escribir", ok,
+        "un tipo inventado no da error en el pipeline: la fila deja de aportar y ya")
+
+    # --- CRLF: el panel es CRLF entero --------------------------------------
+    # read_text() normal lo entrega con \n, y reescribirlo asi convertia el
+    # archivo entero a LF: 1.797 lineas de diff por cambiar un campo.
+    con_segs = ps.escribir_segundos(fuente, 7, "hooksegs", 2.5)
+    chk("los finales de linea CRLF sobreviven a una escritura",
+        con_segs.count("\r\n") == fuente.count("\r\n") and "\r\n" in fuente,
+        f"antes {fuente.count(chr(13) + chr(10))}, despues {con_segs.count(chr(13) + chr(10))}")
+    chk("escribir_segundos() cambia hooksegs del guion pedido",
+        re.search(r"\{n:7,[^\n]*hooksegs:2\.5", con_segs) is not None)
+
+    # --- el JS del panel y el servidor escriben LO MISMO --------------------
+    # Son dos implementaciones del mismo algoritmo (una para cuando hay pipeline
+    # detras, otra para el panel abierto como file://). Si se separan, editar
+    # desde un lado o desde el otro deja archivos distintos.
+    panel_txt = (AQUI.parent / "PANEL-PRODUCCION.html").read_text(encoding="utf-8")
+    for nombre in ("escribirFilaEnFuente", "_bloqueGuion", "_lineasFilas", "_campos"):
+        chk(f"el panel trae su propia copia de {nombre}() para el modo sin servidor",
+            f"function {nombre}(" in panel_txt)
+
+    casos = [[7, 9, "B-ROLL", "P02 detras de mi: prueba"],
+             [8, 9, "PIP", 'H08 arriba a la izquierda + punch-in en "celular"'],
+             [1, 12, "ANIM", "tarjeta-cta + WhatsApp"]]
+    js = """
+const fs=require('fs'), vm=require('vm');
+const html=fs.readFileSync(process.argv[1],'utf8');
+const codigo=html.match(/<script>([\\s\\S]*)<\\/script>/)[1];
+const noop=()=>{};
+const el=()=>({innerHTML:'',textContent:'',className:'',style:{},dataset:{},
+ classList:{add:noop,remove:noop,toggle:noop},appendChild:noop,scrollIntoView:noop,
+ cells:[],options:[],querySelectorAll:()=>[],querySelector:()=>null,closest:()=>null,
+ addEventListener:noop,getBoundingClientRect:()=>({left:0,top:0,width:0,height:0,bottom:0})});
+const ctx={console,document:{getElementById:el,querySelectorAll:()=>[],
+ querySelector:()=>null,addEventListener:noop,createElement:el,body:el()},
+ location:{protocol:'file:',hostname:'',origin:'null'},
+ navigator:{clipboard:{writeText:()=>Promise.resolve()}},
+ localStorage:{getItem:()=>null,setItem:noop},fetch:()=>Promise.reject(new Error('sin red')),
+ setTimeout:noop,setInterval:noop,clearInterval:noop,innerWidth:1200,
+ AbortController:function(){this.signal=null;this.abort=noop;}};
+ctx.window=ctx; vm.createContext(ctx);
+vm.runInContext(codigo+';globalThis.__W=escribirFilaEnFuente;',ctx);
+console.log(JSON.stringify(JSON.parse(process.argv[2]).map(
+  ([n,ri,t,v])=>ctx.__W(html,n,ri,t,v))));
+"""
+    try:
+        res = subprocess.run(
+            ["node", "-e", js, str(AQUI.parent / "PANEL-PRODUCCION.html"), json.dumps(casos)],
+            capture_output=True, text=True, encoding="utf-8", timeout=90)
+        desde_js = json.loads(res.stdout) if res.returncode == 0 else None
+    except Exception:
+        desde_js = None
+    if desde_js is None:
+        chk("el escritor del panel (JS) y el del servidor (Python) coinciden",
+            False, "no se pudo correr Node para compararlos")
+    else:
+        difieren = [f"G{c[0]}/{c[1]}" for c, s in zip(casos, desde_js)
+                    if ps.escribir_fila(fuente, c[0], c[1], c[2], c[3]) != s]
+        chk("el escritor del panel (JS) y el del servidor (Python) escriben igual",
+            not difieren, f"difieren en {difieren}" if difieren else f"{len(casos)} casos")
+
+    # --- una fila por linea: en eso se apoyan los dos escritores ------------
+    malos = [f"G{g['n']}" for g in guiones
+             if len(ps._lineas_filas(fuente, *ps._bloque_guion(fuente, g["n"]))) != len(g["tl"])]
+    chk("cada fila de la linea de tiempo ocupa exactamente una linea del archivo",
+        not malos, f"no cuadran: {malos}" if malos else f"{total} filas en {len(guiones)} guiones")
+
+    # --- las frases que escribe el panel son las que lee el pipeline --------
+    for constante, esperado in (("MARCA_RECORTE", "recorte"), ("MARCA_COMPLETO", "completo")):
+        m = re.search(constante + r"\s*=\s*'([^']+)'", panel_txt)
+        chk(f"la frase de {constante} que escribe el panel es la que lee f13_guion",
+            bool(m) and f13_guion.modo_broll_de(f"F14 {m.group(1)}") == esperado,
+            f"el panel escribe {m.group(1)!r}" if m else f"no encontre {constante}")
+
+    # --- lo del pipeline se esconde solo cuando no hay pipeline -------------
+    # Es lo unico que separa la pagina publica de GitHub Pages del panel de la
+    # PC: el MISMO archivo. Si esto se rompe, la web muestra botones muertos.
+    chk("los controles de fila no se dibujan sin servidor detras",
+        re.search(r"function controlesFila\([^)]*\)\{\s*\n?\s*if\(!API\) return '';", panel_txt)
+        is not None,
+        "sin esto, GitHub Pages mostraria selectores que no pueden guardar nada")
+    chk("lo que solo sirve con pipeline arranca oculto (.pipe-off) y se enciende al detectarlo",
+        ".pipe-off{display:none!important}" in panel_txt
+        and "document.querySelectorAll('.pipe-solo').forEach(el=>el.classList.remove('pipe-off'))"
+        in panel_txt)
+    chk("el panel busca el pipeline por fetch, no por una bandera del archivo",
+        "async function pipeDetectar()" in panel_txt and "/api/estado" in panel_txt,
+        "una bandera obligaria a mantener dos copias del panel, una para la web y otra para la PC")
+
+    # --- el servidor no lanza el editor visual dentro de la corrida ---------
+    # f11_servidor sirve para siempre: si editor.py lo abriera, el subproceso no
+    # terminaria nunca y el panel se quedaria en "corriendo" hasta que se cierre.
+    fuente_srv = (AQUI / "panel_servidor.py").read_text(encoding="utf-8")
+    chk("la corrida se lanza con --sin-abrir-editor",
+        '"--sin-abrir-editor"' in fuente_srv,
+        "sin esto la corrida no termina nunca a ojos del panel")
+    chk("detener la corrida mata tambien a los hijos (ffmpeg, whisper)",
+        '"taskkill", "/F", "/T"' in fuente_srv,
+        "matar solo al padre deja el render corriendo y la GPU ocupada")
+    chk("el log del subproceso se lee en UTF-8",
+        'entorno["PYTHONIOENCODING"] = "utf-8"' in fuente_srv
+        and 'encoding="utf-8"' in fuente_srv,
+        "sin esto las tildes del pipeline llegan rotas al panel")
+
+
+def _guiones_de_fuente(fuente: str) -> list:
+    """Los guiones de un panel EN MEMORIA, con el mismo eval que usa el pipeline."""
+    import json
+    with tempfile.NamedTemporaryFile("w", suffix=".html", encoding="utf-8",
+                                     newline="", delete=False) as f:
+        f.write(fuente)
+        tmp = Path(f.name)
+    try:
+        return f13_guion.cargar_datos_html(tmp)["G"]
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
 def main():
     print("Pruebas de regresion del pipeline de video\n"
           "==========================================")
@@ -1882,6 +2583,10 @@ def main():
     pruebas_guardar_portada()
     pruebas_musica_editor()
     pruebas_preparacion()
+    pruebas_texto_destacado_editor()
+    pruebas_broll_detras()
+    pruebas_transiciones_pip()
+    pruebas_panel_conectado()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")

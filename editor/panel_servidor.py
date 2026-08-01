@@ -1,0 +1,554 @@
+"""
+Panel de producción conectado — servidor local.
+
+`PANEL-PRODUCCION.html` es la fuente de la verdad de los guiones y se publica
+tal cual en GitHub Pages. Este servidor es lo que lo vuelve *ejecutable* cuando
+se abre en la PC: el MISMO archivo, servido desde 127.0.0.1, descubre esta API y
+enciende lo que en el celular no tendría sentido — elegir la grabación cruda,
+cambiar el tipo de cada fila (YO / B-ROLL / PIP / ANIM) y correr el pipeline con
+el guion que se está mirando.
+
+Sin este servidor el panel no pierde nada de lo suyo: los controles se esconden
+solos y queda la página de lectura. Esa es toda la razón por la que la detección
+es un `fetch` a `/api/estado` y no una bandera: un solo archivo sirve para el
+GitHub Pages público y para la PC, y no hay dos copias que se desincronicen.
+
+Las escrituras sobre el panel se hacen POR POSICIÓN (guion `n`, fila `ri`) y no
+buscando el texto de la fila. El texto no sirve como aguja: hay filas cuyo
+fuente lleva comillas escapadas (`punch-in en \\"celular\\"`), así que la cadena
+evaluada que ve el navegador no aparece literal en el archivo.
+
+Uso:
+    python panel_servidor.py                      # abre el navegador en el panel
+    python panel_servidor.py --sin-abrir --puerto 8899
+"""
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import webbrowser
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import urlparse, parse_qs
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import config
+import f0_preparar
+
+AQUI = Path(__file__).resolve().parent
+PANEL = config.RAIZ_PROYECTO / "PANEL-PRODUCCION.html"
+
+# Los cuatro tipos de la columna "En pantalla". Cualquier otra cosa se rechaza
+# antes de tocar el archivo: el panel es la entrada del pipeline, y un tipo
+# inventado no da error en ningún lado — simplemente hace que la fila no aporte
+# nada al video.
+TIPOS_VALIDOS = ("YO", "B-ROLL", "PIP", "ANIM")
+
+CAMPOS_SEGUNDOS = ("hooksegs", "cierresegs")
+
+
+# ---------------------------------------------------------------------------
+# Edición del fuente del panel
+# ---------------------------------------------------------------------------
+def _bloque_guion(fuente: str, n: int) -> tuple[int, int]:
+    """Rango `[ini, fin)` del objeto `{n:N, …}` del guion dentro del fuente.
+
+    El bloque termina donde empieza el siguiente guion o donde cierra el array
+    `G`. Acotar así es lo que impide que una fila del guion 7 se confunda con la
+    del guion 8 cuando las dos dicen lo mismo.
+    """
+    m = re.search(r"\{n:" + str(int(n)) + r",", fuente)
+    if not m:
+        raise ValueError(f"No encontré el guion {n} en el panel")
+    ini = m.start()
+    sig = re.search(r"\n\{n:\d+,|\n\];", fuente[m.end():])
+    fin = m.end() + sig.start() if sig else len(fuente)
+    return ini, fin
+
+
+def _lineas_filas(fuente: str, ini: int, fin: int) -> list[tuple[int, int]]:
+    """Rangos de las líneas del `tl:[…]` del bloque, una por fila de la tabla.
+
+    Cada fila de la línea de tiempo ocupa exactamente una línea del fuente (las
+    120 del panel lo cumplen, y `test_regresion` lo comprueba). Apoyarse en eso
+    evita tener que escribir un parser de JavaScript aquí dentro.
+    """
+    bloque = fuente[ini:fin]
+    m = re.search(r"\n\s*tl:\[", bloque)
+    if not m:
+        raise ValueError("El guion no tiene línea de tiempo (`tl:[`)")
+    desplazamiento = ini + m.end()
+    filas = []
+    pos = desplazamiento
+    for linea in fuente[desplazamiento:fin].split("\n"):
+        largo = len(linea)
+        if linea.lstrip().startswith("["):
+            arranque = pos + (largo - len(linea.lstrip()))
+            filas.append((arranque, pos + largo))
+        pos += largo + 1          # +1 por el \n que `split` se comió
+    return filas
+
+
+def _campos(linea: str) -> list[tuple[int, int]]:
+    """Rangos del CONTENIDO de cada cadena entre comillas simples de la línea.
+
+    Reconoce el escape con barra (`\\'`, `\\"`), que es lo único que aparece
+    dentro de las cadenas del panel.
+    """
+    rangos, i, largo = [], 0, len(linea)
+    while i < largo:
+        if linea[i] == "'":
+            j = i + 1
+            while j < largo:
+                if linea[j] == "\\":
+                    j += 2
+                    continue
+                if linea[j] == "'":
+                    break
+                j += 1
+            if j >= largo:
+                break                      # comilla sin cerrar: línea rara, se ignora
+            rangos.append((i + 1, j))
+            i = j + 1
+        else:
+            i += 1
+    return rangos
+
+
+def _escapar(valor: str) -> str:
+    """El valor tal como tiene que quedar dentro de una cadena `'…'` del fuente."""
+    return valor.replace("\\", "\\\\").replace("'", "\\'")
+
+
+def _desescapar(bruto: str) -> str:
+    """Lo contrario: el texto que ve el navegador después de evaluar el fuente."""
+    return re.sub(r"\\(.)", r"\1", bruto)
+
+
+def leer_fila(fuente: str, n: int, ri: int) -> dict:
+    """Los 6 campos de la fila `ri` del guion `n`, ya desescapados."""
+    ini, fin = _bloque_guion(fuente, n)
+    filas = _lineas_filas(fuente, ini, fin)
+    if not 0 <= ri < len(filas):
+        raise ValueError(f"El guion {n} no tiene una fila {ri} (tiene {len(filas)})")
+    a, b = filas[ri]
+    linea = fuente[a:b]
+    campos = [_desescapar(linea[x:y]) for x, y in _campos(linea)]
+    claves = ("momento", "dice", "tipo", "ve", "sonido", "musica")
+    return {k: (campos[i] if i < len(campos) else "") for i, k in enumerate(claves)}
+
+
+def escribir_fila(fuente: str, n: int, ri: int, tipo: str, ve: str) -> str:
+    """Devuelve el fuente con el tipo y el 'qué se ve' de esa fila cambiados.
+
+    No escribe en disco a propósito: así la misma función sirve para las pruebas
+    y para el endpoint, y el que guarda decide cuándo.
+    """
+    if tipo not in TIPOS_VALIDOS:
+        raise ValueError(f"Tipo inválido: {tipo!r} (válidos: {', '.join(TIPOS_VALIDOS)})")
+    if "\n" in ve or "\r" in ve:
+        raise ValueError("El texto de 'qué se ve' no puede tener saltos de línea")
+
+    ini, fin = _bloque_guion(fuente, n)
+    filas = _lineas_filas(fuente, ini, fin)
+    if not 0 <= ri < len(filas):
+        raise ValueError(f"El guion {n} no tiene una fila {ri} (tiene {len(filas)})")
+    a, b = filas[ri]
+    linea = fuente[a:b]
+    campos = _campos(linea)
+    if len(campos) < 4:
+        raise ValueError(f"La fila {ri} del guion {n} no tiene los 4 campos esperados")
+
+    # De atrás para adelante: reemplazar el 3.º primero desplazaría el 4.º.
+    nueva = linea
+    for indice, valor in ((3, ve), (2, tipo)):
+        x, y = campos[indice]
+        # Un campo que ya dice eso no se toca. No es un ahorro: el panel está
+        # escrito a mano y hay campos con escapes que no hacen falta (`\"celular\"`),
+        # así que reescribirlos "igual" cambiaría bytes sin cambiar nada.
+        if _desescapar(nueva[x:y]) == valor:
+            continue
+        nueva = nueva[:x] + _escapar(valor) + nueva[y:]
+    return fuente[:a] + nueva + fuente[b:]
+
+
+def escribir_segundos(fuente: str, n: int, campo: str, valor: float) -> str:
+    """Devuelve el fuente con `hooksegs`/`cierresegs` del guion `n` cambiado."""
+    if campo not in CAMPOS_SEGUNDOS:
+        raise ValueError(f"Campo inválido: {campo!r}")
+    valor = float(valor)
+    if not 0 <= valor <= 30:
+        raise ValueError(f"Segundos fuera de rango: {valor}")
+    ini, fin = _bloque_guion(fuente, n)
+    bloque = fuente[ini:fin]
+    m = re.search(campo + r":([0-9.]+)", bloque)
+    if not m:
+        raise ValueError(f"El guion {n} no tiene `{campo}`")
+    # Sin decimales cuando es entero: el panel los escribe así (`hooksegs:3.0`
+    # vs `hooksegs:0`), y respetarlo mantiene el diff del archivo pequeño.
+    texto = f"{valor:g}" if valor != int(valor) else f"{valor:.1f}"
+    nuevo = bloque[:m.start(1)] + texto + bloque[m.end(1):]
+    return fuente[:ini] + nuevo + fuente[fin:]
+
+
+def leer_panel() -> str:
+    """El fuente del panel con sus finales de línea intactos.
+
+    `newline=""` no es un detalle: el archivo es CRLF de punta a punta y
+    `read_text()` normal lo entrega con `\\n`. Al reescribirlo así, cambiar UN
+    campo dejaba un diff de 1.797 líneas y el archivo entero convertido a LF.
+    """
+    with open(PANEL, "r", encoding="utf-8", newline="") as f:
+        return f.read()
+
+
+def _guardar_panel(fuente_nuevo: str, comprobacion) -> None:
+    """Escribe el panel solo si el fuente nuevo se relee como se esperaba.
+
+    `comprobacion(fuente_nuevo)` tiene que devolver True. Es una red barata
+    contra la clase de fallo peor de todas aquí: dejar el panel corrupto y que
+    el pipeline —que lo parsea con `eval`— falle después, lejos, sin que nada
+    apunte a este servidor.
+    """
+    if not comprobacion(fuente_nuevo):
+        raise ValueError("La comprobación de relectura falló: el panel NO se tocó")
+    tmp = PANEL.with_suffix(".html.tmp")
+    with open(tmp, "w", encoding="utf-8", newline="") as f:
+        f.write(fuente_nuevo)
+    os.replace(tmp, PANEL)
+
+
+# ---------------------------------------------------------------------------
+# Elegir la grabación cruda con el diálogo de Windows
+# ---------------------------------------------------------------------------
+def elegir_video_nativo(inicial: Path = None) -> str | None:
+    """Abre el selector de archivos de Windows y devuelve la ruta elegida.
+
+    El navegador no puede dar la ruta absoluta de un archivo (`<input type=file>`
+    solo entrega el contenido), y el pipeline necesita la ruta. Como el servidor
+    corre en la misma máquina que el navegador, el diálogo lo abre él.
+    """
+    if os.name != "nt":
+        return None
+    inicial = Path(inicial or config.DIR_ENTRADA)
+    salida = Path(tempfile.gettempdir()) / f"panel_video_{os.getpid()}.txt"
+    salida.unlink(missing_ok=True)
+    # La ventana se crea con TopMost y se le pasa como dueña al diálogo: sin
+    # eso el selector puede abrirse DETRÁS del navegador y parece que el botón
+    # no hizo nada.
+    ps = f"""
+Add-Type -AssemblyName System.Windows.Forms
+$due = New-Object System.Windows.Forms.Form
+$due.TopMost = $true
+$d = New-Object System.Windows.Forms.OpenFileDialog
+$d.Title = 'Elegí la grabación cruda'
+$d.Filter = 'Video (*.mp4;*.mov;*.m4v;*.mkv;*.avi;*.webm)|*.mp4;*.mov;*.m4v;*.mkv;*.avi;*.webm|Todos (*.*)|*.*'
+$d.InitialDirectory = '{str(inicial).replace("'", "''")}'
+if ($d.ShowDialog($due) -eq [System.Windows.Forms.DialogResult]::OK) {{
+  Set-Content -LiteralPath '{str(salida).replace("'", "''")}' -Value $d.FileName -Encoding utf8
+}}
+$due.Dispose()
+"""
+    try:
+        subprocess.run(["powershell", "-STA", "-NoProfile", "-Command", ps],
+                       capture_output=True, timeout=600)
+    except Exception:
+        return None
+    if not salida.exists():
+        return None                      # canceló el diálogo
+    try:
+        # utf-8-sig: `Set-Content -Encoding utf8` de Windows PowerShell 5.1
+        # escribe BOM, y sin quitarlo la ruta empieza por \ufeff y no existe.
+        elegido = salida.read_text(encoding="utf-8-sig").strip()
+    finally:
+        salida.unlink(missing_ok=True)
+    return elegido or None
+
+
+# ---------------------------------------------------------------------------
+# La corrida del pipeline
+# ---------------------------------------------------------------------------
+CORRIDA = {"estado": "libre"}
+_PROC = None
+_LOCK = threading.Lock()
+
+
+def _estado_corrida() -> dict:
+    """Copia de la corrida sin el log (que se pide aparte y por tramos)."""
+    with _LOCK:
+        d = dict(CORRIDA)
+    d["lineas"] = len(d.pop("log", []) or [])
+    return d
+
+
+def lanzar_pipeline(video: Path, guion: int, extras: list = None) -> dict:
+    """Lanza `editor.py` en segundo plano y deja el log a mano del panel."""
+    global _PROC
+    with _LOCK:
+        if CORRIDA.get("estado") == "corriendo":
+            raise RuntimeError("Ya hay una corrida en marcha")
+
+    video = Path(video).resolve()
+    if not video.exists():
+        raise ValueError(f"No existe la grabación: {video}")
+
+    nombre = video.stem
+    dir_trabajo = config.DIR_SALIDA / nombre
+    cmd = [sys.executable, str(AQUI / "editor.py"), str(video),
+           "--guion", str(int(guion)),
+           # El editor visual es un servidor que no termina nunca: si se abriera
+           # desde aquí, la corrida se quedaría "corriendo" para siempre en el
+           # panel. Se abre después, con el botón, ya como proceso suelto.
+           "--sin-abrir-editor"]
+    cmd += list(extras or [])
+    # Con --preview el render se escribe en 07_PREVIEW.mp4 a propósito, para no
+    # pisar el archivo bueno con una prueba a media resolución.
+    salida = "07_PREVIEW.mp4" if "--preview" in cmd else "07_FINAL.mp4"
+
+    entorno = dict(os.environ)
+    entorno["PYTHONIOENCODING"] = "utf-8"     # sin esto el log llega con las tildes rotas
+    entorno["PYTHONUNBUFFERED"] = "1"         # y línea a línea, no en bloques al final
+
+    proc = subprocess.Popen(
+        cmd, cwd=str(config.RAIZ_PROYECTO), env=entorno,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, encoding="utf-8", errors="replace", bufsize=1)
+
+    with _LOCK:
+        CORRIDA.clear()
+        CORRIDA.update({
+            "estado": "corriendo", "guion": int(guion), "video": str(video),
+            "nombre": nombre, "dir": str(dir_trabajo), "cmd": cmd,
+            "ini": time.time(), "fin": None, "codigo": None,
+            "log": [f"$ {' '.join(cmd)}", ""],
+        })
+    _PROC = proc
+
+    def _leer():
+        try:
+            for linea in proc.stdout:
+                with _LOCK:
+                    CORRIDA["log"].append(linea.rstrip("\n"))
+        finally:
+            codigo = proc.wait()
+            with _LOCK:
+                CORRIDA["codigo"] = codigo
+                CORRIDA["fin"] = time.time()
+                if CORRIDA.get("estado") == "cancelando":
+                    CORRIDA["estado"] = "cancelada"
+                else:
+                    CORRIDA["estado"] = "ok" if codigo == 0 else "error"
+                destino = dir_trabajo / salida
+                CORRIDA["final"] = str(destino) if destino.exists() else None
+
+    threading.Thread(target=_leer, daemon=True).start()
+    return _estado_corrida()
+
+
+def detener_pipeline() -> dict:
+    with _LOCK:
+        if CORRIDA.get("estado") != "corriendo":
+            return _estado_corrida()
+        CORRIDA["estado"] = "cancelando"
+    if _PROC is not None:
+        # taskkill /T: editor.py lanza ffmpeg y whisper como hijos, y matar solo
+        # al padre deja el render corriendo y la GPU ocupada.
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(_PROC.pid)],
+                           capture_output=True)
+        else:
+            _PROC.kill()
+    return _estado_corrida()
+
+
+def abrir_editor_visual(nombre: str = None) -> dict:
+    """Abre el editor visual de una corrida, como proceso suelto."""
+    destino = config.DIR_SALIDA / nombre if nombre else None
+    if destino is not None and not destino.is_dir():
+        raise ValueError(f"No existe la corrida {nombre}")
+    cmd = [sys.executable, str(AQUI / "abrir_editor.py")]
+    if destino is not None:
+        cmd.append(str(destino))
+    creacion = subprocess.CREATE_NEW_CONSOLE if os.name == "nt" else 0
+    subprocess.Popen(cmd, cwd=str(config.RAIZ_PROYECTO), creationflags=creacion)
+    return {"ok": True, "corrida": nombre}
+
+
+# ---------------------------------------------------------------------------
+# HTTP
+# ---------------------------------------------------------------------------
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, fmt, *args):
+        pass
+
+    def _cabeceras_comunes(self):
+        # El panel también se abre como file:// y desde GitHub Pages; en los dos
+        # casos el origen no es este servidor y el navegador exige CORS. La
+        # cabecera de red privada es lo que pide Chrome cuando una página
+        # pública llama a 127.0.0.1.
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
+
+    def _json(self, datos, code=200):
+        cuerpo = json.dumps(datos, ensure_ascii=False).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(cuerpo)))
+        self._cabeceras_comunes()
+        self.end_headers()
+        self.wfile.write(cuerpo)
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self._cabeceras_comunes()
+        self.end_headers()
+
+    def do_GET(self):
+        partes = urlparse(self.path)
+        ruta, qs = partes.path, parse_qs(partes.query)
+        try:
+            if ruta in ("/", "/index.html", "/PANEL-PRODUCCION.html"):
+                cuerpo = PANEL.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(cuerpo)))
+                self.send_header("Cache-Control", "no-store")
+                self._cabeceras_comunes()
+                self.end_headers()
+                self.wfile.write(cuerpo)
+
+            elif ruta == "/api/estado":
+                self._json({
+                    "ok": True,
+                    "raiz": str(config.RAIZ_PROYECTO),
+                    "panel": str(PANEL),
+                    "dir_entrada": str(config.DIR_ENTRADA),
+                    "dir_salida": str(config.DIR_SALIDA),
+                    "videos": f0_preparar.listar_entrada(),
+                    "corrida": _estado_corrida(),
+                })
+
+            elif ruta == "/api/log":
+                desde = int((qs.get("desde") or ["0"])[0])
+                with _LOCK:
+                    log = list(CORRIDA.get("log") or [])
+                estado = _estado_corrida()
+                estado["desde"] = max(0, desde)
+                estado["log"] = log[max(0, desde):]
+                self._json(estado)
+
+            else:
+                self.send_error(404, "Ruta desconocida")
+        except Exception as e:
+            self._json({"ok": False, "error": str(e)}, code=500)
+
+    def do_POST(self):
+        ruta = urlparse(self.path).path
+        largo = int(self.headers.get("Content-Length", 0))
+        crudo = self.rfile.read(largo) if largo else b"{}"
+        try:
+            datos = json.loads(crudo.decode("utf-8")) if crudo.strip() else {}
+        except Exception as e:
+            self._json({"ok": False, "error": f"JSON inválido: {e}"}, code=400)
+            return
+        try:
+            if ruta == "/api/fila":
+                n, ri = int(datos["n"]), int(datos["ri"])
+                tipo, ve = str(datos["tipo"]), str(datos.get("ve") or "")
+                nuevo = escribir_fila(leer_panel(), n, ri, tipo, ve)
+
+                def releida_ok(f, n=n, ri=ri, tipo=tipo, ve=ve):
+                    fila = leer_fila(f, n, ri)
+                    return fila["tipo"] == tipo and fila["ve"] == ve
+
+                _guardar_panel(nuevo, releida_ok)
+                self._json({"ok": True, "fila": leer_fila(nuevo, n, ri)})
+
+            elif ruta == "/api/segundos":
+                n, campo = int(datos["n"]), str(datos["campo"])
+                valor = float(datos["valor"])
+                nuevo = escribir_segundos(leer_panel(), n, campo, valor)
+
+                def releida_ok(f, n=n, campo=campo, valor=valor):
+                    i, j = _bloque_guion(f, n)
+                    m = re.search(campo + r":([0-9.]+)", f[i:j])
+                    return bool(m) and float(m.group(1)) == valor
+
+                _guardar_panel(nuevo, releida_ok)
+                self._json({"ok": True, "valor": valor})
+
+            elif ruta == "/api/elegir-video":
+                elegido = elegir_video_nativo(datos.get("desde"))
+                self._json({"ok": True, "ruta": elegido})
+
+            elif ruta == "/api/correr":
+                video = datos.get("video")
+                if not video:
+                    raise ValueError("Falta la grabación")
+                extras = []
+                if datos.get("sin_musica"):
+                    extras.append("--sin-musica")
+                if datos.get("preview"):
+                    extras.append("--preview")
+                if datos.get("sin_generar"):
+                    extras.append("--sin-generar")
+                self._json({"ok": True,
+                            "corrida": lanzar_pipeline(video, int(datos["guion"]), extras)})
+
+            elif ruta == "/api/detener":
+                self._json({"ok": True, "corrida": detener_pipeline()})
+
+            elif ruta == "/api/abrir-editor":
+                self._json(abrir_editor_visual(datos.get("nombre")))
+
+            else:
+                self.send_error(404, "Ruta desconocida")
+        except Exception as e:
+            self._json({"ok": False, "error": str(e)}, code=400)
+
+
+def main(puerto: int = 8899, abrir: bool = True):
+    if not PANEL.exists():
+        print(f"ERROR: no existe {PANEL}", file=sys.stderr)
+        sys.exit(1)
+
+    servidor, p = None, puerto
+    while servidor is None:
+        try:
+            servidor = ThreadingHTTPServer(("127.0.0.1", p), Handler)
+        except OSError:
+            p += 1
+            if p > puerto + 20:
+                print(f"ERROR: no encontré un puerto libre cerca de {puerto}",
+                      file=sys.stderr)
+                sys.exit(1)
+    if p != puerto:
+        print(f"Puerto {puerto} ocupado — usando {p}.")
+
+    url = f"http://127.0.0.1:{p}/"
+    print(f"Panel conectado: {url}")
+    print(f"Grabaciones en:  {config.DIR_ENTRADA}")
+    print("(Ctrl+C para cerrar)")
+    if abrir:
+        webbrowser.open(url)
+    try:
+        servidor.serve_forever()
+    except KeyboardInterrupt:
+        print("\nPanel cerrado.")
+    finally:
+        servidor.server_close()
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description="Panel de producción conectado")
+    ap.add_argument("--puerto", type=int, default=8899)
+    ap.add_argument("--sin-abrir", action="store_true")
+    args = ap.parse_args()
+    main(args.puerto, not args.sin_abrir)

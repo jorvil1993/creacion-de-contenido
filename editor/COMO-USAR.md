@@ -50,6 +50,37 @@ acercamientos del pipeline.
 
 ---
 
+## El panel de producción conectado
+
+Doble clic en **`editor/Panel de producción.bat`** (o
+`python editor/panel_servidor.py`). Sirve `PANEL-PRODUCCION.html` en
+`http://127.0.0.1:8899/` y le enciende tres cosas que sin servidor no puede hacer:
+
+- **Elegir la grabación cruda.** Salen solas las de `entrada/`; el botón
+  «Buscar en el disco» abre el selector de archivos de Windows, porque una página
+  web no puede saber la ruta absoluta de un archivo y el pipeline la necesita.
+- **Correr el pipeline** con el guion que se está mirando, y ver el log en vivo.
+  Corre con `--sin-abrir-editor` a propósito: el editor visual es un servidor que
+  no termina nunca, así que se abre después con su botón, ya como proceso aparte.
+- **Cambiar cada fila de la línea de tiempo** entre `YO`, `B-ROLL`, `PIP` y `ANIM`,
+  con qué clip y cómo entra (tapa el cuadro / detrás de mí / arriba a la
+  derecha / arriba a la izquierda). Se guarda en `PANEL-PRODUCCION.html`, que es
+  de donde lee el pipeline.
+
+**El mismo archivo se publica en GitHub Pages**
+(`jorvil1993.github.io/creacion-de-contenido/PANEL-PRODUCCION.html`) para leerlo
+desde el celular. Allá no hay servidor, así que todo lo anterior **se esconde
+solo** y queda la página de lectura: guiones, tomas, teleprompter, prompts y la
+línea de tiempo. No hay dos copias del panel — la diferencia la decide un `fetch`
+a `/api/estado` al cargar la página.
+
+Sin servidor pero en la PC (el panel abierto como `file://`), los selectores
+siguen guardando con el selector de archivos de Chrome/Edge. Ese camino escribe
+el archivo con **el mismo algoritmo** que el servidor, y `test_regresion`
+compara las dos implementaciones para que no se separen.
+
+---
+
 ## El caso normal: una grabación → un video publicable
 
 ```bash
@@ -63,6 +94,46 @@ catálogo. Para un video de verdad, pasalo casi siempre.
 
 Al terminar **se abre solo el editor visual** en el navegador con ese video
 cargado. Se cierra con Ctrl+C.
+
+### Si querés el B-roll DETRÁS tuyo en vez de taparte
+
+Cada B-roll entra de una de dos formas:
+
+- **tapa el cuadro** (lo de siempre): el clip ocupa la pantalla entera y vos
+  desaparecés esos segundos.
+- **detrás de mí**: el clip ocupa el 70% de arriba, el borde de abajo se
+  desvanece, y vos quedás recortado **por delante** — se te ve la cara y las
+  manos pasan por encima del clip. Es el efecto "pantalla verde" de TikTok.
+
+Se elige en dos sitios, y los dos escriben lo mismo:
+
+- **En el panel**, en la columna «Qué se ve» de cada fila hay un selector con las
+  siete formas de entrar (`YO`, B-ROLL ×2, PIP ×2, ANIM ×2) y otro para el clip.
+  Guarda en `PANEL-PRODUCCION.html`. También se puede escribir a mano: lo que el
+  pipeline busca en ese texto es la frase **«detrás de mí»**.
+- **En el editor visual**, en la tarjeta de cada B-roll, el mismo selector de
+  siempre ahora tiene tres opciones en vez de dos.
+
+### Si querés que una fila sea PIP en vez de B-roll (o al revés)
+
+Mismo selector del panel. Cambia dos cosas a la vez: la columna «En pantalla»
+(que es lo que decide el tipo) y la frase dentro de «Qué se ve» (que es lo que
+decide la posición). Un mismo `.mp4` sirve para las dos: a pantalla completa es
+B-roll, y recortado a 400×520 con marco es PIP — **lo decide esta tabla**.
+
+Poner una fila en `YO` no borra con qué clip estaba: apaga el inserto y deja el
+texto, para poder volver a encenderla sin reescribir nada.
+
+Qué cuesta: el recorte lo hace un modelo en la GPU (~17 fps), y solo corre en
+los segundos que dura el B-roll. Un clip de 3s son unos 5 segundos de proceso.
+La primera vez se descarga el modelo (~100 MB) a `C:\ai-video\models\rvm\`.
+
+Si la GPU o el modelo no están, el video **sale igual**: ese B-roll vuelve a
+pantalla completa y queda un AVISO en el log.
+
+```bash
+python editor/f17_matte.py --estado    # ver si el modelo está y qué GPU hay
+```
 
 ### Si grabó en dos planos reales
 
@@ -182,10 +253,99 @@ python editor/editor.py "entrada/video.mp4" --guion 7 --sin-abrir-editor
 | «reutilizá lo ya transcrito» | `--reaplicar` |
 | «otro nombre de salida» | `--nombre X` |
 | «cortale los primeros/últimos segundos» | `--desde N` / `--hasta N` |
+| «poné una transición entre cortes» | `--transicion glitch` (ver lista abajo) |
+| «más fuerte / más suave la transición» | `--intensidad-transicion 1.4` (0.5–1.5) |
 
 Lo que se ajusta a mano en el editor viaja en archivos `ajustes.*.json` dentro
 de la carpeta de la corrida, y el editor los reenvía solo al re-renderizar. No
 hace falta pasarlos a mano.
+
+---
+
+## Transiciones entre cortes y animación de los PiP
+
+Dos cosas distintas, y se controlan igual de fácil: **desde el panel
+«Transiciones y animaciones» del editor visual** (lo normal) o con banderas.
+
+### Transición entre cortes
+
+Es lo que se dibuja en cada **salto de plano** (los empalmes que dejan el corte
+de silencios y la unión de tomas). Todo es nativo de ffmpeg, no cambia la
+duración del video y **no toca el audio**. Diez opciones:
+
+| Nombre | Qué hace |
+|---|---|
+| `flash-blanco` | destello blanco de 2–3 frames (el «hit» clásico) |
+| `flash-negro` | igual pero a negro, más dramático |
+| `flash-marca` | destello en el cian de DeviceShop |
+| `desenfoque` | golpe de desenfoque (whip) en el corte |
+| `glitch` | desplazamiento RGB + ruido, estética digital |
+| `zoom-punch` | empujón de zoom rápido que aterriza en el nuevo plano |
+| `shake` | sacudida de cámara corta |
+| `barrido` | una barra de luz cruza el cuadro tapando el corte |
+| `zoom-desenfoque` | zoom-punch + desenfoque (el más usado en cortes de venta) |
+| `destello-glitch` | flash de marca + glitch (para revelaciones) |
+
+**Se ponen donde vos quieras, con una aguja.** En el panel «Transiciones y
+animaciones» del editor hay una **tira de tiempo con una aguja** que sigue al
+reproductor. El flujo es: llevás la aguja al segundo donde pausaste / cambiaste
+el zoom (clic en la tira o movés el reproductor) y tocás **«＋ En el segundo
+actual»**. Aparece una marca en ese punto y una fila debajo para elegirle el
+tipo y la intensidad o quitarla. Podés poner las que quieras, en cualquier
+lado. Los puntos tenues de la tira son los cortes que el pipeline detectó solo
+(sugerencias): usalos o ignoralos.
+
+Esto es lo que sirve para un **video ya unido** —grabado pausando, con zoom y
+siguiendo— donde el salto visual no cae en ningún corte automático: marcás el
+segundo exacto del salto y le ponés la transición encima.
+
+**Para verlas en el video hay que renderizar** (el guardado solo las anota; no
+se ven en el reproductor hasta el render). Desde el editor, el botón
+**«Previsualizar»** alcanza: la transición se hornea en el corte, y aunque el
+editor renderiza en modo rápido (`--reaplicar`), ahora **detecta que cambiaste
+las transiciones y vuelve a cortar solo para hornearlas** (por eso ese render
+tarda un poco más que uno normal — vuelve a pasar ffmpeg sobre la grabación,
+pero no re-transcribe). Si no tocaste las transiciones, no re-corta.
+
+La bandera `--transicion` sigue existiendo como atajo para ponerle la misma a
+todos los cortes detectados desde la terminal.
+
+Para ver las diez sobre un clip de prueba:
+
+```bash
+python editor/f2b_transiciones.py --demo   # deja los .mp4 en salida/transiciones/
+```
+
+### Animación de entrada y salida de los PiP
+
+Cómo **entran y salen** las tarjetas de producto y las animaciones de esquina.
+Antes solo hacían un fundido; ahora hay diez formas, elegibles por separado para
+la entrada y para la salida. Esto **sí se ve con el render normal** (se aplica en
+la pasada final, así que itera rápido con `--reaplicar`).
+
+| Nombre | Cómo entra/sale |
+|---|---|
+| `fundido` | solo opacidad (lo de siempre, es el default) |
+| `desliza-izquierda` / `desliza-derecha` | entra deslizando de ese lado |
+| `desliza-arriba` / `desliza-abajo` | entra deslizando por arriba/abajo |
+| `diagonal` | desde la esquina inferior |
+| `resorte-arriba` | cae desde arriba con rebote |
+| `resorte-lateral` | entra de lado con rebote |
+| `latigazo` | entrada rápida con sobrepaso grande |
+| `subir-fundido` | sube un poco y aparece |
+
+**Se configura por PiP.** Cada tarjeta de la sección «Colección de PiP y
+B-Rolls» tiene sus propios controles (entra / sale / fuerza), así que un PiP
+puede entrar deslizando desde la izquierda y otro caer con rebote. En el panel
+«Transiciones y animaciones» hay además un **valor por defecto** que se aplica a
+los PiP que no toques uno por uno. Para **quitar** la animación de un PiP, poné
+`fundido`; para hacerla más agresiva, subí la fuerza. Los B-roll a pantalla
+completa y «detrás de mí» no llevan estas animaciones (son fondo).
+
+Ambos ajustes quedan guardados en `ajustes.transiciones.json` (por empalme),
+`ajustes.pip_anim.json` (el valor por defecto) y dentro de cada evento en
+`ajustes.eventos.json` (el de cada PiP), en la carpeta de la corrida, y el
+editor los reenvía solo al re-renderizar.
 
 ---
 

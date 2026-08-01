@@ -85,6 +85,16 @@ h4{margin:20px 0 9px;font-size:13px;text-transform:uppercase;letter-spacing:1.1p
 .hookseg-estado{font-size:12px;color:var(--txt2)}
 .hookseg-estado.ok{color:var(--ok)}
 .hookseg-estado.mal{color:var(--mal)}
+/* Selectores de cada fila de la línea de tiempo: qué tipo de plano es
+   (YO / B-ROLL / PIP / ANIM), cómo entra y con qué clip. Solo existen cuando el
+   pipeline está detrás: sin él no habría dónde guardar el cambio. */
+.modobroll{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
+.modobroll select{font:inherit;font-size:12px;background:#0d2330;color:var(--txt);
+  border:1px solid var(--linea);border-radius:6px;padding:3px 6px;cursor:pointer;
+  max-width:100%}
+.modobroll select:focus{outline:none;border-color:var(--cian)}
+.modobroll select.recurso{color:var(--cian);font-family:ui-monospace,monospace;font-size:11.5px}
+.modobroll select:disabled{opacity:.45;cursor:default}
 .pr.destacado{border-color:var(--cian);box-shadow:0 0 0 3px #4fd1d94a;
   animation:late 1.6s ease-out}
 @keyframes late{0%,100%{box-shadow:0 0 0 3px #4fd1d94a}50%{box-shadow:0 0 0 9px #4fd1d900}}
@@ -143,6 +153,39 @@ tr.tlmarca>td:first-child{box-shadow:inset 3px 0 0 var(--cian)}
 #tipflot b{color:var(--cian);display:block;margin-bottom:4px;font-size:13px}
 #tipflot i{color:var(--txt2);font-style:normal;display:block;margin-top:6px;font-size:11.5px}
 #tipflot .arch{color:var(--ok);font-family:ui-monospace,monospace;font-size:11.5px}
+#tipflot .pide{display:block;margin-top:6px;color:var(--txt);font-size:11.5px;
+  border-left:2px solid var(--linea);padding-left:8px}
+#tipflot .clic{display:block;margin-top:8px;padding-top:6px;border-top:1px solid var(--linea);
+  color:var(--warn);font-size:11.5px;font-weight:700}
+
+/* ---- pipeline conectado (solo en la PC; en la web esto no aparece) ---- */
+.pipe-off{display:none!important}
+.pipe-caja{background:var(--panel);border:1px solid var(--linea);border-radius:11px;
+  padding:16px 18px;margin:14px 0}
+.pipe-caja h4{margin:0 0 10px;font-size:14px;color:var(--cian)}
+.pipe-fila{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:11px}
+.pipe-fila label{font-size:13px;color:var(--txt2);font-weight:700;min-width:112px}
+.pipe-fila select,.pipe-fila input[type=text]{font:inherit;font-size:13px;background:#0a1c26;
+  color:var(--txt);border:1px solid var(--linea);border-radius:7px;padding:7px 9px;
+  flex:1;min-width:200px}
+.pipe-fila select:focus,.pipe-fila input:focus{outline:none;border-color:var(--cian)}
+.pipe-ops{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--txt2)}
+.pipe-ops label{display:flex;align-items:center;gap:6px;cursor:pointer;min-width:0;font-weight:400}
+.pipe-estado{display:flex;align-items:center;gap:9px;font-size:13px;flex-wrap:wrap;
+  padding:9px 13px;border-radius:8px;background:#0a1c26;border:1px solid var(--linea)}
+.pipe-punto{width:9px;height:9px;border-radius:50%;background:var(--txt2);flex:none}
+.pipe-punto.on{background:var(--ok);box-shadow:0 0 0 3px #3ddc9733}
+.pipe-punto.trabajando{background:var(--warn);animation:latir 1s ease-in-out infinite}
+.pipe-punto.mal{background:var(--mal)}
+@keyframes latir{0%,100%{opacity:1}50%{opacity:.25}}
+.pipe-log{background:#04101a;border:1px solid var(--linea);border-radius:8px;
+  padding:11px 13px;margin-top:12px;max-height:340px;overflow:auto;
+  font-family:ui-monospace,Consolas,monospace;font-size:11.5px;line-height:1.55;
+  color:var(--txt2);white-space:pre-wrap;word-break:break-word}
+.pipe-log b{color:var(--cian);font-weight:700}
+.pipe-log .mal{color:var(--mal)}
+.ruta{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--ok);
+  word-break:break-all}
 
 /* ---- prompts ---- */
 .filtros{display:flex;gap:7px;margin:14px 0;flex-wrap:wrap}
@@ -244,7 +287,25 @@ a{color:var(--cian)}
 .tele-frase { margin-bottom:45px; padding:22px 28px; background:rgba(16,39,52,0.85); border-radius:14px; border-left:5px solid var(--cian); text-align:left; color:#fff; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
 .tele-pausa { display:block; color:var(--cian); font-weight:800; font-size:0.65em; margin:16px 0 0; text-transform:uppercase; letter-spacing:1.5px; }
 .tele-cue { font-size:0.48em; color:var(--cian); display:block; font-weight:700; margin-bottom:8px; opacity:0.9; text-transform:uppercase; letter-spacing:1px; }
+
+/* ---- Navegación por Guion (Página por Guion) ---- */
+.guion-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 20px; background: var(--panel); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--linea); }
+.guion-tab-btn { background: var(--bg); color: var(--txt2); border: 1px solid var(--linea); border-radius: 7px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; }
+.guion-tab-btn:hover { border-color: var(--cian); color: var(--blanco); }
+.guion-tab-btn.on { background: var(--cian); color: var(--navy); border-color: var(--cian); font-weight: 800; }
+
+.guion-header-barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--panel2); padding: 14px 18px; border-radius: 11px; border: 1px solid var(--linea); margin-bottom: 18px; }
+.caja-config-fisico { background: var(--panel); border: 1px solid var(--linea); border-radius: 11px; padding: 18px; margin: 24px 0 16px; }
+.caja-config-fisico h4 { margin-top: 0; margin-bottom: 14px; border-bottom: 1px solid var(--linea); padding-bottom: 8px; color: var(--cian); font-size: 14px; text-transform: uppercase; letter-spacing: 1.1px; }
+.bloque-fisico { background: #0a1d29; border: 1px solid #1a3a49; border-radius: 9px; padding: 14px 16px; }
+.bloque-fisico h5 { margin: 0 0 6px; font-size: 14px; color: var(--blanco); display: flex; align-items: center; gap: 8px; }
+
+.chk-hecho-lbl { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; color: var(--ok); background: rgba(61, 220, 151, 0.1); border: 1px solid var(--ok); padding: 5px 12px; border-radius: 6px; font-size: 12.5px; user-select: none; transition: background .15s; }
+.chk-hecho-lbl:hover { background: rgba(61, 220, 151, 0.2); }
+.chk-hecho-lbl input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--ok); cursor: pointer; }
+.pr.hecho { opacity: 0.65; border-color: var(--ok); background: #0b2219; }
 </style>
+
 
 <header>
   <h1>Panel de producción · <b>DeviceShop</b></h1>
@@ -253,6 +314,7 @@ a{color:var(--cian)}
     <button data-s="prompts">🎨 Prompts (40)</button>
     <button data-s="lote">⚡ Lote de 4</button>
     <button data-s="ayuda">📖 Cómo funciona</button>
+    <button data-s="pipeline" id="nav-pipeline" class="pipe-solo pipe-off">🚀 Hacer el video</button>
     <button style="background:var(--navy2);border-color:var(--cian);color:var(--cian);font-weight:700" onclick="abrirTeleprompter(1)">📺 Teleprompter</button>
   </nav>
 </header>
@@ -278,6 +340,53 @@ a{color:var(--cian)}
     guion.
   </div>
   <div id="guiones"></div>
+</section>
+
+<!-- ══════════ PIPELINE (solo cuando panel_servidor.py está detrás) ══════════ -->
+<section id="s-pipeline">
+  <h2>Hacer el video
+    <span class="sub">Elegí la grabación y el guion. El pipeline lee de este mismo archivo todo lo demás: los cortes, los B-rolls, los PiP, los sonidos y la música.</span>
+  </h2>
+
+  <div class="pipe-estado" id="pipe-conexion">
+    <span class="pipe-punto" id="pipe-punto"></span>
+    <span id="pipe-conexion-txt">Buscando el pipeline…</span>
+  </div>
+
+  <div class="pipe-caja">
+    <h4>1 · La grabación cruda</h4>
+    <div class="pipe-fila">
+      <label for="pipe-video">Grabación</label>
+      <select id="pipe-video" onchange="pipeElegirDeLista()"></select>
+      <button class="btn sec" onclick="pipeBuscarEnDisco()">📁 Buscar en el disco…</button>
+    </div>
+    <p class="notaflow" style="margin:0">Salen solas las de <span class="ruta" id="pipe-dir-entrada">entrada/</span>. Si la grabación está en otro lado, buscala con el botón.</p>
+    <p class="notaflow" id="pipe-video-elegido" style="margin:8px 0 0"></p>
+  </div>
+
+  <div class="pipe-caja">
+    <h4>2 · El guion</h4>
+    <div class="pipe-fila">
+      <label for="pipe-guion">Guion</label>
+      <select id="pipe-guion" onchange="pipeGuardarPrefs()"></select>
+      <button class="btn sec" onclick="pipeVerGuion()">📖 Ver este guion</button>
+    </div>
+    <div class="pipe-ops">
+      <label><input type="checkbox" id="pipe-sin-musica" onchange="pipeGuardarPrefs()"> Sin música (para ponerle el sonido de TikTok al publicar)</label>
+      <label><input type="checkbox" id="pipe-preview" onchange="pipeGuardarPrefs()"> Prueba rápida (media resolución, no pisa el 07_FINAL)</label>
+    </div>
+  </div>
+
+  <div class="pipe-caja">
+    <h4>3 · Correr</h4>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn ok" id="pipe-correr" style="padding:11px 22px;font-size:15px;font-weight:800" onclick="pipeCorrer()">▶ Correr el pipeline</button>
+      <button class="btn sec" id="pipe-detener" style="display:none" onclick="pipeDetener()">■ Detener</button>
+      <button class="btn sec" id="pipe-abrir-editor" style="display:none" onclick="pipeAbrirEditor()">🎛️ Abrir el editor visual</button>
+      <span class="hookseg-estado" id="pipe-mensaje"></span>
+    </div>
+    <div class="pipe-log" id="pipe-log" style="display:none"></div>
+  </div>
 </section>
 
 <!-- ══════════ PROMPTS ══════════ -->
@@ -473,6 +582,53 @@ a{color:var(--cian)}
 </div>
 
 <script>
+/* ═══════════ ¿HAY PIPELINE DETRÁS DE ESTA PÁGINA? ═══════════ */
+// Este archivo se publica tal cual en jorvil1993.github.io y también se abre en
+// la PC. Lo único que los distingue es si `editor/panel_servidor.py` está
+// escuchando: si contesta, se encienden los controles que escriben en el disco
+// y corren el pipeline; si no, esto es una página de lectura y no se muestra ni
+// un botón que no vaya a funcionar.
+//
+// Por eso la detección es un fetch y no una bandera ni un archivo aparte: una
+// sola copia del panel, y nada que se desincronice entre la web y la PC.
+const PIPE_PUERTOS=[8899,8900,8901];
+let API=null;      // base de la API, o null si no hay pipeline detrás
+let PIPE=null;     // último /api/estado
+
+async function pipeDetectar(){
+  const bases=[];
+  // Servido por el propio panel_servidor.py: ese es el caso normal en la PC.
+  if(location.protocol==='http:' && ['127.0.0.1','localhost'].includes(location.hostname))
+    bases.push(location.origin);
+  for(const p of PIPE_PUERTOS){
+    const b=`http://127.0.0.1:${p}`;
+    if(!bases.includes(b)) bases.push(b);
+  }
+  for(const base of bases){
+    try{
+      // Con tiempo límite: abierto desde https (GitHub Pages) el navegador
+      // puede dejar la petición colgada, y sin esto la página se quedaría con
+      // "buscando el pipeline" para siempre.
+      const ctrl=new AbortController();
+      const reloj=setTimeout(()=>ctrl.abort(),1500);
+      const r=await fetch(base+'/api/estado',{signal:ctrl.signal});
+      clearTimeout(reloj);
+      if(!r.ok) continue;
+      const d=await r.json();
+      if(d && d.ok){ API=base; PIPE=d; return d; }
+    }catch(e){ /* no está ahí: se prueba el siguiente */ }
+  }
+  return null;
+}
+
+async function apiPost(ruta,cuerpo){
+  const r=await fetch(API+ruta,{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify(cuerpo||{})});
+  const d=await r.json().catch(()=>({ok:false,error:'respuesta ilegible del pipeline'}));
+  if(!r.ok || d.ok===false) throw new Error(d.error||('HTTP '+r.status));
+  return d;
+}
+
 /* ═══════════ CATÁLOGO DE CLIPS ═══════════ */
 const CLIPS={
  F01:['noche','Cara en la oscuridad iluminada por el celular','6 guiones'],
@@ -526,7 +682,26 @@ const CLIPS={
  H07:['stickers','Hyperframe: Stickers gráficos (Destello cian / Bandera Bolivia)','1 guion'],
  H08:['anim-apps','Hyperframe: Animación de marcas/apps que distraen (TikTok, WhatsApp, Facebook)','1 guion']
 };
-function c(id){return CLIPS[id]?`<span class="clip" data-clip="${id}" onclick="event.stopPropagation();irAPrompt('${id}')">${id}</span>`:id;}
+// Animaciones que los guiones nombran por su slug y no por código H##. Las que
+// tienen H## se resuelven solas por COD; esta tabla es para las que no están en
+// el catálogo porque no se eligen: el pipeline las arma con sus propios datos
+// (el hook, el WhatsApp, las specs del producto).
+const ANIM_SUELTAS={
+ 'tarjeta-cta':['tarjeta-cta','Tarjeta de cierre: repite el hook y muestra tu WhatsApp','la pone el pipeline sola'],
+};
+// Convierte un código (F14, P02, H08) o un slug (stickers, tarjeta-cta) en un
+// chip con tooltip y clic. Muestra el texto tal como está escrito en el guion,
+// pero lleva dentro el código ya resuelto.
+function c(id){
+  const ref=CLIPS[id]?id:(COD[id]||(ANIM_SUELTAS[id]?id:null));
+  if(!ref) return id;
+  return `<span class="clip" data-clip="${ref}" onclick="event.stopPropagation();irAPrompt('${ref}')">${id}</span>`;
+}
+// Todo lo que en "Qué se ve" nombra un recurso: los códigos y los slugs de
+// animación. Es lo que hace que se pueda pasar el mouse por encima de cualquiera
+// de ellos y que el clic lleve a su prompt.
+const RX_RECURSO=/\b(?:[FPH]\d\d|tarjeta-[a-z]+|anim-[a-z]+|stickers|comparativa)\b/g;
+function marcarRecursos(texto){ return (texto||'').replace(RX_RECURSO,m=>c(m)); }
 // mapa inverso: nombre de archivo -> código que se usa en los guiones (scroll -> F14)
 const COD={}; for(const k in CLIPS) if(CLIPS[k][0]!==k) COD[CLIPS[k][0]]=k;
 // resumen en español, una frase, de qué le pedimos a la IA en cada prompt
@@ -578,7 +753,11 @@ const RESUMEN={
 function usosDe(archivo){
  const cod=COD[archivo]||archivo, out=[];
  G.forEach(g=>g.tl.forEach((r,ri)=>{
-  if((r[3].match(/\b[FPH]\d\d\b/g)||[]).includes(cod))
+  // Por código (F14) y también por slug: las animaciones que el guion nombra
+  // escritas ("tarjeta-cta", "anim-sol") no tienen código que buscar, y sin
+  // esto el panel decía que no se usaban en ningún guion.
+  const nombrados=r[3].match(RX_RECURSO)||[];
+  if(nombrados.includes(cod)||nombrados.includes(archivo))
    out.push({n:g.n,ri,t:g.t,mom:r[0],tipo:r[2],dice:r[1],ve:r[3]});
  }));
  return out;
@@ -597,18 +776,47 @@ function irAGuion(n,ri){
   else el.scrollIntoView({behavior:'smooth',block:'start'});
  },70);
 }
+// Todo lo que se sabe de un recurso: qué es, cómo se llama el archivo, qué se
+// le pide a la IA, dónde se usa y qué pasa si se le hace clic.
+function infoRecurso(ref){
+ const suelta=ANIM_SUELTAS[ref], d=CLIPS[ref]||suelta;
+ if(!d) return null;
+ const esAnim=ref[0]==='H'||!!suelta, esProd=ref[0]==='P', arch=d[0];
+ return {
+  ref, esAnim, arch,
+  clase: esAnim?'plantilla animada':(esProd?'clip de producto':'clip de ambiente'),
+  // Los de metraje real llevan "[REAL, con permiso — …]" delante de la
+  // descripción; eso va abajo del todo, no en el titular.
+  desc: d[1].replace(/^\[REAL[^\]]*\]\s*/,'').replace(/^Hyperframe:\s*/,''),
+  real: /^\[REAL/.test(d[1]),
+  archivo: esAnim?`plantillas/compositions/${arch}.html`
+                 :`assets/generado/video/manual/${arch}.mp4`,
+  // El resumen de los de metraje real trae su propia nota "[Metraje REAL…]"
+  // delante; eso ya se dice aparte, no hace falta dos veces.
+  pide: (RESUMEN[arch]||'').replace(/^\[[^\]]*\]\s*/,''),
+  usos: usosDe(arch),
+  tienePrompt: P.some(p=>p[0]===arch),
+ };
+}
 // tooltip flotante: position:fixed, así ningún contenedor con overflow lo recorta
 document.addEventListener('mouseover',e=>{
  const el=e.target.closest?.('.clip'); if(!el)return;
- const d=CLIPS[el.dataset.clip]; if(!d)return;
+ const i=infoRecurso(el.dataset.clip); if(!i)return;
  const t=document.getElementById('tipflot');
- const esProd=el.dataset.clip[0]==='P';
- const us=usosDe(d[0]);
- t.innerHTML=`<b>${el.dataset.clip} · ${esProd?'producto':'ambiente'}</b>${d[1]}
-   <span class="arch">${d[0]}.mp4</span><i>${us.length
+ const us=i.usos;
+ const accion=i.esAnim
+   ? '🖱️ Clic → es una plantilla animada: no se genera en Flow'
+   : (i.tienePrompt ? '🖱️ Clic → ver su prompt de Google Flow'
+                    : '🖱️ Clic → es metraje real: no tiene prompt');
+ t.innerHTML=`<b>${i.ref} · ${i.clase}</b>${i.desc}
+   <span class="arch">${i.archivo}</span>
+   ${i.pide?`<span class="pide">Se le pide: ${i.pide}</span>`:''}
+   ${i.real?'<i>Metraje real, no generado con IA.</i>':''}
+   <i>${us.length
      ? 'Se usa '+us.length+(us.length>1?' veces':' vez')+' en los 10 guiones: '
        +[...new Set(us.map(u=>'G'+u.n))].join(', ')
-     : 'No se usa en los 10 guiones de producción'}</i>`;
+     : 'No se usa en los 10 guiones de producción'}</i>
+   <span class="clic">${accion}</span>`;
  t.style.display='block';
  const r=el.getBoundingClientRect(), tr=t.getBoundingClientRect();
  let x=r.left+r.width/2-tr.width/2, y=r.top-tr.height-9;
@@ -635,7 +843,7 @@ const G=[
   ['47–52s','Plano medio · CIERRE','Bajas el aparato de pie y miras fijo a cámara sosteniendo el gesto.','Mandáselo a alguien que no suelta el celular ni en la mesa.']],
  tl:[
   ['0–3s','¿Te diste cuenta de que ya no podés estar cinco minutos sin hacer nada?','YO','Entras de pie al plano caminando a cámara. Banner de hook arriba','whoosh_rapido al entrar + impacto_grave','—'],
-  ['3–6s','Sin sacar el celular. Sin buscar dopamina barata.','B-ROLL','F14 a pantalla completa: persona haciendo scroll infinito en el celular','pop + ui_blip_1','entra 02-lofi a −20 dB'],
+  ['3–6s','Sin sacar el celular. Sin buscar dopamina barata.','ANIM','F14 arriba a la derecha: persona haciendo scroll infinito en el celular','pop + ui_blip_1','entra 02-lofi a −20 dB'],
   ['6–9s','Ya casi nadie puede. Y no es casualidad.','YO','De perfil scrolleando el celular mientras dices la frase','transicion_corte','—'],
   ['9–15s','Estás compitiendo contra una aplicación diseñada por mil ingenieros para que no puedas soltarla.','ANIM','H08 arriba a la derecha: íconos de TikTok, WhatsApp, Instagram','pop + ui_blip_2','—'],
   ['15–20s','El video que se reproduce solo. La notificación. El siguiente. Todo está diseñado para ganarte.','B-ROLL','F15 a pantalla completa: pantalla brillante / luz de teléfono en la oscuridad','whoosh_swoosh_2','—'],
@@ -881,95 +1089,417 @@ function clipsDe(g){const s=new Set();
  g.tl.forEach(r=>(r[3].match(/\b[FP]\d\d\b/g)||[]).forEach(m=>s.add(m)));
  return [...s].sort();}
 
+/* ══════════ PERSISTENCIA DE PROMPTS Y EDICIÓN DE GUIONES ══════════ */
+function esClipHecho(clipName){
+  return localStorage.getItem('deviceshop_clip_hecho_' + clipName) === '1';
+}
+
+function toggleClipHecho(clipName, checked){
+  if(checked){
+    localStorage.setItem('deviceshop_clip_hecho_' + clipName, '1');
+  } else {
+    localStorage.removeItem('deviceshop_clip_hecho_' + clipName);
+  }
+  document.querySelectorAll(`.chk-clip-${clipName}`).forEach(chk=>{
+    chk.checked = checked;
+    const card = chk.closest('.pr');
+    if(card) card.classList.toggle('hecho', checked);
+  });
+}
+
+let guionSeleccionado = null; // null = ver resumen de todos, N = ver página completa del guion N
+const estadoEditoresGuion = {};
+
+function seleccionarGuion(n, ri){
+  guionSeleccionado = n;
+  renderGuiones();
+  if(n !== null){
+    if(ri != null){
+      setTimeout(()=>{
+        const fila = document.getElementById('tl-' + n + '-' + ri);
+        if(fila){
+          document.querySelectorAll('tr.tlmarca').forEach(t=>t.classList.remove('tlmarca'));
+          fila.classList.add('tlmarca');
+          fila.scrollIntoView({behavior:'smooth', block:'center'});
+        }
+      }, 50);
+    } else {
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+  } else {
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+}
+
+function irAGuion(n, ri){
+  irA('guiones');
+  seleccionarGuion(n, ri);
+}
+
+function renderTabsGuiones(){
+  let html = `<div class="guion-tabs">
+    <button class="guion-tab-btn ${guionSeleccionado === null ? 'on' : ''}" onclick="seleccionarGuion(null)">📋 Ver todos los guiones (10)</button>`;
+  G.forEach(g => {
+    html += `<button class="guion-tab-btn ${guionSeleccionado === g.n ? 'on' : ''}" onclick="seleccionarGuion(${g.n})">🎬 Guion ${g.n}</button>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderPromptsParaGuion(g){
+  const clips = clipsDe(g);
+  return clips.map(id => {
+    const info = CLIPS[id];
+    if(!info) return '';
+    const archivo = info[0];
+    const p = P.find(x => x[0] === archivo);
+    if(!p){
+      return `<div class="pr ${esClipHecho(archivo) ? 'hecho' : ''}" id="pr-g-${g.n}-${archivo}">
+        <div class="prcab">
+          <label class="chk-hecho-lbl">
+            <input type="checkbox" class="chk-clip-${archivo}" ${esClipHecho(archivo) ? 'checked' : ''} onchange="toggleClipHecho('${archivo}', this.checked)">
+            ☑ Ya tengo el video
+          </label>
+          <div class="prinfo" style="margin-left:10px;"><b>${info[1]}</b><span><span class="codref">${id}</span> · <span class="archivo">${archivo}.mp4</span></span></div>
+          <span class="modelo mF">Metraje Real</span>
+          <button class="archivo" onclick="event.stopPropagation();cp(this,'${archivo}.mp4')" title="Copiar nombre de archivo">💾 ${archivo}.mp4</button>
+        </div>
+        ${RESUMEN[archivo] ? `<div class="resumen-es">🇪🇸 <b>En español:</b> ${RESUMEN[archivo]}</div>` : ''}
+      </div>`;
+    }
+    const i = P.indexOf(p);
+    const esProd = p.length > 6, foto = esProd ? p[5] : null, txt = esProd ? p[6] : p[5];
+    return `<div class="pr ${esClipHecho(archivo) ? 'hecho' : ''}" id="pr-g-${g.n}-${archivo}">
+      <div class="prcab">
+        <label class="chk-hecho-lbl">
+          <input type="checkbox" class="chk-clip-${archivo}" ${esClipHecho(archivo) ? 'checked' : ''} onchange="toggleClipHecho('${archivo}', this.checked)">
+          ☑ Ya tengo el video
+        </label>
+        <div class="orden" style="margin-left:8px;">${i + 1}</div>
+        <div class="prinfo"><b>${p[4].replace(/\s*·\s*(\d+\s*)?guion(es)?[\s\d,y]*$/i, '')}</b><span>${p[3]} · tanda ${p[2]} · en este guion es <span class="codref">${id}</span></span></div>
+        <span class="modelo ${esProd ? 'mQ' : 'mF'}">${esProd ? 'Veo 3.1 Quality' : 'Veo 3.1 Fast'}</span>
+        <button class="archivo" onclick="event.stopPropagation();cp(this,'${archivo}.mp4')" title="Copiar nombre de archivo">💾 ${archivo}.mp4</button>
+      </div>
+      ${foto ? `<div class="foto">📎 <b>Frames to Video</b> — sube esta foto: <code>assets/productos/${foto}</code> <button class="btn sec" onclick="cp(this,'assets\\productos\\${foto.replace(/\//g, '\\')}')">Copiar ruta</button></div>` : ''}
+      ${RESUMEN[archivo] ? `<div class="resumen-es">🇪🇸 <b>En español:</b> ${RESUMEN[archivo]}</div>` : ''}
+      <pre class="p" id="txt-g-${g.n}-${archivo}">${txt.replace(/</g, '&lt;')}</pre>
+      <div class="pracc">
+        <button class="btn" onclick="cp(this,document.getElementById('txt-g-${g.n}-${archivo}').textContent)">📋 Copiar prompt</button>
+        <button class="btn sec" onclick="cp(this,'${archivo}.mp4')">Copiar nombre de archivo</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function formatearTeleParaEditor(tele){
+  return (tele || '').split(' || ').join('\n\n// pausá //\n\n');
+}
+
+function toggleEditorGuion(n){
+  estadoEditoresGuion[n] = !estadoEditoresGuion[n];
+  const caja = document.getElementById('editor-guion-caja-' + n);
+  if(caja){
+    caja.style.display = estadoEditoresGuion[n] ? 'block' : 'none';
+  }
+}
+
+function actualizarTextosGuion(g, nuevoTeleRaw){
+  let parrafos = nuevoTeleRaw
+    .replace(/\/\/\s*pausá\s*\/\//gi, ' || ')
+    .split(/\s*\|\|\s*|\n\s*\n+/)
+    .map(p => p.trim())
+    .filter(Boolean);
+
+  if (parrafos.length === 0) return;
+
+  const nuevoTele = parrafos.join(' || ');
+  g.tele = nuevoTele;
+
+  // Actualizar g.tomas
+  if (g.tomas && g.tomas.length > 0) {
+    if (parrafos.length === g.tomas.length) {
+      for (let k = 0; k < g.tomas.length; k++) {
+        g.tomas[k][3] = parrafos[k];
+      }
+    } else {
+      const parrafosPorToma = Math.ceil(parrafos.length / g.tomas.length);
+      for (let k = 0; k < g.tomas.length; k++) {
+        const sub = parrafos.slice(k * parrafosPorToma, (k + 1) * parrafosPorToma);
+        if (sub.length > 0) {
+          g.tomas[k][3] = sub.join(' ');
+        }
+      }
+    }
+  }
+
+  // Actualizar g.tl (Línea de tiempo)
+  const frases = nuevoTele
+    .replace(/ \|\| /g, ' ')
+    .split(/(?<=[.?!])\s+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  if (frases.length > 0 && g.tl && g.tl.length > 0) {
+    if (frases.length === g.tl.length) {
+      for (let r = 0; r < g.tl.length; r++) {
+        g.tl[r][1] = frases[r];
+      }
+    } else {
+      const frasesPorFila = Math.max(1, Math.round(frases.length / g.tl.length));
+      for (let r = 0; r < g.tl.length; r++) {
+        const start = r * frasesPorFila;
+        if (start < frases.length) {
+          const sub = (r === g.tl.length - 1) ? frases.slice(start) : frases.slice(start, start + frasesPorFila);
+          g.tl[r][1] = sub.join(' ');
+        }
+      }
+    }
+  }
+}
+
+async function guardarEdicionGuion(n){
+  const input = document.getElementById('editor-guion-input-' + n);
+  const estado = document.getElementById('editor-guion-estado-' + n);
+  if(!input) return;
+
+  const rawText = input.value.trim();
+  if(!rawText){
+    if(estado){ estado.textContent = 'El texto no puede estar vacío'; estado.className = 'hookseg-estado mal'; }
+    return;
+  }
+
+  if(estado){ estado.textContent = 'Guardando…'; estado.className = 'hookseg-estado'; }
+
+  let parrafos = rawText
+    .replace(/\/\/\s*pausá\s*\/\//gi, ' || ')
+    .split(/\s*\|\|\s*|\n\s*\n+/)
+    .map(p => p.trim())
+    .filter(Boolean);
+
+  if(parrafos.length === 0){
+    if(estado){ estado.textContent = 'Sin párrafos válidos'; estado.className = 'hookseg-estado mal'; }
+    return;
+  }
+
+  const nuevoTele = parrafos.join(' || ');
+  const g = G.find(x => x.n === n);
+  if(!g) return;
+
+  actualizarTextosGuion(g, nuevoTele);
+
+  let guardadoEnDisco = false;
+
+  try {
+    const resp = await fetch('/guardar-guion-tele', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guion: n, tele: nuevoTele })
+    });
+    if(resp.ok){
+      const resJson = await resp.json();
+      if(resJson.ok) guardadoEnDisco = true;
+    }
+  } catch(e) {}
+
+  if(!guardadoEnDisco){
+    try {
+      const handle = await conseguirManejoArchivo();
+      if(handle){
+        const file = await handle.getFile();
+        const textoFile = await file.text();
+        const teleEscaped = nuevoTele.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const re = new RegExp(`(\\{n:${n},[^\\n]*?tele:')([\\s\\S]*?)(')`);
+        if(re.test(textoFile)){
+          const nuevoHtml = textoFile.replace(re, (_, pre) => pre + teleEscaped + "'");
+          const writable = await handle.createWritable();
+          await writable.write(nuevoHtml);
+          await writable.close();
+          guardadoEnDisco = true;
+        }
+      }
+    } catch(e) {}
+  }
+
+  renderGuiones();
+
+  const modal = document.getElementById('telemodal');
+  if(modal && modal.classList.contains('on')){
+    teleCargarGuion(n);
+  }
+
+  setTimeout(()=>{
+    const nuevoEstado = document.getElementById('editor-guion-estado-' + n);
+    if(nuevoEstado){
+      nuevoEstado.textContent = guardadoEnDisco ? '✓ Guardado y actualizado en toda la página' : '✓ Actualizado en pantalla';
+      nuevoEstado.className = 'hookseg-estado ok';
+      setTimeout(()=>{
+        nuevoEstado.textContent = '';
+        nuevoEstado.className = 'hookseg-estado';
+      }, 3000);
+    }
+  }, 50);
+}
+
 function renderGuiones(){
- document.getElementById('guiones').innerHTML=G.map((g,i)=>{
-  const hk=HOOKLBL[g.hook];
-  return `<div class="guion" id="g-${g.n}" onclick="if(!event.target.closest('.gbody'))this.classList.toggle('abierto')">
-   <div class="gcab">
-     <div class="gnum">${g.n}</div>
-     <div class="gtit"><b>${g.t}</b><span>${g.bloque} · ${g.tomas.length} tomas · ${g.hooktxt}</span></div>
-     <span class="tipohook ${hk[0]}">${hk[1]}</span>
-     <span class="rum">RUM ${g.rum}%</span>
-   </div>
-   <div class="gbody">
-     <h4>🎒 Utilería · esto tienes que tenerlo de verdad</h4>
-     <div class="setup">${g.utileria.map(s=>`<span class="chip util">${s}</span>`).join('')}</div>
+  const cont = document.getElementById('guiones');
+  let html = renderTabsGuiones();
 
-     <h4>💡 Set y luz</h4>
-     <div class="setup">${g.set.map(s=>`<span class="chip">${s}</span>`).join('')}</div>
+  if(guionSeleccionado === null){
+    // Vista general de todos los guiones
+    html += G.map((g, i) => {
+      const hk = HOOKLBL[g.hook];
+      return `<div class="guion" id="g-${g.n}">
+       <div class="gcab" onclick="seleccionarGuion(${g.n})">
+         <div class="gnum">${g.n}</div>
+         <div class="gtit"><b>${g.t}</b><span>${g.bloque} · ${g.tomas.length} tomas · ${g.hooktxt}</span></div>
+         <span class="tipohook ${hk[0]}">${hk[1]}</span>
+         <span class="rum">RUM ${g.rum}%</span>
+       </div>
+       <div class="gbody" style="display:block;">
+         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+           <button class="btn ok" style="padding:9px 18px; font-size:14px; font-weight:800;" onclick="seleccionarGuion(${g.n})">📖 Abrir Página del Guion ${g.n}</button>
+           <button class="btn ok" style="background:#0e2a38; border-color:var(--cian); color:var(--cian); font-weight:700; padding:8px 14px;" onclick="abrirTeleprompter(${g.n})">📺 Teleprompter</button>
+         </div>
+         <h4>🎒 Utilería</h4>
+         <div class="setup">${g.utileria.map(s=>`<span class="chip util">${s}</span>`).join('')}</div>
+         <h4>💡 Set y luz</h4>
+         <div class="setup">${g.set.map(s=>`<span class="chip">${s}</span>`).join('')}</div>
+       </div></div>`;
+    }).join('');
+  } else {
+    // Página completa del guion seleccionado
+    const g = G.find(x => x.n === guionSeleccionado);
+    if(g){
+      const i = G.indexOf(g);
+      const hk = HOOKLBL[g.hook];
+      const ar = clipsDe(g).map(id => CLIPS[id][0]).filter(a => P.some(p => p[0] === a));
 
-     <h4>🚫 Esto NO lo grabas · sale de Google Flow</h4>
-     <div class="setup">${clipsDe(g).map(id=>`<span class="chip noGrabar" onclick="irAPrompt('${id}')"
-        title="Ir al prompt de este clip">${c(id)}
-        <span class="archchip">${CLIPS[id][0]}.mp4</span>
-        <span class="descchip">${CLIPS[id][1]}</span>
-        <span class="flecha">→</span></span>`).join('')}</div>
-     <p class="notaflow">No consigas nada de esto para grabar: son clips generados que el
-     pipeline inserta encima de tu video. <b>Haz clic en cualquiera para ir a su prompt.</b>
-     El archivo se guarda con el nombre en verde, no con el código.</p>
-     ${(()=>{
-       const ar=clipsDe(g).map(i=>CLIPS[i][0]).filter(a=>P.some(p=>p[0]===a));
-       return `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-         <button class="btn ok" style="background:#0e2a38;border-color:var(--cian);color:var(--cian);font-weight:700;padding:9px 16px;font-size:14px" onclick="event.stopPropagation();abrirTeleprompter(${g.n})">
-           📺 Abrir Teleprompter Tablet (Guion ${g.n})
-         </button>
-         ${ar.length>0?`<button class="btn sec" style="padding:9px 14px" onclick="event.stopPropagation();verGuion(${g.n})">
-           ⚡ Ver ${ar.length} prompts en Flow
-         </button>`:''}
-       </div>`})()}
+      html += `<div class="guion-pagina-unica" id="g-pag-${g.n}">
+        <div class="guion-header-barra">
+          <button class="btn sec" onclick="seleccionarGuion(null)">← Ver todos los guiones</button>
+          <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+             <div class="gnum" style="min-width:38px; height:38px; font-size:16px;">${g.n}</div>
+             <h3 style="margin:0; font-size:19px; color:var(--blanco);">${g.t}</h3>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+             <span class="tipohook ${hk[0]}">${hk[1]}</span>
+             <span class="rum">RUM ${g.rum}%</span>
+          </div>
+        </div>
 
-     <h4>Teleprompter</h4>
-     <div class="tele">
-       <button class="copiar" onclick="cp(this,G[${i}].tele.replace(/ \\|\\| /g,'\\n\\n'))">Copiar</button>
-       ${g.tele.split(' || ').map(p=>p).join('<br><span class="pausa">// pausá //</span><br>')}
-     </div>
+        <div class="guion abierto" style="border:1px solid var(--linea); border-radius:11px; margin:0;">
+          <div class="gbody" style="display:block; padding:18px;">
+            <h4>🎒 Utilería · esto tienes que tenerlo de verdad</h4>
+            <div class="setup">${g.utileria.map(s=>`<span class="chip util">${s}</span>`).join('')}</div>
 
-     <h4>Tomas · graba en este orden</h4>
-     ${g.tomas.map(t=>`<div class="toma">
-        <div class="tnum">${t[0]}</div>
-        <div class="tdesc"><b>${t[1]}</b><p>${t[2]}</p><p class="dice">"${t[3]}"</p></div>
-      </div>`).join('')}
+            <h4>💡 Set y luz</h4>
+            <div class="setup">${g.set.map(s=>`<span class="chip">${s}</span>`).join('')}</div>
 
-     ${g.hook!=='talking'?`<h4>⏱️ Hook físico · lo único que el corte NO se lleva</h4>
-     <p class="notaflow" style="margin:0 0 8px">El pipeline corta todos los silencios, así que
-     el gesto de entrada se perdía y el video arrancaba contigo ya hablando. Ahora conserva
-     el silencio justo antes de tu primera palabra — lo justo para que se
-     vea "${g.hooktxt.toLowerCase()}". Lo anterior (la silla vacía, acomodarte) se corta igual.
-     Si el gesto sale mocho o sobra silencio, ajusta los segundos aquí abajo y guarda: se
-     escribe directo en este archivo, así que la próxima corrida ya lo usa.</p>
-     <div class="hooksegs-editor" onclick="event.stopPropagation()">
-       <label class="notaflow" style="margin:0" for="hooksegs-${g.n}">Segundos de hook a conservar</label>
-       <input type="number" id="hooksegs-${g.n}" min="0" max="8" step="0.5" value="${g.hooksegs}">
-       <button class="btn sec" onclick="guardarSegundosGuion(${g.n},'hooksegs')">💾 Guardar en el archivo</button>
-       <span class="hookseg-estado" id="hooksegs-estado-${g.n}"></span>
-     </div>`:''}
+            <h4>🚫 Esto NO lo grabas · sale de Google Flow</h4>
+            <div class="setup">${clipsDe(g).map(id=>`<span class="chip noGrabar" onclick="irAPrompt('${id}')"
+               title="Ir al prompt de este clip">${c(id)}
+               <span class="archchip">${CLIPS[id][0]}.mp4</span>
+               <span class="descchip">${CLIPS[id][1]}</span>
+               <span class="flecha">→</span></span>`).join('')}</div>
+            <p class="notaflow">No consigas nada de esto para grabar: son clips generados que el pipeline inserta encima de tu video.</p>
 
-     <h4>Línea de tiempo · esto es 100% automático</h4>
-     <p class="notaflow" style="margin:0 0 8px">Nada de esta tabla lo haces tú: son las
-     decisiones que ejecuta el pipeline sobre tu grabación. La columna "En pantalla"
-     dice de dónde sale la imagen — <b>YO</b> es tu video crudo.</p>
-     <div class="tablawrap">
-     <table><tr><th>Momento</th><th style="min-width:210px">Qué estoy diciendo</th><th>En pantalla</th><th>Qué se ve</th><th>Sonido</th><th>Música</th></tr>
-     ${g.tl.map((r,ri)=>`<tr id="tl-${g.n}-${ri}"><td>${r[0]}</td>
-        <td class="digo">"${r[1]}"</td>
-        <td><span class="${PILL[r[2]]}">${r[2]}</span></td>
-        <td>${r[3].replace(/\b(F\d\d|P\d\d|H\d\d)\b/g,m=>c(m))}</td>
-        <td class="sfx">${r[4]}</td><td class="sfx">${r[5]}</td></tr>`).join('')}
-     </table></div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
+              <button class="btn ok" style="background:#0e2a38; border-color:var(--cian); color:var(--cian); font-weight:700; padding:10px 18px; font-size:14px;" onclick="abrirTeleprompter(${g.n})">
+                📺 Abrir Teleprompter Tablet (Guion ${g.n})
+              </button>
+              ${ar.length > 0 ? `<button class="btn sec" style="padding:10px 16px;" onclick="verGuion(${g.n})">
+                ⚡ Ver ${ar.length} prompts en Flow
+              </button>` : ''}
+              <button class="btn ok pipe-solo${API?'':' pipe-off'}" style="padding:10px 18px; font-size:14px; font-weight:800;" onclick="pipeDesdeGuion(${g.n})">
+                🚀 Hacer el video de este guion
+              </button>
+            </div>
 
-     <h4>⏱️ Cierre físico · lo único que el corte NO se lleva (al final)</h4>
-     <p class="notaflow" style="margin:0 0 8px">Lo mismo que el hook, pero en la otra punta: el
-     pipeline corta todos los silencios, así que el gesto de salida (levantarte, bajar el
-     aparato, lo que sea que hagas apenas terminás de hablar) se perdía justo después de tu
-     última palabra. Ajustá los segundos a conservar después de eso y guarda: se escribe
-     directo en este archivo, así que la próxima corrida ya lo usa.</p>
-     <div class="hooksegs-editor" onclick="event.stopPropagation()">
-       <label class="notaflow" style="margin:0" for="cierresegs-${g.n}">Segundos de cierre a conservar</label>
-       <input type="number" id="cierresegs-${g.n}" min="0" max="8" step="0.5" value="${g.cierresegs}">
-       <button class="btn sec" onclick="guardarSegundosGuion(${g.n},'cierresegs')">💾 Guardar en el archivo</button>
-       <span class="hookseg-estado" id="cierresegs-estado-${g.n}"></span>
-     </div>
-   </div></div>`}).join('');
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:22px; margin-bottom:8px;">
+              <h4 style="margin:0;">Teleprompter</h4>
+              <button class="btn ok" style="padding:6px 14px; font-size:13px; font-weight:700;" onclick="event.stopPropagation(); toggleEditorGuion(${g.n})">
+                ✏️ Editar Texto del Guion
+              </button>
+            </div>
+
+            <div class="tele" id="tele-box-${g.n}">
+              <button class="copiar" onclick="cp(this,G[${i}].tele.replace(/ \|\| /g,'\n\n'))">Copiar</button>
+              ${g.tele.split(' || ').map(p => p).join('<br><span class="pausa">// pausá //</span><br>')}
+            </div>
+
+            <div id="editor-guion-caja-${g.n}" class="caja-editor-guion" style="display:${estadoEditoresGuion[g.n] ? 'block' : 'none'}; margin:12px 0 20px; background:#071a26; border:1.5px solid var(--cian); border-radius:10px; padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <b style="color:var(--cian); font-size:14px;">✏️ Editar Frases y Párrafos del Guion ${g.n}</b>
+                <span style="font-size:12.5px; color:var(--txt2);">Al guardar, se actualizarán las tomas, la línea de tiempo y el teleprompter automáticamente.</span>
+              </div>
+              <textarea id="editor-guion-input-${g.n}" rows="9" style="width:100%; box-sizing:border-box; background:#040e16; color:#fff; border:1px solid var(--linea); border-radius:8px; padding:12px; font-size:15px; font-family:inherit; line-height:1.6; resize:vertical;">${formatearTeleParaEditor(g.tele)}</textarea>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px;">
+                <button class="btn ok" style="padding:9px 20px; font-weight:800; font-size:14px;" onclick="guardarEdicionGuion(${g.n})">
+                  💾 Guardar y actualizar en toda la página
+                </button>
+                <button class="btn sec" style="padding:9px 16px;" onclick="toggleEditorGuion(${g.n})">
+                  ❌ Cancelar
+                </button>
+                <span class="hookseg-estado" id="editor-guion-estado-${g.n}"></span>
+              </div>
+            </div>
+
+            <h4>Tomas · graba en este orden</h4>
+            ${g.tomas.map(t=>`<div class="tnum">${t[0]}</div><div class="tdesc"><b>${t[1]}</b><p>${t[2]}</p><p class="dice">"${t[3]}"</p></div>`).join('')}
+
+            <h4>Línea de tiempo · esto es 100% automático</h4>
+            <p class="notaflow" style="margin:0 0 8px">Nada de esta tabla lo haces tú: son las decisiones que ejecuta el pipeline sobre tu grabación. La columna "En pantalla" dice de dónde sale la imagen — <b>YO</b> es tu video crudo. Pasá el mouse por cualquier código (F14, P02, H08) para ver qué es, y hacé clic para ir a su prompt.</p>
+            <p class="notaflow pipe-solo pipe-off" style="margin:0 0 8px">Con el pipeline abierto, cada fila trae un selector para cambiarla entre <b>YO</b>, <b>B-ROLL</b>, <b>PIP</b> y <b>ANIM</b>, y otro para elegir con qué clip. Se guarda en este mismo archivo.</p>
+            <div class="tablawrap">
+            <table><tr><th>Momento</th><th style="min-width:210px">Qué estoy diciendo</th><th>En pantalla</th><th>Qué se ve</th><th>Sonido</th><th>Música</th></tr>
+            ${g.tl.map((r,ri)=>`<tr id="tl-${g.n}-${ri}"><td>${r[0]}</td>
+               <td class="digo">"${r[1]}"</td>
+               <td><span class="${PILL[r[2]]}">${r[2]}</span></td>
+               <td>${marcarRecursos(r[3])}${controlesFila(g.n,ri,r)}</td>
+               <td class="sfx">${r[4]}</td><td class="sfx">${r[5]}</td></tr>`).join('')}
+            </table></div>
+
+            <!-- CONFIGURACIÓN DE SILENCIOS FÍSICOS (HOOK Y CIERRE UNO DEBAJO DE OTRO) -->
+            <div class="caja-config-fisico">
+              <h4>⏱️ Configuración de Silencios Físicos (Hook y Cierre)</h4>
+              
+              <div class="bloque-fisico">
+                <h5>⚡ Hook físico · lo único que el corte NO se lleva</h5>
+                <p class="notaflow" style="margin:0 0 8px">El pipeline corta todos los silencios. Se conserva el silencio justo antes de tu primera palabra ("${g.hooktxt.toLowerCase()}"). Ajusta los segundos aquí abajo y guarda:</p>
+                <div class="hooksegs-editor" onclick="event.stopPropagation()">
+                  <label class="notaflow" style="margin:0; font-weight:700;" for="hooksegs-${g.n}">Segundos de hook a conservar:</label>
+                  <input type="number" id="hooksegs-${g.n}" min="0" max="8" step="0.5" value="${g.hooksegs}">
+                  <button class="btn sec" onclick="guardarSegundosGuion(${g.n},'hooksegs')">💾 Guardar en el archivo</button>
+                  <span class="hookseg-estado" id="hooksegs-estado-${g.n}"></span>
+                </div>
+              </div>
+
+              <div class="bloque-fisico" style="margin-top:14px;">
+                <h5>🏁 Cierre físico · lo único que el corte NO se lleva (al final)</h5>
+                <p class="notaflow" style="margin:0 0 8px">El gesto de salida al finalizar la última palabra. Ajusta los segundos a conservar después de hablar y guarda:</p>
+                <div class="hooksegs-editor" onclick="event.stopPropagation()">
+                  <label class="notaflow" style="margin:0; font-weight:700;" for="cierresegs-${g.n}">Segundos de cierre a conservar:</label>
+                  <input type="number" id="cierresegs-${g.n}" min="0" max="8" step="0.5" value="${g.cierresegs}">
+                  <button class="btn sec" onclick="guardarSegundosGuion(${g.n},'cierresegs')">💾 Guardar en el archivo</button>
+                  <span class="hookseg-estado" id="cierresegs-estado-${g.n}"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- PROMPTS DE ESTE GUION CON CHECKBOX Y PERSISTENCIA -->
+            <div class="caja-prompts-guion" style="margin-top:30px; padding-top:20px; border-top:2px solid var(--cian);">
+              <h4 style="font-size:16px;">🎨 Prompts de Google Flow para este Guion (${clipsDe(g).length} clips)</h4>
+              <p class="notaflow" style="margin-bottom:14px;">Genera estos clips en Google Flow y guárdalos en <code>assets/generado/video/manual/</code>. Marca el checkbox para llevar el control.</p>
+              <div class="prompts-guion-lista">
+                ${renderPromptsParaGuion(g)}
+              </div>
+            </div>
+
+          </div></div></div>`;
+    }
+  }
+
+  cont.innerHTML = html;
 }
 
 /* ═══════════ PROMPTS ═══════════ */
@@ -1079,19 +1609,29 @@ function irA(sec){
  document.querySelectorAll('section').forEach(s=>
    s.classList.toggle('on',s.id==='s-'+sec));
 }
-// clic en un chip de clip -> va al prompt y lo resalta
+// aviso corto abajo a la derecha, reusando el toast de "Copiado"
+function avisar(texto,ms){
+ const t=document.getElementById('toast');
+ t.textContent=texto; t.classList.add('on');
+ setTimeout(()=>{t.classList.remove('on');t.textContent='Copiado';},ms||2600);
+}
+// clic en un chip de recurso -> va a su prompt y lo resalta
 function irAPrompt(clipId){
- const arch=CLIPS[clipId][0];
+ const i=infoRecurso(clipId);
+ if(!i) return;
+ if(i.esAnim){
+  // Las animaciones no salen de Flow: son composiciones HTML del proyecto, así
+  // que no hay tarjeta de prompt a la que saltar.
+  avisar(`${i.ref} es una plantilla animada — vive en ${i.archivo}, no se genera en Flow`,3400);
+  return;
+ }
  filtro='todos'; irA('prompts'); renderPrompts();
- setTimeout(()=>{const el=document.getElementById('pr-'+arch);
+ setTimeout(()=>{const el=document.getElementById('pr-'+i.arch);
   if(el){el.scrollIntoView({behavior:'smooth',block:'center'});
    el.classList.add('destacado'); setTimeout(()=>el.classList.remove('destacado'),2400);}
   else{
    // metraje real: no tiene tarjeta de prompt porque no se genera con IA
-   const t=document.getElementById('toast');
-   t.textContent=`${clipId} es metraje real (${arch}.mp4) — no se genera, no tiene prompt`;
-   t.classList.add('on');
-   setTimeout(()=>{t.classList.remove('on');t.textContent='Copiado';},2600);
+   avisar(`${clipId} es metraje real (${i.arch}.mp4) — no se genera, no tiene prompt`);
   }
  },70);
 }
@@ -1129,10 +1669,14 @@ function renderPrompts(){
   : '';
 
  document.getElementById('prompts').innerHTML=lista.map(({p,i},k)=>{
-  const esProd=p.length>6, foto=esProd?p[5]:null, txt=esProd?p[6]:p[5];
-  return `<div class="pr" id="pr-${p[0]}">
-   <div class="prcab">
-     <div class="orden">${i+1}</div>
+   const esProd=p.length>6, foto=esProd?p[5]:null, txt=esProd?p[6]:p[5];
+   return `<div class="pr ${esClipHecho(p[0]) ? 'hecho' : ''}" id="pr-${p[0]}">
+    <div class="prcab">
+      <label class="chk-hecho-lbl">
+        <input type="checkbox" class="chk-clip-${p[0]}" ${esClipHecho(p[0]) ? 'checked' : ''} onchange="toggleClipHecho('${p[0]}', this.checked)">
+        ☑ Ya tengo el video
+      </label>
+      <div class="orden" style="margin-left:8px;">${i+1}</div>
      <div class="prinfo"><b>${p[4].replace(/\s*·\s*(\d+\s*)?guion(es)?[\s\d,y]*$/i,'')}</b><span>${p[3]} · tanda ${p[2]}${
        COD[p[0]]?' · en los guiones aparece como <span class="codref">'+COD[p[0]]+'</span>':''}</span></div>
      <span class="modelo ${esProd?'mQ':'mF'}">${esProd?'Veo 3.1 Quality':'Veo 3.1 Fast'}</span>
@@ -1323,6 +1867,102 @@ async function conseguirManejoArchivo(){
   }
 }
 
+/* --- ubicar una fila DENTRO del fuente del archivo, por posición --- */
+// Mismo algoritmo que editor/panel_servidor.py, a propósito: se ubica la fila
+// por POSICIÓN (guion n, fila ri) y no buscando su texto. El texto no sirve como
+// aguja — hay filas cuyo fuente lleva comillas escapadas (punch-in en
+// \"celular\"), así que la cadena que ve el navegador no aparece literal en el
+// archivo, y "F14 a pantalla completa" se repite en varios guiones.
+function _bloqueGuion(src,n){
+  const m0=new RegExp('\\{n:'+n+',').exec(src);
+  if(!m0) throw new Error('no encontré el guion '+n+' en ese archivo');
+  const tras=m0.index+m0[0].length;
+  const m1=/\n\{n:\d+,|\n\];/.exec(src.slice(tras));
+  return [m0.index, m1?tras+m1.index:src.length];
+}
+// Cada fila de la línea de tiempo ocupa exactamente una línea del fuente (las
+// 120 lo cumplen, y test_regresion lo comprueba). Apoyarse en eso evita meter
+// un parser de JavaScript acá dentro.
+function _lineasFilas(src,ini,fin){
+  const m=/\n\s*tl:\[/.exec(src.slice(ini,fin));
+  if(!m) throw new Error('ese guion no tiene línea de tiempo');
+  let pos=ini+m.index+m[0].length;
+  const filas=[];
+  for(const linea of src.slice(pos,fin).split('\n')){
+    const sinSangria=linea.replace(/^\s+/,'');
+    if(sinSangria.startsWith('['))
+      filas.push([pos+(linea.length-sinSangria.length), pos+linea.length]);
+    pos+=linea.length+1;                       // +1 por el \n que split se comió
+  }
+  return filas;
+}
+// Rangos del CONTENIDO de cada cadena entre comillas simples de la línea.
+function _campos(linea){
+  const rangos=[]; let i=0;
+  while(i<linea.length){
+    if(linea[i]==="'"){
+      let j=i+1;
+      while(j<linea.length){
+        if(linea[j]==='\\'){j+=2;continue;}
+        if(linea[j]==="'")break;
+        j++;
+      }
+      if(j>=linea.length)break;
+      rangos.push([i+1,j]); i=j+1;
+    } else i++;
+  }
+  return rangos;
+}
+const _esc=v=>String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+const _desesc=v=>v.replace(/\\(.)/g,'$1');
+
+function escribirFilaEnFuente(src,n,ri,tipo,ve){
+  if(/[\r\n]/.test(ve)) throw new Error('el texto no puede tener saltos de línea');
+  const [ini,fin]=_bloqueGuion(src,n);
+  const filas=_lineasFilas(src,ini,fin);
+  if(ri<0||ri>=filas.length) throw new Error(`el guion ${n} no tiene una fila ${ri}`);
+  const [a,b]=filas[ri];
+  let linea=src.slice(a,b);
+  const campos=_campos(linea);
+  if(campos.length<4) throw new Error('esa fila no tiene los 4 campos esperados');
+  // De atrás para adelante: reemplazar el 3.º primero desplazaría al 4.º.
+  for(const [idx,val] of [[3,ve],[2,tipo]]){
+    const [x,y]=campos[idx];
+    // Un campo que ya dice eso no se toca: el panel está escrito a mano y tiene
+    // campos con escapes que no hacen falta (\"celular\"), así que reescribirlos
+    // "igual" cambiaría bytes sin cambiar nada.
+    if(_desesc(linea.slice(x,y))===val) continue;
+    linea=linea.slice(0,x)+_esc(val)+linea.slice(y);
+  }
+  return src.slice(0,a)+linea+src.slice(b);
+}
+
+function escribirSegundosEnFuente(src,n,campo,valor){
+  const [ini,fin]=_bloqueGuion(src,n);
+  const bloque=src.slice(ini,fin);
+  const m=new RegExp(campo+':([0-9.]+)').exec(bloque);
+  if(!m) throw new Error(`el guion ${n} no tiene "${campo}"`);
+  const texto=Number.isInteger(valor)?valor.toFixed(1):String(valor);
+  const a=m.index+campo.length+1;
+  return src.slice(0,ini)+bloque.slice(0,a)+texto+bloque.slice(a+m[1].length)+src.slice(fin);
+}
+
+/* --- guardar un cambio en PANEL-PRODUCCION.html --- */
+// Con el pipeline detrás va por el servidor, que edita el archivo por posición y
+// comprueba la relectura antes de escribir. Sin pipeline se cae al selector de
+// archivos del navegador, que es lo que permite editar desde un file:// suelto
+// (y lo único que hay en Chrome/Edge; en el celular no existe).
+async function guardarEnPanel(porServidor,transformar){
+  if(API){ await apiPost(porServidor.ruta,porServidor.cuerpo); return; }
+  const handle=await conseguirManejoArchivo();
+  if(!handle) throw new Error('no elegiste el archivo');
+  const texto=await (await handle.getFile()).text();
+  const nuevo=transformar(texto);
+  const writable=await handle.createWritable();
+  await writable.write(nuevo);
+  await writable.close();
+}
+
 // `campo` es 'hooksegs' o 'cierresegs' — mismo mecanismo para el silencio
 // que se conserva al principio (hook) y al final (cierre) del video.
 async function guardarSegundosGuion(n,campo){
@@ -1333,32 +1973,180 @@ async function guardarSegundosGuion(n,campo){
     estado.textContent='Valor inválido';estado.className='hookseg-estado mal';return;
   }
   estado.textContent='Guardando…';estado.className='hookseg-estado';
-  const handle=await conseguirManejoArchivo();
-  if(!handle){estado.textContent='';estado.className='hookseg-estado';return;}
   try{
-    const file=await handle.getFile();
-    const texto=await file.text();
-    // hooksegs y cierresegs siempre van en la misma línea que "{n:N," (ver los
-    // G del archivo), así que basta con no cruzar el salto de línea para no
-    // tocar otro guion.
-    const re=new RegExp(`(\\{n:${n},[^\\n]*?${campo}:)([0-9.]+)`);
-    if(!re.test(texto)){
-      estado.textContent=`No encontré "${campo}" del guion ${n} en ese archivo — ¿es PANEL-PRODUCCION.html?`;
-      estado.className='hookseg-estado mal';return;
-    }
-    const nuevo=texto.replace(re,(_,pre)=>pre+val);
-    const writable=await handle.createWritable();
-    await writable.write(nuevo);
-    await writable.close();
-    const g=G.find(x=>x.n===n);
-    if(g) g[campo]=val;
-    estado.textContent='✓ Guardado';estado.className='hookseg-estado ok';
-    setTimeout(()=>{
-      if(estado.textContent==='✓ Guardado'){estado.textContent='';estado.className='hookseg-estado';}
-    },2500);
+    await guardarEnPanel(
+      {ruta:'/api/segundos',cuerpo:{n,campo,valor:val}},
+      src=>escribirSegundosEnFuente(src,n,campo,val));
   }catch(e){
-    estado.textContent='Error al guardar: '+e.message;estado.className='hookseg-estado mal';
+    estado.textContent='No se guardó: '+e.message;estado.className='hookseg-estado mal';
+    return;
   }
+  const g=G.find(x=>x.n===n);
+  if(g) g[campo]=val;
+  estado.textContent='✓ Guardado';estado.className='hookseg-estado ok';
+  setTimeout(()=>{
+    if(estado.textContent==='✓ Guardado'){estado.textContent='';estado.className='hookseg-estado';}
+  },2500);
+}
+
+/* ═══════════ QUÉ ES CADA FILA: YO / B-ROLL / PIP / ANIM ═══════════ */
+// El pipeline lee el TIPO de la columna "En pantalla" (tl[i][2]) y CÓMO entra
+// del TEXTO de "Qué se ve" (tl[i][3]) — f13_guion.modo_broll_de y
+// resolver_codigo_asset. Se mantiene así a propósito: el guion se sigue
+// escribiendo a mano tan seguido como con estos selectores, y los selectores no
+// son más que una forma cómoda de escribir exactamente las frases que el
+// pipeline sabe leer. Una columna nueva obligaría a tocar las 120 filas ya
+// escritas y a que el pipeline aprendiera un formato más.
+//
+// "detrás de mí" = el clip ocupa el 70% de arriba y José va recortado por
+// delante; "a pantalla completa" = tapa el cuadro entero; "arriba a la
+// derecha/izquierda" = el recuadro del PiP o la tarjeta animada.
+const MARCA_COMPLETO='a pantalla completa', MARCA_RECORTE='detrás de mí';
+const MARCA_DER='arriba a la derecha', MARCA_IZQ='arriba a la izquierda';
+
+// Cada opción del selector es un par (tipo, frase). La frase es lo único que
+// cambia dentro de "Qué se ve".
+const MODOS={
+ 'YO'        :{tipo:'YO',     frase:'',            et:'YO · solo tu grabación'},
+ 'BROLL-full':{tipo:'B-ROLL', frase:MARCA_COMPLETO,et:'B-ROLL · tapa el cuadro'},
+ 'BROLL-70'  :{tipo:'B-ROLL', frase:MARCA_RECORTE, et:'B-ROLL · detrás de mí (70%)'},
+ 'PIP-der'   :{tipo:'PIP',    frase:MARCA_DER,     et:'PIP · recuadro a la derecha'},
+ 'PIP-izq'   :{tipo:'PIP',    frase:MARCA_IZQ,     et:'PIP · recuadro a la izquierda'},
+ 'ANIM-der'  :{tipo:'ANIM',   frase:MARCA_DER,     et:'ANIM · tarjeta a la derecha'},
+ 'ANIM-izq'  :{tipo:'ANIM',   frase:MARCA_IZQ,     et:'ANIM · tarjeta a la izquierda'},
+ 'ANIM-full' :{tipo:'ANIM',   frase:'',            et:'ANIM · tarjeta a pantalla completa'},
+};
+// Todas las frases juntas, para quitar la que hubiera antes de poner otra.
+const RX_FRASE=/(?:a pantalla completa|detr[áa]s de m[íi]|detras mio|arriba a la (?:derecha|izquierda))/i;
+const RX_POS=/arriba a la (?:derecha|izquierda)/i;
+const escRx=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+// Igual que RX_RECURSO pero sin la bandera global: `test` con /g/ arrastra
+// lastIndex entre llamadas y da falsos negativos una vez de cada dos.
+const RX_RECURSO1=/\b(?:[FPH]\d\d|tarjeta-[a-z]+|anim-[a-z]+|stickers|comparativa)\b/;
+
+function modoDeVe(ve){
+  return /detr[áa]s de m[íi]|detras mio|al 70/i.test(ve||'')?'recorte':'completo';
+}
+
+// Qué opción del selector le corresponde a una fila tal como está escrita hoy.
+function modoDeFila(tipo,ve){
+  const izq=/izquierda/i.test(ve||'');
+  if(tipo==='B-ROLL') return modoDeVe(ve)==='recorte'?'BROLL-70':'BROLL-full';
+  if(tipo==='PIP')    return izq?'PIP-izq':'PIP-der';
+  if(tipo==='ANIM')   return izq?'ANIM-izq':(/derecha/i.test(ve||'')?'ANIM-der':'ANIM-full');
+  return 'YO';
+}
+
+// El código del clip (F14, P02…) se queda al frente y la descripción detrás; en
+// medio va la frase, que es lo único que cambia.
+function textoConModo(ve,clave){
+  // A YO no se le toca el texto: apagar una fila no tiene por qué borrar con
+  // qué clip estaba, así que volver a encenderla no obliga a reescribir nada.
+  if(clave==='YO') return ve||'';
+  const {tipo,frase}=MODOS[clave]||MODOS['YO'];
+  const t=(ve||'').trim();
+  // Si la fila YA dice lo que toca, no se toca el texto. Sin esto, guiones que
+  // escriben la frase en otro orden ("H03 anim-sol arriba a la derecha")
+  // quedaban reordenados por el solo hecho de elegir la opción que ya tenían.
+  const yaDice=frase?new RegExp(escRx(frase),'i').test(t):!RX_POS.test(t);
+  if(yaDice && modoDeFila(tipo,t)===clave) return t;
+  const m=t.match(/^\s*([FPH]\d\d)?\s*(.*)$/);
+  const cod=(m&&m[1])?m[1]:'';
+  const resto=((m&&m[2])?m[2]:'').replace(RX_FRASE,'').replace(/\s{2,}/g,' ').trim();
+  const cabeza=[cod,frase].filter(Boolean).join(' ');
+  // La puntuación va pegada; una palabra, separada por un espacio.
+  const juntura=(!resto||/^[:,;.]/.test(resto))?'':' ';
+  return (cabeza?cabeza+juntura+resto:resto).trim();
+}
+
+// Cambiar con QUÉ clip se hace la fila: se sustituye el recurso nombrado, o se
+// antepone si la fila todavía no nombraba ninguno.
+function textoConRecurso(ve,rec){
+  const t=(ve||'').trim();
+  return RX_RECURSO1.test(t)?t.replace(RX_RECURSO1,rec):(rec+' '+t).trim();
+}
+
+function opcionesRecurso(clave,ve){
+  const tipo=(MODOS[clave]||MODOS['YO']).tipo;
+  const actual=((ve||'').match(RX_RECURSO1)||[''])[0];
+  const sel=k=>k===actual?' selected':'';
+  const opcion=(k,txt,titulo)=>`<option value="${k}"${sel(k)} title="${(titulo||'').replace(/"/g,'&quot;')}">${txt}</option>`;
+  let h=actual?'':'<option value="" selected>— elegí el clip —</option>';
+  if(tipo==='ANIM'){
+    h+='<optgroup label="Plantillas animadas">';
+    for(const k in CLIPS) if(k[0]==='H') h+=opcion(k,`${k} · ${CLIPS[k][0]}`,CLIPS[k][1]);
+    for(const k in ANIM_SUELTAS) h+=opcion(k,`${k}`,ANIM_SUELTAS[k][1]);
+    return h+'</optgroup>';
+  }
+  h+='<optgroup label="Ambiente">';
+  for(const k in CLIPS) if(k[0]==='F') h+=opcion(k,`${k} · ${CLIPS[k][0]}`,CLIPS[k][1]);
+  h+='</optgroup><optgroup label="Producto">';
+  for(const k in CLIPS) if(k[0]==='P') h+=opcion(k,`${k} · ${CLIPS[k][0]}`,CLIPS[k][1]);
+  return h+'</optgroup>';
+}
+
+// Sin pipeline detrás no se dibujan: en el celular o en GitHub Pages no hay
+// dónde guardar el cambio, y un selector que no guarda miente.
+function controlesFila(n,ri,r){
+  if(!API) return '';
+  const clave=modoDeFila(r[2],r[3]);
+  const opciones=Object.entries(MODOS).map(([k,v])=>
+    `<option value="${k}"${k===clave?' selected':''}>${v.et}</option>`).join('');
+  const recurso=MODOS[clave].tipo==='YO'?'':
+    `<select class="recurso" onchange="cambiarFila(${n},${ri},null,this.value)"
+       title="Con qué clip se hace esta fila">${opcionesRecurso(clave,r[3])}</select>`;
+  return `<div class="modobroll" onclick="event.stopPropagation()">
+    <select onchange="cambiarFila(${n},${ri},this.value,null)"
+      title="Qué se ve en este momento del video">${opciones}</select>
+    ${recurso}
+    <span class="hookseg-estado" id="fila-estado-${n}-${ri}"></span>
+  </div>`;
+}
+
+// Redibuja solo las dos celdas que cambian, para no perder el scroll ni cerrar
+// la página del guion en cada ajuste.
+function refrescarFila(n,ri,mensaje,clase){
+  const g=G.find(x=>x.n===n); if(!g) return;
+  const tr=document.getElementById(`tl-${n}-${ri}`); if(!tr) return;
+  const r=g.tl[ri];
+  tr.cells[2].innerHTML=`<span class="${PILL[r[2]]}">${r[2]}</span>`;
+  tr.cells[3].innerHTML=marcarRecursos(r[3])+controlesFila(n,ri,r);
+  if(mensaje) estadoFila(n,ri,mensaje,clase);
+}
+
+function estadoFila(n,ri,mensaje,clase){
+  const est=document.getElementById(`fila-estado-${n}-${ri}`); if(!est) return;
+  est.textContent=mensaje; est.className='hookseg-estado'+(clase?' '+clase:'');
+  if(clase==='ok') setTimeout(()=>{
+    if(est.textContent===mensaje){est.textContent='';est.className='hookseg-estado';}
+  },2500);
+}
+
+async function cambiarFila(n,ri,clave,recurso){
+  const g=G.find(x=>x.n===n); if(!g) return;
+  const r=g.tl[ri];
+  if(recurso==='') { refrescarFila(n,ri); return; }   // el "— elegí el clip —"
+  const claveFinal=clave||modoDeFila(r[2],r[3]);
+  const tipo=MODOS[claveFinal].tipo;
+  let ve=textoConModo(r[3],claveFinal);
+  if(recurso) ve=textoConRecurso(ve,recurso);
+  if(tipo===r[2] && ve===r[3]){ estadoFila(n,ri,''); return; }
+
+  estadoFila(n,ri,'Guardando…');
+  try{
+    await guardarEnPanel(
+      {ruta:'/api/fila',cuerpo:{n,ri,tipo,ve}},
+      src=>escribirFilaEnFuente(src,n,ri,tipo,ve));
+  }catch(e){
+    // No se toca G: la pantalla sigue mostrando lo que de verdad hay en el
+    // archivo, que es lo que va a leer el pipeline.
+    refrescarFila(n,ri,'No se guardó: '+e.message,'mal');
+    return;
+  }
+  r[2]=tipo; r[3]=ve;
+  const falta=tipo!=='YO' && !RX_RECURSO1.test(ve);
+  refrescarFila(n,ri, falta?'Guardado, pero falta elegir el clip':'✓ Guardado',
+    falta?'mal':'ok');
 }
 
 function cpIdx(b,i){const p=P[i];cp(b,p.length>6?p[6]:p[5]);}
@@ -1374,10 +2162,220 @@ function cp(btn,txt){
   setTimeout(()=>t.classList.remove('on'),1400);
  }).catch(()=>alert('No se pudo copiar. Selecciona el texto a mano.'));
 }
+/* ═══════════ CORRER EL PIPELINE DESDE ACÁ ═══════════ */
+// Todo esto solo existe con `editor/panel_servidor.py` detrás. El servidor corre
+// en la misma máquina que el navegador, que es lo que permite las dos cosas que
+// una página web no puede hacer sola: pedir la ruta absoluta de la grabación
+// con el diálogo de Windows, y lanzar editor.py.
+let pipeVideo=null, pipeSondeo=null, pipeLineas=0;
+
+function pipePrefs(){ try{return JSON.parse(localStorage.getItem('panel-pipe')||'{}');}catch(e){return {};} }
+function pipeGuardarPrefs(){
+  try{
+    localStorage.setItem('panel-pipe',JSON.stringify({
+      video:pipeVideo,
+      guion:document.getElementById('pipe-guion').value,
+      sinMusica:document.getElementById('pipe-sin-musica').checked,
+      preview:document.getElementById('pipe-preview').checked,
+    }));
+  }catch(e){}
+}
+
+async function pipeArrancar(){
+  const d=await pipeDetectar();
+  pipePintarConexion(d);
+  if(!d) return;
+  // Los controles de cada fila no se dibujan sin API, así que la línea de tiempo
+  // que ya está en pantalla hay que rehacerla ahora que sí la hay.
+  document.querySelectorAll('.pipe-solo').forEach(el=>el.classList.remove('pipe-off'));
+  renderGuiones();
+  pipeCargarGuiones();
+  pipeCargarVideos(d);
+  const p=pipePrefs();
+  if(p.sinMusica) document.getElementById('pipe-sin-musica').checked=true;
+  if(p.preview) document.getElementById('pipe-preview').checked=true;
+  document.getElementById('pipe-dir-entrada').textContent=d.dir_entrada;
+  if(d.corrida && d.corrida.estado==='corriendo'){ irA('pipeline'); pipeSeguirLog(); }
+}
+
+function pipePintarConexion(d){
+  const punto=document.getElementById('pipe-punto');
+  const txt=document.getElementById('pipe-conexion-txt');
+  if(!d){
+    punto.className='pipe-punto';
+    txt.innerHTML='Sin pipeline detrás — esta es la página de lectura. '
+      +'Para hacer videos, abrí <span class="ruta">editor/Panel de producción.bat</span> en tu PC.';
+    return;
+  }
+  punto.className='pipe-punto on';
+  txt.innerHTML=`Pipeline conectado en <span class="ruta">${API}</span> · panel <span class="ruta">${d.panel}</span>`;
+}
+
+function pipeCargarGuiones(){
+  const sel=document.getElementById('pipe-guion');
+  const p=pipePrefs();
+  sel.innerHTML=G.map(g=>`<option value="${g.n}">Guion ${g.n} · ${g.t}</option>`).join('');
+  if(p.guion && G.some(g=>String(g.n)===String(p.guion))) sel.value=p.guion;
+}
+
+function pipeCargarVideos(d){
+  const sel=document.getElementById('pipe-video');
+  const p=pipePrefs();
+  const vs=d.videos||[];
+  sel.innerHTML=(vs.length?'':'<option value="">— no hay grabaciones en entrada/ —</option>')
+    +vs.map(v=>`<option value="${v.ruta.replace(/"/g,'&quot;')}">${v.nombre}${
+      v.duracion?` · ${Math.round(v.duracion)}s`:''}</option>`).join('');
+  // La última usada puede estar fuera de entrada/: se le agrega su propia opción.
+  if(p.video && !vs.some(v=>v.ruta===p.video)){
+    const o=document.createElement('option');
+    o.value=p.video; o.textContent=p.video.split(/[\\/]/).pop()+' (fuera de entrada/)';
+    sel.appendChild(o);
+  }
+  if(p.video) sel.value=p.video;
+  pipeElegirDeLista();
+}
+
+function pipeElegirDeLista(){
+  pipeVideo=document.getElementById('pipe-video').value||null;
+  document.getElementById('pipe-video-elegido').innerHTML=
+    pipeVideo?`Va a usar: <span class="ruta">${pipeVideo}</span>`:'';
+  pipeGuardarPrefs();
+}
+
+async function pipeBuscarEnDisco(){
+  const msg=document.getElementById('pipe-mensaje');
+  msg.textContent='Abriendo el selector de Windows…'; msg.className='hookseg-estado';
+  try{
+    const d=await apiPost('/api/elegir-video',{});
+    msg.textContent='';
+    if(!d.ruta) return;                      // canceló
+    const sel=document.getElementById('pipe-video');
+    let op=[...sel.options].find(o=>o.value===d.ruta);
+    if(!op){
+      op=document.createElement('option');
+      op.value=d.ruta; op.textContent=d.ruta.split(/[\\/]/).pop();
+      sel.appendChild(op);
+    }
+    sel.value=d.ruta;
+    pipeElegirDeLista();
+  }catch(e){
+    msg.textContent='No se pudo abrir el selector: '+e.message; msg.className='hookseg-estado mal';
+  }
+}
+
+function pipeVerGuion(){
+  seleccionarGuion(+document.getElementById('pipe-guion').value);
+  window.scrollTo(0,0);
+}
+
+// Desde la página de un guion: manda ese guion al panel de corrida.
+function pipeDesdeGuion(n){
+  irA('pipeline');
+  document.getElementById('pipe-guion').value=n;
+  pipeGuardarPrefs();
+  window.scrollTo(0,0);
+}
+
+async function pipeCorrer(){
+  const msg=document.getElementById('pipe-mensaje');
+  if(!pipeVideo){
+    msg.textContent='Primero elegí la grabación.'; msg.className='hookseg-estado mal'; return;
+  }
+  const cuerpo={
+    video:pipeVideo,
+    guion:+document.getElementById('pipe-guion').value,
+    sin_musica:document.getElementById('pipe-sin-musica').checked,
+    preview:document.getElementById('pipe-preview').checked,
+  };
+  msg.textContent='Arrancando…'; msg.className='hookseg-estado';
+  pipeLineas=0;
+  const log=document.getElementById('pipe-log');
+  log.textContent=''; log.style.display='block';
+  try{
+    await apiPost('/api/correr',cuerpo);
+  }catch(e){
+    msg.textContent='No arrancó: '+e.message; msg.className='hookseg-estado mal'; return;
+  }
+  pipeGuardarPrefs();
+  pipeSeguirLog();
+}
+
+function pipeSeguirLog(){
+  const log=document.getElementById('pipe-log');
+  log.style.display='block';
+  clearInterval(pipeSondeo);
+  const tirar=async()=>{
+    let d;
+    try{ d=await (await fetch(`${API}/api/log?desde=${pipeLineas}`)).json(); }
+    catch(e){ return; }                      // un sondeo perdido no es un error
+    if(d.log && d.log.length){
+      // Solo se hace scroll si ya estaba abajo: si José está leyendo más arriba,
+      // el log no se lo arrastra.
+      const abajo=log.scrollHeight-log.scrollTop-log.clientHeight<40;
+      for(const l of d.log){
+        const div=document.createElement('div');
+        if(/^(ERROR|Traceback|AVISO GRAVE)/.test(l)) div.className='mal';
+        div.textContent=l;
+        log.appendChild(div);
+      }
+      pipeLineas+=d.log.length;
+      if(abajo) log.scrollTop=log.scrollHeight;
+    }
+    pipePintarCorrida(d);
+    if(d.estado!=='corriendo') clearInterval(pipeSondeo);
+  };
+  pipeSondeo=setInterval(tirar,1000);
+  tirar();
+}
+
+function pipePintarCorrida(d){
+  const msg=document.getElementById('pipe-mensaje');
+  const punto=document.getElementById('pipe-punto');
+  const correr=document.getElementById('pipe-correr');
+  const detener=document.getElementById('pipe-detener');
+  const editor=document.getElementById('pipe-abrir-editor');
+  const corriendo=d.estado==='corriendo';
+  correr.disabled=corriendo;
+  detener.style.display=corriendo?'':'none';
+  editor.style.display=(d.estado==='ok'&&d.nombre)?'':'none';
+  editor.dataset.corrida=d.nombre||'';
+  if(corriendo){
+    punto.className='pipe-punto trabajando';
+    const seg=d.ini?Math.round(Date.now()/1000-d.ini):0;
+    msg.textContent=`Corriendo el guion ${d.guion}… (${seg}s)`; msg.className='hookseg-estado';
+  }else if(d.estado==='ok'){
+    punto.className='pipe-punto on';
+    msg.innerHTML=`✓ Listo${d.final?` — <span class="ruta">${d.final}</span>`:''}`;
+    msg.className='hookseg-estado ok';
+  }else if(d.estado==='error'){
+    punto.className='pipe-punto mal';
+    msg.textContent=`Falló (código ${d.codigo}). Mirá el log de acá abajo.`;
+    msg.className='hookseg-estado mal';
+  }else if(d.estado==='cancelada'){
+    punto.className='pipe-punto'; msg.textContent='Cancelada.'; msg.className='hookseg-estado';
+  }
+}
+
+async function pipeDetener(){
+  try{ await apiPost('/api/detener',{}); }catch(e){}
+}
+
+async function pipeAbrirEditor(){
+  const msg=document.getElementById('pipe-mensaje');
+  try{
+    await apiPost('/api/abrir-editor',{nombre:document.getElementById('pipe-abrir-editor').dataset.corrida||null});
+    msg.textContent='Editor visual abriéndose en otra ventana…'; msg.className='hookseg-estado ok';
+  }catch(e){
+    msg.textContent='No se pudo abrir: '+e.message; msg.className='hookseg-estado mal';
+  }
+}
+
+/* ═══════════ ARRANQUE ═══════════ */
 document.querySelectorAll('nav button').forEach(b=>{
  if(b.dataset.s){
    b.onclick=()=>{ irA(b.dataset.s); window.scrollTo(0,0); };
  }
 });
 renderGuiones();renderPrompts();renderLotes();
+pipeArrancar();
 </script>
