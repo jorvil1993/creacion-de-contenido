@@ -2566,6 +2566,67 @@ console.log(JSON.stringify(JSON.parse(process.argv[2]).map(
         "sin esto las tildes del pipeline llegan rotas al panel")
 
 
+def pruebas_ajustes_timeline_vieja():
+    """Bug reportado por Jose (2026-08-01), maxima prioridad: el video renderizado
+    mostraba insertos/PiP/hook que el editor NO mostraba (o al reves). Causa: al
+    re-correr el mismo --nombre SIN --reaplicar, la transcripcion y el corte
+    cambian enteros, pero los ajustes.*.json de la sesion de edicion ANTERIOR
+    seguian en la carpeta -- eventos_del_editor() los tomaba como "lo ultimo que
+    el usuario toco" y los mezclaba con el render nuevo, aunque apuntaran a
+    segundos de una transcripcion que ya no existe. El editor terminaba
+    mostrando una mezcla fantasma: ni la corrida vieja ni la nueva.
+    """
+    seccion("20. Ajustes obsoletos tras re-correr sin --reaplicar (editor.py)")
+    import json
+    import tempfile
+    import editor as editor_mod
+
+    tmp = Path(tempfile.mkdtemp())
+
+    dir_trabajo = tmp / "corrida"
+    dir_trabajo.mkdir()
+    ligados = list(editor_mod.AJUSTES_LIGADOS_AL_TIEMPO)
+    no_ligados = ["ajustes.musica.json", "ajustes.pip_anim.json",
+                  "ajustes.hook.json", "ajustes.subtitulos.json", "ajustes.sesion.json"]
+    for nombre_archivo in ligados + no_ligados:
+        (dir_trabajo / nombre_archivo).write_text(
+            json.dumps({"marca": nombre_archivo}), encoding="utf-8")
+
+    editor_mod._archivar_ajustes_de_timeline_vieja(dir_trabajo)
+
+    chk("los ajustes ligados a segundos de la transcripcion se apartan de la carpeta",
+        all(not (dir_trabajo / n).exists() for n in ligados),
+        f"quedan sin apartar: {[n for n in ligados if (dir_trabajo / n).exists()]}")
+    chk("los ajustes NO ligados al tiempo (musica, pip_anim, hook, subtitulos, sesion) se quedan",
+        all((dir_trabajo / n).exists() for n in no_ligados),
+        "esos no dependen de segundos de la transcripcion -- no hay motivo para tocarlos, "
+        "y tocarlos de mas perderia preferencias que siguen siendo validas")
+
+    carpetas_backup = [d for d in dir_trabajo.iterdir()
+                       if d.is_dir() and d.name.startswith("_ajustes_de_corrida_anterior_")]
+    chk("los archivos apartados quedan en una subcarpeta, no se borran",
+        len(carpetas_backup) == 1 and all((carpetas_backup[0] / n).exists() for n in ligados),
+        "nada se pierde -- solo se deja de usar, por si hiciera falta mirarlo despues")
+    contenido = json.loads((carpetas_backup[0] / "ajustes.eventos.json").read_text(encoding="utf-8"))
+    chk("el contenido apartado es exactamente el que estaba, no se reescribe ni se toca",
+        contenido == {"marca": "ajustes.eventos.json"})
+
+    dir_vacia = tmp / "corrida_vacia"
+    dir_vacia.mkdir()
+    editor_mod._archivar_ajustes_de_timeline_vieja(dir_vacia)
+    chk("sin ningun ajuste que apartar, no crea ninguna carpeta de respaldo de sobra",
+        not any(d.is_dir() and d.name.startswith("_ajustes_de_corrida_anterior_")
+                for d in dir_vacia.iterdir()),
+        "una corrida sobre una carpeta limpia no debe dejar carpetas vacias")
+
+    fuente_editor = (AQUI / "editor.py").read_text(encoding="utf-8")
+    chk("main() aparta los ajustes viejos SOLO fuera de --reaplicar",
+        "if not args.reaplicar:\n        _archivar_ajustes_de_timeline_vieja(dir_trabajo)"
+        in fuente_editor,
+        "--reaplicar reusa la MISMA transcripcion a proposito -- ahi los ajustes siguen "
+        "siendo validos, y apartarlos igual dejaria a --reaplicar sin sentido")
+
+
 def _guiones_de_fuente(fuente: str) -> list:
     """Los guiones de un panel EN MEMORIA, con el mismo eval que usa el pipeline."""
     import json
@@ -2604,6 +2665,7 @@ def main():
     pruebas_broll_detras()
     pruebas_transiciones_pip()
     pruebas_panel_conectado()
+    pruebas_ajustes_timeline_vieja()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")

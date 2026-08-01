@@ -29,6 +29,7 @@ import json
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import config
@@ -57,6 +58,51 @@ def _ruta_versionada(dir_destino: Path, nombre_base: str) -> Path:
         if not cand_v.exists():
             return cand_v
         v += 1
+
+
+# ajustes.*.json cuyo contenido son SEGUNDOS de la transcripción/corte de ESTA
+# carpeta de trabajo: posiciones en el tiempo de insertos, hook/CTA,
+# animaciones, punch-ins, transiciones (por empalme), SFX y qué silencios se
+# recortaron. Una corrida fresca (sin --reaplicar) vuelve a transcribir y a
+# cortar desde cero — esos segundos ya no corresponden a nada.
+AJUSTES_LIGADOS_AL_TIEMPO = [
+    "ajustes.eventos.json", "ajustes.broll.json", "ajustes.hookcta.json",
+    "ajustes.animaciones.json", "ajustes.encuadre.json",
+    "ajustes.transiciones.json", "ajustes.sfx.json", "ajustes.silencios.json",
+]
+
+
+def _archivar_ajustes_de_timeline_vieja(dir_trabajo: Path) -> None:
+    """Aparta (no borra) los ajustes de una corrida ANTERIOR sobre esta misma
+    carpeta que quedarían inválidos con la transcripción nueva.
+
+    Bug reportado por José (2026-08-01): el video renderizado mostraba
+    inserto/PiP/hook que el editor no mostraba (o al revés). Causa: al
+    re-correr el mismo --nombre SIN --reaplicar, el render usa la
+    transcripción y el guion nuevos (correcto), pero los ajustes.*.json de la
+    sesión de edición ANTERIOR seguían en la carpeta — `eventos_del_editor()`
+    y el resto de `recolectar()` (en f10_editor_visual.py) los toman como "lo
+    último que el usuario tocó" y los mezclan con el render nuevo, aunque
+    apunten a segundos de una transcripción que ya no existe. El editor
+    terminaba mostrando una mezcla fantasma: ni la corrida vieja ni la nueva.
+
+    Mover estos archivos a una subcarpeta (en vez de borrarlos) hace que
+    `recolectar()` caiga sola en los datos del render fresco — que es
+    exactamente lo que el video tiene adentro — sin perder nada por si hiciera
+    falta mirarlo después.
+    """
+    presentes = [n for n in AJUSTES_LIGADOS_AL_TIEMPO if (dir_trabajo / n).exists()]
+    if not presentes:
+        return
+    marca = time.strftime("%Y%m%d-%H%M%S")
+    destino = dir_trabajo / f"_ajustes_de_corrida_anterior_{marca}"
+    destino.mkdir(exist_ok=True)
+    for nombre_archivo in presentes:
+        (dir_trabajo / nombre_archivo).rename(destino / nombre_archivo)
+    print(f"AVISO: {len(presentes)} ajuste(s) de una edición anterior sobre esta "
+          f"carpeta (ligados a segundos de la transcripción vieja) se apartaron a "
+          f"{destino.name}/ — esta corrida vuelve a transcribir, así que ya no "
+          "aplican. Nada se perdió, el editor va a mostrar el render nuevo tal cual.")
 
 
 def paso(descripcion, cmd):
@@ -235,6 +281,12 @@ def main():
     nombre = args.nombre or rutas_entrada[0].stem
     dir_trabajo = config.DIR_SALIDA / nombre
     dir_trabajo.mkdir(parents=True, exist_ok=True)
+
+    # Ver _archivar_ajustes_de_timeline_vieja(): --reaplicar reusa la MISMA
+    # transcripción a propósito (esa es toda su gracia), así que ahí los
+    # ajustes siguen apuntando a segundos válidos y no hay que tocar nada.
+    if not args.reaplicar:
+        _archivar_ajustes_de_timeline_vieja(dir_trabajo)
 
     # Constancia de con qué se lanzó la corrida, para que el editor visual pueda
     # re-renderizar en las MISMAS condiciones. Sin esto, f11_servidor llamaba a
@@ -617,8 +669,11 @@ def main():
         print(f"\nPREVIEW (media resolución, sin publicar): {video_final}")
         print("Cuando esté bien, corré lo mismo SIN --preview para el archivo de subir.")
     else:
-        print(f"\nVideo final (trabajo):   {video_final}")
-        print(f"Video final (OneDrive):  {publicado}")
+        # Un solo "video" en el resumen: la copia de OneDrive es la única que
+        # José revisa — la de C:\ai-video es material de trabajo para el
+        # editor (--reaplicar, re-render), no una segunda entrega que haya
+        # que mirar dos veces (pedido de José, 2026-08-01).
+        print(f"\nVideo: {publicado}")
     if not args.sin_editor_visual:
         # Se aclara que este es el HTML suelto (v1: solo sonidos y posiciones).
         # Sin la aclaración parecía ser "el editor" a secas, y el que sirve para
