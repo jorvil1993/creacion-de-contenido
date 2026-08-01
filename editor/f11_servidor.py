@@ -1433,6 +1433,21 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       <button id="btnZonaSegura" type="button">🛡 Ver zona segura de TikTok</button>
       <button id="btnGuardarPortada" type="button">📸 Guardar portada (1080x1920)</button>
     </div>
+    <div class="controles">
+      <button class="btn-primario" id="btnPreview" type="button"
+              title="Compone exactamente igual que el render final pero a media resolución. No toca el archivo final ni publica nada — para comprobar un ajuste.">👁 Preview</button>
+      <button class="btn-primario" id="btnRender" type="button"
+              title="El render bueno. Se guarda todo antes. Copia el resultado a OneDrive, listo para subir.">🎬 Render</button>
+      <button class="btn-primario" id="btnListoPublicar" type="button"
+              title="Cuando el video ya esté como lo querés subir: borra de C:\ai-video los pasos intermedios de esta corrida (pesan ~4 veces más que el video). No toca el .mp4 de OneDrive ni tus ajustes.">✅ Publicar</button>
+      <span class="hint" id="infoLimpiar"></span>
+    </div>
+    <div id="cajaProgreso" style="display:none;">
+      <div style="background:var(--linea); border-radius:6px; height:8px; overflow:hidden; margin-bottom:6px;">
+        <div id="barraProgreso" style="background:var(--acento); height:100%; width:0%; transition:width .3s;"></div>
+      </div>
+      <p class="hint" id="textoProgreso"></p>
+    </div>
     <p class="hint">El encuadre (zoom + paneo) se calcula con la misma función que usa el
       render final. Puedes preescuchar todo el audio (voz + música + SFX) directamente en la vista previa.</p>
     <p class="hint">La zona segura marca dónde TikTok/Reels tapan el video con su propia
@@ -1755,32 +1770,15 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
          reemplaza lo que tengas ahora — guardá antes la actual si la querés conservar.</p>
       <div id="listaVersiones"></div>
     </div>
-    <p class="hint">
-      <button class="btn-primario" id="btnPreview" type="button">👁 Previsualizar</button>
-      <button class="btn-primario" id="btnRender" type="button">🎬 Renderizar final</button>
-      <br><span class="hint">Se guarda siempre antes de renderizar.
-      <b>Previsualizar</b> compone exactamente igual pero a media resolución, no toca el archivo
-      final y no publica nada — para comprobar un ajuste. <b>Renderizar final</b> hace el bueno
-      y lo copia a OneDrive listo para subir.</span>
-    </p>
-    <div class="versiones-caja" style="border-color:rgba(230,180,40,.45);">
-      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <button class="btn-primario" id="btnListoPublicar" type="button"
-                style="margin-bottom:0;">✅ Listo para publicar · liberar disco</button>
-        <span class="hint" id="infoLimpiar"></span>
-      </div>
-      <p class="hint" style="margin:0;">Cuando el video ya esté como lo querés subir. Borra de
-        <b>C:\ai-video</b> los pasos intermedios de esta corrida —el compuesto sin audio, los
-        clips de los insertos, las previsualizaciones— que juntos pesan unas 4 veces más que el
-        video. <b>No toca el .mp4 de <code>salida/</code> en OneDrive</b>, que es el que subís, ni
-        los ajustes que hiciste. Si el video todavía no está publicado no borra nada y te lo dice.</p>
-    </div>
-    <div id="cajaProgreso" style="display:none;">
-      <div style="background:var(--linea); border-radius:6px; height:8px; overflow:hidden; margin-bottom:6px;">
-        <div id="barraProgreso" style="background:var(--acento); height:100%; width:0%; transition:width .3s;"></div>
-      </div>
-      <p class="hint" id="textoProgreso"></p>
-    </div>
+    <p class="hint">Los botones de <b>Preview</b>, <b>Render</b> y <b>Publicar</b> están debajo
+      del video, para tenerlos a mano sin bajar hasta acá. Se guarda siempre antes de renderizar.
+      <b>Preview</b> compone exactamente igual pero a media resolución, no toca el archivo final
+      y no publica nada — para comprobar un ajuste. <b>Render</b> hace el bueno y lo copia a
+      OneDrive listo para subir. <b>Publicar</b> — cuando el video ya esté como lo querés subir —
+      borra de <b>C:\ai-video</b> los pasos intermedios de esta corrida —el compuesto sin audio,
+      los clips de los insertos, las previsualizaciones— que juntos pesan unas 4 veces más que el
+      video. No toca el .mp4 de <code>salida/</code> en OneDrive, que es el que subís, ni los
+      ajustes que hiciste. Si el video todavía no está publicado no borra nada y te lo dice.</p>
   </div>
   </div>
 </main>
@@ -4303,6 +4301,13 @@ function construirOverlays() {
   // en el lienzo actualiza lo mismo que ve el panel.
   lienzo.querySelectorAll(".overlay-img").forEach(el => el.remove());
   edicionPip.forEach((ev, idx) => {
+    // Un B-roll a pantalla completa no tiene posición que arrastrar: x/y son
+    // 0,0 fijos, cubre el cuadro entero (mismo criterio que ya usa
+    // pintarPipTimeline() para distinguirlo). Sin este filtro se creaba igual
+    // un <img> arrastrable con src vacío -- un B-roll viaja por `archivo`, no
+    // por `asset_id`, así que /tarjeta?asset_id= nunca tenía nada que pedir
+    // -- y el navegador mostraba un recuadro roto minúsculo en vez de nada.
+    if (ev.broll_fullscreen || ev.tipo === "broll") return;
     const img = document.createElement("img");
     img.className = "overlay-img";
     img.dataset.idx = idx;
