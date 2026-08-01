@@ -2527,8 +2527,25 @@ console.log(JSON.stringify(JSON.parse(process.argv[2]).map(
         "sin esto, GitHub Pages mostraria selectores que no pueden guardar nada")
     chk("lo que solo sirve con pipeline arranca oculto (.pipe-off) y se enciende al detectarlo",
         ".pipe-off{display:none!important}" in panel_txt
-        and "document.querySelectorAll('.pipe-solo').forEach(el=>el.classList.remove('pipe-off'))"
+        and "document.querySelectorAll('.pipe-solo').forEach(el=>el.classList.toggle('pipe-off',!API))"
         in panel_txt)
+    # Sin este cartel, la tabla se ve igual que siempre pero sin nada que tocar y
+    # sin decir por que. Paso de verdad: los selectores desaparecieron al apagar
+    # el servidor y no habia forma de saber que faltaba el servidor.
+    chk("sin pipeline, la linea de tiempo explica por que no hay selectores",
+        'class="notaflow pipe-sin pipe-off"' in panel_txt
+        and "document.querySelectorAll('.pipe-sin').forEach(el=>el.classList.toggle('pipe-off',!!API))"
+        in panel_txt
+        and "Panel de producci" in panel_txt,
+        "el cartel tiene que decir que hay que abrir el .bat, y en que puerto")
+    chk("mientras se busca el pipeline no se muestra ninguno de los dos carteles",
+        re.search(r"function pipeAplicarModo\(\)\{\s*\n?\s*if\(!pipeBuscado\) return;", panel_txt)
+        is not None,
+        "si no, la pagina parpadea entre 'abri el .bat' y los selectores")
+    chk("renderGuiones() vuelve a aplicar el modo tras redibujar",
+        re.search(r"cont\.innerHTML = html;[\s\S]{0,220}?pipeAplicarModo\(\);", panel_txt)
+        is not None,
+        "los carteles se redibujan con su clase de origen y volverian a esconderse")
     chk("el panel busca el pipeline por fetch, no por una bandera del archivo",
         "async function pipeDetectar()" in panel_txt and "/api/estado" in panel_txt,
         "una bandera obligaria a mantener dos copias del panel, una para la web y otra para la PC")

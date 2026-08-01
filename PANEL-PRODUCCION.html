@@ -1458,7 +1458,13 @@ function renderGuiones(){
 
             <h4>Línea de tiempo · esto es 100% automático</h4>
             <p class="notaflow" style="margin:0 0 8px">Nada de esta tabla lo haces tú: son las decisiones que ejecuta el pipeline sobre tu grabación. La columna "En pantalla" dice de dónde sale la imagen — <b>YO</b> es tu video crudo. Pasá el mouse por cualquier código (F14, P02, H08) para ver qué es, y hacé clic para ir a su prompt.</p>
-            <p class="notaflow pipe-solo pipe-off" style="margin:0 0 8px">Con el pipeline abierto, cada fila trae un selector para cambiarla entre <b>YO</b>, <b>B-ROLL</b>, <b>PIP</b> y <b>ANIM</b>, y otro para elegir con qué clip. Se guarda en este mismo archivo.</p>
+            <p class="notaflow pipe-solo pipe-off" style="margin:0 0 8px">Cada fila trae un selector para cambiarla entre <b>YO</b>, <b>B-ROLL</b>, <b>PIP</b> y <b>ANIM</b>, y otro para elegir con qué clip. Se guarda en este mismo archivo.</p>
+            <p class="notaflow pipe-sin pipe-off" style="margin:0 0 8px; border-left:3px solid var(--warn); padding-left:10px">
+              <b style="color:var(--warn)">Acá no se puede cambiar nada.</b> Para elegir si cada fila es
+              <b>YO</b>, <b>B-ROLL</b>, <b>PIP</b> o <b>ANIM</b> —y con qué clip— abrí
+              <span class="ruta">editor/Panel de producción.bat</span> en tu PC y entrá por
+              <span class="ruta">127.0.0.1:8899</span>. Sin el pipeline detrás no hay dónde guardar el
+              cambio, así que los selectores no se muestran en vez de fingir que funcionan.</p>
             <div class="tablawrap">
             <table><tr><th>Momento</th><th style="min-width:210px">Qué estoy diciendo</th><th>En pantalla</th><th>Qué se ve</th><th>Sonido</th><th>Música</th></tr>
             ${g.tl.map((r,ri)=>`<tr id="tl-${g.n}-${ri}"><td>${r[0]}</td>
@@ -1509,6 +1515,9 @@ function renderGuiones(){
   }
 
   cont.innerHTML = html;
+  // Los carteles de "con pipeline" / "sin pipeline" se acaban de redibujar con
+  // su clase de origen: hay que volver a aplicarles el modo detectado.
+  pipeAplicarModo();
 }
 
 /* ═══════════ PROMPTS ═══════════ */
@@ -2190,13 +2199,28 @@ function pipeGuardarPrefs(){
   }catch(e){}
 }
 
+// Hasta que la búsqueda termina no se muestra NINGUNA de las dos versiones, para
+// que la página no parpadee entre "abrí el .bat" y los selectores.
+let pipeBuscado=false;
+
+// `.pipe-solo` = solo tiene sentido con pipeline detrás (selectores, botón de
+// correr). `.pipe-sin` = solo tiene sentido SIN pipeline: es el cartel que
+// explica por qué no están los selectores. Sin ese cartel, la tabla se veía
+// igual que siempre pero sin nada que tocar y sin decir por qué.
+function pipeAplicarModo(){
+  if(!pipeBuscado) return;
+  document.querySelectorAll('.pipe-solo').forEach(el=>el.classList.toggle('pipe-off',!API));
+  document.querySelectorAll('.pipe-sin').forEach(el=>el.classList.toggle('pipe-off',!!API));
+}
+
 async function pipeArrancar(){
   const d=await pipeDetectar();
+  pipeBuscado=true;
   pipePintarConexion(d);
+  pipeAplicarModo();
   if(!d) return;
   // Los controles de cada fila no se dibujan sin API, así que la línea de tiempo
   // que ya está en pantalla hay que rehacerla ahora que sí la hay.
-  document.querySelectorAll('.pipe-solo').forEach(el=>el.classList.remove('pipe-off'));
   renderGuiones();
   pipeCargarGuiones();
   pipeCargarVideos(d);
