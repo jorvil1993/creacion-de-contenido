@@ -1180,9 +1180,16 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
           max-height: calc(100vh - 150px); margin: 0 auto;
           background: #000; overflow: hidden; border-radius: 10px; border: 1px solid var(--linea); }
 .lienzo video { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+/* Borde punteado SIEMPRE visible (no solo al pasar el mouse): sin esto no hay
+   ninguna pista de que la tarjeta sobre el video se puede arrastrar para
+   cambiar su posición en pantalla — el único indicio era el cursor, que
+   nadie ve sin pasar por encima primero. Mismo look que ya usaba el editor
+   v1 para lo mismo (borde punteado cian). */
 .lienzo .overlay-img { position: absolute; top: 0; left: 0; transform-origin: 0 0;
-                        cursor: grab; image-rendering: -webkit-optimize-contrast; }
-.lienzo .overlay-img:active { cursor: grabbing; }
+                        cursor: grab; image-rendering: -webkit-optimize-contrast;
+                        outline: 2px dashed rgba(79,209,217,.85); outline-offset: -2px; }
+.lienzo .overlay-img:hover { outline-color: #4FD1D9; filter: brightness(1.08); }
+.lienzo .overlay-img:active { cursor: grabbing; outline-color: #fff; }
 /* Zona segura de TikTok/Reels: franjas semitransparentes donde la app tapa el
    video con su propia interfaz. display:none por defecto — se prende con el
    botón y el estado se recuerda en localStorage. pointer-events:none para no
@@ -1535,7 +1542,7 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
 
   <div class="panel">
     <h2>Colección de PiP y B-Rolls <span class="hint" id="dominanteInfo"></span></h2>
-    <p class="hint">Sustituí, añadí o quitá los insertos de producto y B-rolls. Arrastrá los bloques en la línea de tiempo para moverlos o estirar sus bordes.</p>
+    <p class="hint">Sustituí, añadí o quitá los insertos de producto y B-rolls. Arrastrá los bloques en la línea de tiempo para moverlos o estirar sus bordes — <b>y arrastrá la tarjeta directo sobre el video</b> (el recuadro punteado cian) para cambiar dónde aparece en la pantalla.</p>
     <div class="pista-enc" id="pistaPipTimeline" style="margin-bottom:12px;">
       <div class="franjas-enc" id="franjasPipTimeline"></div>
     </div>
@@ -4314,7 +4321,13 @@ function iniciarArrastrePip(ev) {
   const idx = parseInt(img.dataset.idx, 10);
   const item = edicionPip[idx];
   if (!item) return;
-  const s = lienzo.clientWidth / DATA.resolucion_origen[0];
+  // DATA.ancho (1080, el lienzo de SALIDA) — no DATA.resolucion_origen[0] (la
+  // resolución del clip crudo antes de encuadrar): x/y del PiP los usa
+  // f6_overlays.py como píxeles literales del filtro overlay= sobre el video
+  // YA compuesto, así que la escala tiene que ser la del cuadro final, no la
+  // de la fuente. Hoy coinciden de casualidad (José graba en 1080x1920), pero
+  // un clip de otra resolución guardaría un x/y equivocado sin ningún aviso.
+  const s = lienzo.clientWidth / DATA.ancho;
   const r = img.getBoundingClientRect();
   const offX = ev.clientX - r.left, offY = ev.clientY - r.top;
   arrastrandoIdx = idx;
@@ -4421,7 +4434,7 @@ function aplicarEncuadre(cx, cy, zoom) {
 let arrastrandoIdx = null; // mientras se arrastra un PiP, el loop no le pisa la posición
 
 function actualizarOverlays(t) {
-  const s = lienzo.clientWidth / DATA.resolucion_origen[0];
+  const s = lienzo.clientWidth / DATA.ancho; // ver el comentario en iniciarArrastrePip
   for (const img of lienzo.querySelectorAll(".overlay-img")) {
     const idx = parseInt(img.dataset.idx, 10);
     const item = edicionPip[idx];
