@@ -149,10 +149,19 @@
           <label>Formato</label>
           <select id="formato"></select>
         </div>
-        <div id="bloqueEscena">
-          <label>Fondo</label>
-          <select id="escena"></select>
+        <div>
+          <label>Tipo de Fondo</label>
+          <select id="tipoFondo">
+            <option value="gemini" selected>✨ Escena con Gemini (Studio)</option>
+            <option value="color">🎨 Fondo de color de la marca</option>
+            <option value="qwen">🤖 Escena con IA Local (Qwen / ComfyUI)</option>
+          </select>
         </div>
+      </div>
+
+      <div id="bloqueEscenaColor" class="oculto" style="margin-bottom:14px">
+        <label>Fondo de color</label>
+        <select id="escena"></select>
       </div>
 
       <div id="filaDolores" class="oculto" style="margin-bottom:14px">
@@ -160,11 +169,26 @@
         <select id="nDolores"></select>
       </div>
 
-      <div id="bloqueIA" class="fila-ia">
-        <label><input type="checkbox" id="qwenEscena"> Escena con IA (Qwen) —
-          usa la escena del concepto en vez del fondo de color</label>
+      <!-- Bloque Gemini Studio -->
+      <div id="cajaGemini" class="card" style="margin-top:10px;background:#06141d;border:1px solid #1a3c4d;border-radius:12px;padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-weight:800;color:var(--tur);font-size:14px">✨ Escena con Gemini Studio</span>
+          <span style="font-size:11px;background:#0d2d3a;color:var(--tur);padding:3px 8px;border-radius:12px;border:1px solid #1a4d63">Fotorrealista Hiper-Contextualizado</span>
+        </div>
+        <div style="font-size:12.5px;margin-bottom:8px;opacity:.9"><b>1. Prompt Contextualizado:</b> Copiá este prompt escrito con el contexto del producto, titular y Bolivia para Gemini:</div>
+        <pre id="promptGeminiTxt" style="background:#040b10;border:1px solid #142e3b;border-radius:8px;padding:10px 12px;font:12px/1.45 ui-monospace,monospace;white-space:pre-wrap;margin-bottom:10px;max-height:160px;overflow:auto"></pre>
+        <button class="sec" id="btnCopiarPromptGemini" style="width:100%;margin-bottom:12px;padding:8px;font-weight:700">📋 Copiar Prompt para Gemini</button>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <button class="sec" id="btnAbrirFotoBase" style="padding:8px;font-size:12px">📂 Abrir ubicación foto del producto</button>
+          <button class="sec" id="btnAbrirSubirGemini" style="padding:8px;font-size:12px">📥 Abrir carpeta para subir de Gemini</button>
+        </div>
+
+        <div style="font-size:12.5px;margin-bottom:8px;font-weight:700"><b>2. Elegí la imagen generada por Gemini:</b></div>
+        <div class="fotos chica" id="fotosGeminiSubidas"></div>
       </div>
-      <p class="nota-ia" id="notaIA"></p>
+
+      <!-- Bloque Qwen Local -->
       <div id="cajaComfy" class="comfy oculto" style="margin-top:10px">
         <span class="punto" id="comfyPunto"></span>
         <span class="comfy-txt" id="comfyTxt">verificando ComfyUI…</span>
@@ -231,7 +255,7 @@
 
 <script>
 const $ = s => document.querySelector(s);
-let DATOS = null, fotoSel = null, splitIzqSel = null, splitDerSel = null, sello = "", vidrio = false;
+let DATOS = null, fotoSel = null, splitIzqSel = null, splitDerSel = null, fotoGeminiSel = null, sello = "", vidrio = false;
 
 // El panel es un solo archivo: si el servidor no está, se esconde lo que no
 // tiene sentido sin él. Mismo criterio que PANEL-PRODUCCION.html.
@@ -246,8 +270,6 @@ function pintar() {
   DATOS.productos.forEach(p => sp.add(new Option(p.clave, p.clave)));
   const sc = $("#concepto");
   DATOS.conceptos.forEach(c => sc.add(new Option(
-    // El <br> se cambia por espacio ANTES de sacar las etiquetas: si no,
-    // "BIBLIOTECA<br>ENTRA" queda pegado como "BIBLIOTECAENTRA".
     c.titular.replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, "")
              .replace(/\s+/g, " ").trim(), c.clave)));
   DATOS.formatos.forEach(f => $("#formato").add(new Option(f, f)));
@@ -256,11 +278,18 @@ function pintar() {
   $("#nDolores").value = Math.min(3, DATOS.n_dolores_max);
   Object.keys(DATOS.prompts).forEach(k => $("#comparativa").add(new Option(k, k)));
 
-  sp.onchange = fotos; sc.onchange = nota;
+  sp.onchange = () => { fotos(); actualizarPromptGemini(); };
+  sc.onchange = () => { nota(); actualizarPromptGemini(); };
+  $("#formato").onchange = actualizarPromptGemini;
+  $("#titular").oninput = actualizarPromptGemini;
   $("#modo").onchange = modoCambio;
+  $("#tipoFondo").onchange = tipoFondoCambio;
   $("#comparativa").onchange = pintarPromptsSplit;
-  fotos(); nota(); modoCambio(); pintarPromptsSplit();
+
+  fotos(); nota(); modoCambio(); tipoFondoCambio(); pintarPromptsSplit();
   cargarSubidas();
+  cargarFotosGemini();
+  actualizarPromptGemini();
 }
 
 function fotos() {
@@ -274,6 +303,7 @@ function fotos() {
     im.onclick = () => {
       cont.querySelectorAll("img").forEach(x => x.classList.remove("sel"));
       im.classList.add("sel"); fotoSel = f;
+      actualizarPromptGemini();
     };
     cont.appendChild(im);
   });
@@ -284,10 +314,6 @@ function fotos() {
 function nota() {
   const c = DATOS.conceptos.find(x => x.clave === $("#concepto").value);
   $("#notaConcepto").textContent = c.nota || "";
-  // El titular se re-llena al cambiar de concepto (misma logica que el campo
-  // "nombre" con el producto). Si ya lo editaste y cambiás de concepto, se
-  // pisa: son una sola idea, mezclar el titular viejo con la escena nueva
-  // rompe la pieza (regla de a8_conceptos.py).
   $("#titular").value = c.titular;
 }
 
@@ -296,21 +322,107 @@ function modoCambio() {
   const split = modo === "split";
   $("#cajaSplit").classList.toggle("oculto", !split);
   $("#bloqueFoto").classList.toggle("oculto", split);
-  $("#bloqueEscena").classList.toggle("oculto", split);
-  $("#bloqueIA").classList.toggle("oculto", split);
-  if (split) $("#cajaComfy").classList.add("oculto");
+  if (split) {
+    $("#cajaGemini").classList.add("oculto");
+    $("#cajaComfy").classList.add("oculto");
+    $("#bloqueEscenaColor").classList.add("oculto");
+  } else {
+    tipoFondoCambio();
+  }
   $("#filaDolores").classList.toggle("oculto", modo !== "dolores");
 }
 
-$("#qwenEscena").onchange = () => {
-  const on = $("#qwenEscena").checked;
-  $("#bloqueEscena").classList.toggle("oculto", on);
-  $("#cajaComfy").classList.toggle("oculto", !on);
-  $("#notaIA").textContent = on
-    ? "Usa la escena del concepto elegido arriba. Tarda 2-3 min: enciende y apaga ComfyUI sola."
-    : "";
-  if (on) comfyEstado();
+function tipoFondoCambio() {
+  const tf = $("#tipoFondo").value;
+  const modo = $("#modo").value;
+  if (modo === "split") return;
+
+  $("#cajaGemini").classList.toggle("oculto", tf !== "gemini");
+  $("#cajaComfy").classList.toggle("oculto", tf !== "qwen");
+  $("#bloqueEscenaColor").classList.toggle("oculto", tf !== "color");
+
+  if (tf === "qwen") comfyEstado();
+  if (tf === "gemini") {
+    cargarFotosGemini();
+    actualizarPromptGemini();
+  }
+}
+
+function actualizarPromptGemini() {
+  if (!DATOS) return;
+  const prodKey = $("#producto").value;
+  const p = DATOS.productos.find(x => x.clave === prodKey) || {};
+  const c = DATOS.conceptos.find(x => x.clave === $("#concepto").value) || {};
+  const nombreProd = $("#nombre").value || (prodKey ? prodKey.replace(/-/g, " ").replace(/\b\w/g, ch => ch.toUpperCase()) : "E-reader Device");
+  const titularRaw = $("#titular").value || c.titular || "";
+  const titularLimpio = titularRaw.replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+  const esVert = $("#formato").value === "vertical";
+  const aspecto = esVert ? "9:16 vertical portrait aspect ratio" : "1:1 square aspect ratio";
+
+  const prompt = `Photorealistic background scene for commercial social media advertisement in Bolivia.
+
+CAMPAIGN CONTEXT & PRODUCT:
+- Target Product: ${nombreProd} (Digital E-reader device for DeviceShop BO).
+- Ad Headline / Hook: "${titularLimpio}".
+- Target Audience: Bolivian home readers & book lovers (warm, cozy middle-class atmosphere).
+
+SCENE VISUALS & ENVIRONMENT:
+${c.escena || "Warm cozy indoor setting with soft ambient lighting."}
+
+COMPOSITION & RENDER INSTRUCTIONS:
+- Aspect Ratio: ${aspecto}.
+- CRITICAL COMPOSITION RULE: Leave the center foreground (table, desk, or main surface) completely EMPTY, clean, and uncluttered, with clear space reserved for compositing a 3D product cutout on top later.
+- Style & Quality: Professional commercial product photography, warm natural sunlight, elegant soft bokeh depth of field, 8k studio render, ZERO text, ZERO logos.`;
+
+  const elem = $("#promptGeminiTxt");
+  if (elem) elem.textContent = prompt;
+}
+
+$("#btnCopiarPromptGemini").onclick = () => {
+  const txt = $("#promptGeminiTxt").textContent;
+  navigator.clipboard.writeText(txt);
+  const b = $("#btnCopiarPromptGemini");
+  b.textContent = "✓ ¡Prompt Copiado para Gemini!"; b.classList.add("ok");
+  setTimeout(() => { b.textContent = "📋 Copiar Prompt para Gemini"; b.classList.remove("ok"); }, 1800);
 };
+
+$("#btnAbrirFotoBase").onclick = async () => {
+  const f = fotoSel || "";
+  await fetch("/api/abrir-foto-base?f=" + encodeURIComponent(f));
+};
+
+$("#btnAbrirSubirGemini").onclick = async () => {
+  await fetch("/api/abrir-subir");
+  setTimeout(cargarFotosGemini, 800);
+};
+
+async function cargarFotosGemini() {
+  const d = await fetch("/api/subir-fotos").then(r => r.json()).catch(() => null);
+  if (!d || !d.fotos) return;
+  const cont = $("#fotosGeminiSubidas");
+  if (!cont) return;
+  cont.innerHTML = "";
+  if (d.fotos.length === 0) {
+    cont.innerHTML = '<p style="font-size:12px;opacity:.6;margin:4px 0">No hay fotos en subir/. Hace clic arriba en "Abrir carpeta" y soltá la foto de Gemini.</p>';
+    return;
+  }
+  d.fotos.forEach(f => {
+    const im = document.createElement("img");
+    im.src = "/api/subir-miniatura?f=" + encodeURIComponent(f);
+    im.title = f;
+    if (fotoGeminiSel === f) im.classList.add("sel");
+    im.onclick = () => {
+      cont.querySelectorAll("img").forEach(x => x.classList.remove("sel"));
+      if (fotoGeminiSel === f) {
+        fotoGeminiSel = null;
+      } else {
+        im.classList.add("sel");
+        fotoGeminiSel = f;
+      }
+    };
+    cont.appendChild(im);
+  });
+}
 
 function pintarPromptsSplit() {
   const clave = $("#comparativa").value;
@@ -390,6 +502,7 @@ $("#extras").onclick = e => {
 
 $("#generar").onclick = async () => {
   const modo = $("#modo").value;
+  const tf = $("#tipoFondo").value;
   if (modo === "split") {
     if (!splitIzqSel || !splitDerSel) { alert("Elegí las dos mitades primero."); return; }
   } else if (!fotoSel) {
@@ -403,7 +516,8 @@ $("#generar").onclick = async () => {
     formato: $("#formato").value, escena: $("#escena").value,
     titular: $("#titular").value,
     sello, vidrio, n_dolores: $("#nDolores").value,
-    qwen_escena: $("#qwenEscena").checked,
+    qwen_escena: tf === "qwen",
+    foto_gemini: tf === "gemini" ? fotoGeminiSel : null,
     comparativa: $("#comparativa").value, split_izq: splitIzqSel, split_der: splitDerSel,
   };
   try {
