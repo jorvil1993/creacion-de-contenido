@@ -343,8 +343,12 @@ def lanzar_pipeline(video: Path, guion: int, extras: list = None) -> dict:
                     CORRIDA["estado"] = "cancelada"
                 else:
                     CORRIDA["estado"] = "ok" if codigo == 0 else "error"
+                # Solo si la corrida salió bien: el archivo puede existir de una
+                # corrida anterior, y anunciarlo tras un fallo haría creer que
+                # esta dejó un video.
                 destino = dir_trabajo / salida
-                CORRIDA["final"] = str(destino) if destino.exists() else None
+                CORRIDA["final"] = (str(destino)
+                                    if codigo == 0 and destino.exists() else None)
 
     threading.Thread(target=_leer, daemon=True).start()
     return _estado_corrida()
