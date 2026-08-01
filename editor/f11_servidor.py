@@ -1451,68 +1451,54 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
     <div id="tiraCapas"></div>
   </div>
 
-  <div class="panel">
-    <h2>Efectos de sonido</h2>
-    <p class="hint">Arrastrá los marcadores para moverlos en el tiempo. El sonido de un PiP se
-      mueve solo cuando movés el inserto (Fase 4: "el sonido acompaña al evento visual").</p>
-    <div class="barra-sfx" style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
-      <select id="selSonido"></select>
-      <button class="btn-primario" id="btnEscuchar" type="button">▶ Escuchar</button>
-      <button class="btn-primario" id="btnAgregarSfx" type="button">+ Agregar en el centro</button>
-      <span class="hint" id="infoSfx"></span>
+  <div class="panel" id="panelSilencios">
+    <h2>Silencios recortados <span class="hint" id="silResumen"></span></h2>
+    <p class="hint">Lo que el corte automático se llevó de la grabación: silencios largos,
+      muletillas y tomas repetidas. Destildá uno para <b>devolverlo al video</b>, o arrastrá
+      los bordes de un silencio para dejar más aire. La barra de abajo es la
+      <b>grabación entera</b>, no el video que estás viendo: en gris lo que se conserva,
+      en rojo lo que se corta. La <b>aguja cian</b> sigue al reproductor sobre esa escala:
+      cuando el video llega a un corte, la aguja <b>salta por encima de la franja roja</b>
+      (destella en ámbar) — eso es lo que se quitó. Clic en la barra para ir ahí.</p>
+    <div style="display:flex; justify-content:flex-end; margin-bottom:4px;">
+      <span class="sil-donde" id="silDonde"></span>
     </div>
-    <div class="barra-sfx" style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
-      <label class="hint" for="selDensidadSfx">Densidad</label>
-      <select id="selDensidadSfx">
-        <option value="sobrio">Sobrio</option>
-        <option value="normal" selected>Normal</option>
-        <option value="cargado">Cargado</option>
-      </select>
-      <span class="hint" id="infoDensidadSfx"></span>
+    <div id="silAvisoFuente" class="badge aviso" style="display:none; margin-bottom:8px;"></div>
+    <div id="silAvisosRemapeo" style="display:none; margin-bottom:8px;"></div>
+    <div class="pista-enc" id="pistaSilencios" style="margin-bottom:10px;">
+      <div class="franjas-enc" id="franjasSilencios"></div>
     </div>
-    <div class="pista-sfx" id="pistaSfx">
-      <div class="franjas-sfx" id="franjasSfx"></div>
-    </div>
-    <div class="tabla-wrap" style="overflow-x:auto; margin-top:10px;">
-      <table id="tablaSfx" style="width:100%; border-collapse:collapse; font-size:13px;">
-        <thead><tr><th>t</th><th>sonido</th><th>volumen</th><th>motivo</th><th></th></tr></thead>
-        <tbody></tbody>
-      </table>
+    <div id="silLista"></div>
+    <div style="display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap;">
+      <button class="btn-primario" id="btnResetSilencios" type="button">Volver al corte automático</button>
+      <span class="hint" id="silPendiente"></span>
     </div>
   </div>
 
   <div class="panel">
-    <h2>Música de fondo</h2>
-    <p class="hint">Elegí la pista de fondo, ajustá su volumen y el segundo desde el que arranca.
-      Podés escucharla en tiempo real sobre la previa del video sin re-renderizar.</p>
-    <div class="barra-sfx" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
-      <label style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; cursor:pointer;">
-        <input type="checkbox" id="chkSinMusica"> Omitir música de fondo
-      </label>
+    <h2>Hook y CTA <span class="hint" id="infoHookCta"></span></h2>
+    <p class="hint">El hook (primeros segundos) y el CTA (cierre) son tarjetas de Hyperframes —
+      no se ven animadas acá (ningún navegador reproduce ProRes 4444), solo un fotograma
+      representativo. El CTA repite un eco corto del hook para cerrar el loop; cambia solo.</p>
+    <div class="hook-caja">
+      <label class="hint" for="hookTexto"><b>Texto del hook</b> — lo que se lee en los primeros
+        segundos. Es lo ÚNICO editable acá: el CTA no se escribe, se arma solo con el WhatsApp
+        del catálogo más un <b>eco</b> de este mismo texto (las primeras palabras), para que el
+        video cierre con la frase con la que abrió.</label>
+      <textarea id="hookTexto" maxlength="140"></textarea>
+      <div class="hook-preview">
+        <div id="hookMedio"><p class="hint">hook · <span id="hookRango">?</span>
+          <span class="badge aviso" id="hookZonaAviso" style="display:none;"></span></p>
+          <button type="button" class="btn-quitar-hc" id="btnQuitarHook">Quitar hook</button></div>
+        <div id="ctaMedio"><p class="hint">cta · <span id="ctaRango">?</span><br>
+          repite del hook: "<span id="ctaEco"></span>"
+          <span class="badge aviso" id="ctaZonaAviso" style="display:none;"></span></p>
+          <button type="button" class="btn-quitar-hc" id="btnQuitarCta">Quitar CTA</button></div>
+      </div>
     </div>
-    <div id="panelMusicaOpciones" style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
-      <div>
-        <label class="hint" for="selMusicaPista" style="display:block; margin-bottom:4px;">Pista</label>
-        <div style="display:flex; gap:6px; align-items:center;">
-          <select id="selMusicaPista" style="min-width:240px;"></select>
-          <button class="btn-primario" id="btnEscucharMusica" type="button"
-                  style="margin-bottom:0; white-space:nowrap;">▶ Escuchar</button>
-          <span class="badge aviso" id="avisoMusica" style="display:none;"></span>
-        </div>
-      </div>
-      <div>
-        <label class="hint" for="musicaVolumenInput" style="display:block; margin-bottom:4px;">Volumen: <span id="musicaVolumenValor">50%</span></label>
-        <input type="range" id="musicaVolumenInput" min="0" max="1" step="0.05" value="0.5" style="width:140px;">
-      </div>
-      <div>
-        <label class="hint" for="musicaInicioInput" style="display:block; margin-bottom:4px;">Inicio pista: <span id="musicaInicioValor">0.0s</span></label>
-        <input type="range" id="musicaInicioInput" min="0" max="60" step="0.5" value="0" style="width:140px;">
-      </div>
-      <span class="hint" id="infoMusica" style="align-self:flex-end; padding-bottom:4px;"></span>
+    <div class="pista-enc" id="pistaHookCta" style="margin-top:12px;">
+      <div class="franjas-enc" id="franjasHookCta"></div>
     </div>
-    <p class="hint" style="margin-top:8px;">«Escuchar» reproduce la pista sola, desde el segundo
-      de inicio y al volumen elegido, sin tocar el video — sirve también cuando el video ya está
-      renderizado, que es cuando la música va quemada adentro y no se puede probar de otra forma.</p>
   </div>
 
   <div class="panel">
@@ -1587,91 +1573,6 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
   </div>
 
   <div class="panel">
-    <h2>Hook y CTA <span class="hint" id="infoHookCta"></span></h2>
-    <p class="hint">El hook (primeros segundos) y el CTA (cierre) son tarjetas de Hyperframes —
-      no se ven animadas acá (ningún navegador reproduce ProRes 4444), solo un fotograma
-      representativo. El CTA repite un eco corto del hook para cerrar el loop; cambia solo.</p>
-    <div class="hook-caja">
-      <label class="hint" for="hookTexto"><b>Texto del hook</b> — lo que se lee en los primeros
-        segundos. Es lo ÚNICO editable acá: el CTA no se escribe, se arma solo con el WhatsApp
-        del catálogo más un <b>eco</b> de este mismo texto (las primeras palabras), para que el
-        video cierre con la frase con la que abrió.</label>
-      <textarea id="hookTexto" maxlength="140"></textarea>
-      <div class="hook-preview">
-        <div id="hookMedio"><p class="hint">hook · <span id="hookRango">?</span>
-          <span class="badge aviso" id="hookZonaAviso" style="display:none;"></span></p>
-          <button type="button" class="btn-quitar-hc" id="btnQuitarHook">Quitar hook</button></div>
-        <div id="ctaMedio"><p class="hint">cta · <span id="ctaRango">?</span><br>
-          repite del hook: "<span id="ctaEco"></span>"
-          <span class="badge aviso" id="ctaZonaAviso" style="display:none;"></span></p>
-          <button type="button" class="btn-quitar-hc" id="btnQuitarCta">Quitar CTA</button></div>
-      </div>
-    </div>
-    <div class="pista-enc" id="pistaHookCta" style="margin-top:12px;">
-      <div class="franjas-enc" id="franjasHookCta"></div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <h2>Animaciones</h2>
-    <p class="hint">Batería, splash, moto y sol — Hyperframes. Se ven como un fotograma
-      representativo (al 45% del clip, no el primero: todas entran con fade). Quitar, mover o
-      añadir acá reemplaza el disparo automático por palabra para TODAS las animaciones del video.</p>
-    <div class="pista-enc" id="pistaAnimTimeline" style="margin-bottom:12px;">
-      <div class="franjas-enc" id="franjasAnimTimeline"></div>
-    </div>
-    <div class="anim-grid" id="animGrid"></div>
-    <button class="btn-primario" id="btnAñadirAnim" type="button" style="margin-top:8px;">+ Añadir animación en el segundo actual</button>
-
-    <div class="editor-caja" id="cajaInventario">
-      <div class="filtros">
-        <strong>Elegí una animación del inventario:</strong>
-        <button type="button" id="btnCancelarAnim">cancelar</button>
-      </div>
-      <div class="anim-grid" id="gridInventario"></div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <h2>Texto llamativo</h2>
-    <p class="hint">Una frase corta que aparece 2.5s con un estilo bien vistoso (tipo CapCut) para
-      resaltar un punto puntual — no es el subtítulo de abajo del video, es un texto aparte.
-      Mirá cómo se ve cada estilo EN MOVIMIENTO antes de elegir (con un texto de muestra), escribí
-      tu frase y añadila en el segundo donde está el reproductor ahora.</p>
-    <div class="barra">
-      <label>Texto a destacar
-        <input type="text" id="textoDestacadoInput" placeholder="¡OJO A ESTO!" maxlength="60" style="width:260px;">
-      </label>
-    </div>
-    <div class="anim-grid" id="gridEstilosDestacado"></div>
-    <button class="btn-primario" id="btnAñadirTextoDestacado" type="button" style="margin-top:8px;">+ Añadir en el segundo actual</button>
-  </div>
-
-  <div class="panel" id="panelSilencios">
-    <h2>Silencios recortados <span class="hint" id="silResumen"></span></h2>
-    <p class="hint">Lo que el corte automático se llevó de la grabación: silencios largos,
-      muletillas y tomas repetidas. Destildá uno para <b>devolverlo al video</b>, o arrastrá
-      los bordes de un silencio para dejar más aire. La barra de abajo es la
-      <b>grabación entera</b>, no el video que estás viendo: en gris lo que se conserva,
-      en rojo lo que se corta. La <b>aguja cian</b> sigue al reproductor sobre esa escala:
-      cuando el video llega a un corte, la aguja <b>salta por encima de la franja roja</b>
-      (destella en ámbar) — eso es lo que se quitó. Clic en la barra para ir ahí.</p>
-    <div style="display:flex; justify-content:flex-end; margin-bottom:4px;">
-      <span class="sil-donde" id="silDonde"></span>
-    </div>
-    <div id="silAvisoFuente" class="badge aviso" style="display:none; margin-bottom:8px;"></div>
-    <div id="silAvisosRemapeo" style="display:none; margin-bottom:8px;"></div>
-    <div class="pista-enc" id="pistaSilencios" style="margin-bottom:10px;">
-      <div class="franjas-enc" id="franjasSilencios"></div>
-    </div>
-    <div id="silLista"></div>
-    <div style="display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap;">
-      <button class="btn-primario" id="btnResetSilencios" type="button">Volver al corte automático</button>
-      <span class="hint" id="silPendiente"></span>
-    </div>
-  </div>
-
-  <div class="panel">
     <h2>Encuadre <span class="hint" id="encOrigen"></span></h2>
     <p class="hint">Dos cosas distintas. Un <b>punch-in</b> es un acercamiento corto que subraya
       una palabra. Un <b>plano cerrado</b> es un tramo entero más íntimo: entra, se queda y sale.
@@ -1736,6 +1637,105 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
           <span id="pipIntensidadVal">1.0</span></label>
       </div>
     </div>
+  </div>
+
+  <div class="panel">
+    <h2>Animaciones</h2>
+    <p class="hint">Batería, splash, moto y sol — Hyperframes. Se ven como un fotograma
+      representativo (al 45% del clip, no el primero: todas entran con fade). Quitar, mover o
+      añadir acá reemplaza el disparo automático por palabra para TODAS las animaciones del video.</p>
+    <div class="pista-enc" id="pistaAnimTimeline" style="margin-bottom:12px;">
+      <div class="franjas-enc" id="franjasAnimTimeline"></div>
+    </div>
+    <div class="anim-grid" id="animGrid"></div>
+    <button class="btn-primario" id="btnAñadirAnim" type="button" style="margin-top:8px;">+ Añadir animación en el segundo actual</button>
+
+    <div class="editor-caja" id="cajaInventario">
+      <div class="filtros">
+        <strong>Elegí una animación del inventario:</strong>
+        <button type="button" id="btnCancelarAnim">cancelar</button>
+      </div>
+      <div class="anim-grid" id="gridInventario"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Texto llamativo</h2>
+    <p class="hint">Una frase corta que aparece 2.5s con un estilo bien vistoso (tipo CapCut) para
+      resaltar un punto puntual — no es el subtítulo de abajo del video, es un texto aparte.
+      Mirá cómo se ve cada estilo EN MOVIMIENTO antes de elegir (con un texto de muestra), escribí
+      tu frase y añadila en el segundo donde está el reproductor ahora.</p>
+    <div class="barra">
+      <label>Texto a destacar
+        <input type="text" id="textoDestacadoInput" placeholder="¡OJO A ESTO!" maxlength="60" style="width:260px;">
+      </label>
+    </div>
+    <div class="anim-grid" id="gridEstilosDestacado"></div>
+    <button class="btn-primario" id="btnAñadirTextoDestacado" type="button" style="margin-top:8px;">+ Añadir en el segundo actual</button>
+  </div>
+
+  <div class="panel">
+    <h2>Efectos de sonido</h2>
+    <p class="hint">Arrastrá los marcadores para moverlos en el tiempo. El sonido de un PiP se
+      mueve solo cuando movés el inserto (Fase 4: "el sonido acompaña al evento visual").</p>
+    <div class="barra-sfx" style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+      <select id="selSonido"></select>
+      <button class="btn-primario" id="btnEscuchar" type="button">▶ Escuchar</button>
+      <button class="btn-primario" id="btnAgregarSfx" type="button">+ Agregar en el centro</button>
+      <span class="hint" id="infoSfx"></span>
+    </div>
+    <div class="barra-sfx" style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+      <label class="hint" for="selDensidadSfx">Densidad</label>
+      <select id="selDensidadSfx">
+        <option value="sobrio">Sobrio</option>
+        <option value="normal" selected>Normal</option>
+        <option value="cargado">Cargado</option>
+      </select>
+      <span class="hint" id="infoDensidadSfx"></span>
+    </div>
+    <div class="pista-sfx" id="pistaSfx">
+      <div class="franjas-sfx" id="franjasSfx"></div>
+    </div>
+    <div class="tabla-wrap" style="overflow-x:auto; margin-top:10px;">
+      <table id="tablaSfx" style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead><tr><th>t</th><th>sonido</th><th>volumen</th><th>motivo</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Música de fondo</h2>
+    <p class="hint">Elegí la pista de fondo, ajustá su volumen y el segundo desde el que arranca.
+      Podés escucharla en tiempo real sobre la previa del video sin re-renderizar.</p>
+    <div class="barra-sfx" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+      <label style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; cursor:pointer;">
+        <input type="checkbox" id="chkSinMusica"> Omitir música de fondo
+      </label>
+    </div>
+    <div id="panelMusicaOpciones" style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+      <div>
+        <label class="hint" for="selMusicaPista" style="display:block; margin-bottom:4px;">Pista</label>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <select id="selMusicaPista" style="min-width:240px;"></select>
+          <button class="btn-primario" id="btnEscucharMusica" type="button"
+                  style="margin-bottom:0; white-space:nowrap;">▶ Escuchar</button>
+          <span class="badge aviso" id="avisoMusica" style="display:none;"></span>
+        </div>
+      </div>
+      <div>
+        <label class="hint" for="musicaVolumenInput" style="display:block; margin-bottom:4px;">Volumen: <span id="musicaVolumenValor">50%</span></label>
+        <input type="range" id="musicaVolumenInput" min="0" max="1" step="0.05" value="0.5" style="width:140px;">
+      </div>
+      <div>
+        <label class="hint" for="musicaInicioInput" style="display:block; margin-bottom:4px;">Inicio pista: <span id="musicaInicioValor">0.0s</span></label>
+        <input type="range" id="musicaInicioInput" min="0" max="60" step="0.5" value="0" style="width:140px;">
+      </div>
+      <span class="hint" id="infoMusica" style="align-self:flex-end; padding-bottom:4px;"></span>
+    </div>
+    <p class="hint" style="margin-top:8px;">«Escuchar» reproduce la pista sola, desde el segundo
+      de inicio y al volumen elegido, sin tocar el video — sirve también cuando el video ya está
+      renderizado, que es cuando la música va quemada adentro y no se puede probar de otra forma.</p>
   </div>
 
   <div class="panel">
