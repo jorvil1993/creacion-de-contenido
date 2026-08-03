@@ -1,0 +1,309 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>arte</title>
+<style>
+  /* Fuentes locales con rutas absolutas file:// que inyecta a1_marca.py — el
+     render es headless y no hay servidor que resuelva rutas relativas. */
+  @font-face { font-family: 'Poppins'; src: url('__F__/Poppins-ExtraBold.ttf'); font-weight: 800; }
+  @font-face { font-family: 'Poppins'; src: url('__F__/Poppins-Bold.ttf');      font-weight: 700; }
+  @font-face { font-family: 'Poppins'; src: url('__F__/Poppins-Regular.ttf');   font-weight: 400; }
+
+  :root {
+    --turquesa: #00C7CA;
+    --navy: #011A2E;
+    --txt: __TXT_COLOR__;
+    --w: __W__px;
+    --h: __H__px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: var(--w); height: var(--h); overflow: hidden; background: var(--navy); }
+
+  .lienzo {
+    position: relative;
+    width: var(--w); height: var(--h);
+    font-family: 'Poppins', sans-serif;
+    overflow: hidden;
+  }
+
+  /* ---- escena ---- */
+  /* Fondo de estudio. Varios artes reales de Jose usan exactamente esto (el verde
+     de "CLARIDAD QUE ENGANCHA", el lila de "COMODIDAD CONTROL"): degradado plano
+     con el producto flotando. No necesita IA ni foto de escena. */
+  .escena { position: absolute; inset: 0; background: __ESCENA__; }
+  .escena .halo {
+    position: absolute;
+    left: 50%; top: __HALO_Y__%;
+    width: 92%; aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, __HALO__ 0%, transparent 62%);
+  }
+  .escena-foto { position: absolute; inset: 0; }
+  .escena-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* Velo: sin esto el titular blanco compite con las zonas claras y pierde
+     legibilidad. Solo cubre la franja del texto. */
+  .velo {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg,
+      rgba(1,26,46,.86) 0%, rgba(1,26,46,.66) 20%,
+      rgba(1,26,46,.12) 40%, rgba(1,26,46,0) 52%);
+  }
+
+  /* ---- producto recortado ---- */
+  /* Se dimensiona por ALTO, no por ancho: lo que decide si el producto choca
+     con el titular o con la barra de confianza es cuanto alto ocupa, y los
+     recortes vienen con proporciones distintas segun el modelo. */
+  .producto-img {
+    position: absolute;
+    left: __PROD_X__%; top: __PROD_Y__%;
+    transform: translate(-50%, -50%);
+    height: __PROD_H__%;
+    filter: drop-shadow(0 __SOMBRA__px __SOMBRA2__px rgba(0,0,0,.45));
+  }
+  .producto-img img { height: 100%; width: auto; display: block; }
+
+  /* ---- callouts flotantes ---- */
+  /* El arquetipo del arte "PAPERWHITE 32GB SIGNATURE" de Jose: etiquetas de
+     vidrio esmerilado alrededor del aparato senalando caracteristicas.
+     backdrop-filter necesita que haya algo detras que desenfocar, por eso la
+     capa va despues del producto en el DOM. */
+  .callout {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    background: rgba(1,26,46,.52);
+    backdrop-filter: blur(__BLUR__px);
+    -webkit-backdrop-filter: blur(__BLUR__px);
+    border: 1px solid rgba(255,255,255,.28);
+    border-radius: __CO_RAD__px;
+    padding: __CO_PY__px __CO_PX__px;
+    color: #fff;
+    font-weight: 700;
+    font-size: __CO_F__px;
+    line-height: 1.15;
+    text-align: left;
+    max-width: 34%;
+    box-shadow: 0 __CO_S__px __CO_S2__px rgba(0,0,0,.28);
+  }
+  .callout .dato { display: block; font-weight: 800; color: var(--turquesa); }
+
+  /* ---- fichas tecnicas ---- */
+  /* El arquetipo del arte "PAPERWHITE 12VA GEN 32GB": lista vertical con icono
+     de contorno a la izquierda, titulo en negrita y descripcion debajo.
+     Aca el icono mide ~90 px y el trazo SI lee — la regla del trazo macizo
+     aplica solo a los sellos, que son mucho mas chicos. */
+  .fichas {
+    width: __FI_W__%;
+    margin-top: __FI_MT__px;
+    display: flex; flex-direction: column;
+    gap: __FI_GAP__px;
+  }
+  .fichas.vidrio {
+    background: rgba(1,26,46,.58);
+    backdrop-filter: blur(__BLUR__px);
+    -webkit-backdrop-filter: blur(__BLUR__px);
+    border: 1px solid rgba(255,255,255,.24);
+    border-radius: __CO_RAD__px;
+    padding: __FI_PAD__px;
+  }
+  .ficha { display: flex; align-items: flex-start; gap: __FI_ICOGAP__px; }
+  .ficha + .ficha { border-top: 1px solid __FI_LINEA__; padding-top: __FI_GAP__px; }
+  .ficha .ico {
+    width: __FI_ICO__px; height: __FI_ICO__px; flex: none;
+    color: __FI_COLOR__;
+  }
+  .ficha .ico svg { width: 100%; height: 100%; display: block; }
+  .ficha .txt { min-width: 0; }
+  .ficha .tit {
+    display: block; font-weight: 800; font-size: __FI_TIT__px;
+    color: var(--txt); line-height: 1.1;
+  }
+  .ficha .des {
+    display: block; font-weight: 400; font-size: __FI_DES__px;
+    color: var(--txt); opacity: .88; line-height: 1.25; margin-top: .22em;
+  }
+
+  /* ---- comparativa partida (antes / despues) ---- */
+  /* La tercera categoria que pidio Jose: media imagen con el dolor y media con
+     la solucion. Es el arquetipo de su arte "¿POR QUE NO SE LEEN IGUAL?".
+     Cada mitad es una imagen generada aparte: una sola imagen partida sale
+     con las dos escenas mezcladas. */
+  .split { position: absolute; left: 0; right: 0; top: __SP_TOP__%; bottom: __SP_BOT__%;
+           display: flex; }
+  .split .mitad { position: relative; flex: 1; overflow: hidden; }
+  .split .mitad img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* El lado del dolor se apaga y se enfria; el de la solucion queda calido y
+     entero. La diferencia se tiene que leer antes que el texto. */
+  .split .mal img { filter: grayscale(.55) brightness(.72) contrast(1.05); }
+  .split .mal::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(40,10,10,.30), rgba(20,30,50,.42));
+  }
+  .split .sep { width: __SP_SEP__px; background: var(--turquesa); flex: none; }
+  .split .chip {
+    position: absolute; left: 50%; bottom: __SP_CHIPB__px;
+    transform: translateX(-50%);
+    padding: __SP_CHIPY__px __SP_CHIPX__px; border-radius: 999px;
+    font-weight: 800; font-size: __SP_CHIPF__px; white-space: nowrap;
+  }
+  .split .mal .chip  { background: #C8443C; color: #fff; }
+  .split .sano .chip { background: var(--turquesa); color: var(--navy); }
+
+  /* ---- dolores resueltos ---- */
+  /* Pedido de Jose (2026-08-01): en vez de caracteristicas, "como solucionamos
+     puntos de dolor". Cada fila es tachado + resuelto, que es el antes/despues
+     que convierte. Los dolores salen de sus chats de venta reales, no de
+     suposiciones (deviceshop/DOCUMENTOS MD DE LA EMPRESA/objeciones-respuestas.md). */
+  .dolores {
+    width: __DO_W__%;
+    margin-top: __FI_MT__px;
+    display: flex; flex-direction: column; gap: __FI_GAP__px;
+  }
+  .dolores.vidrio {
+    background: rgba(1,26,46,.58);
+    backdrop-filter: blur(__BLUR__px);
+    -webkit-backdrop-filter: blur(__BLUR__px);
+    border: 1px solid rgba(255,255,255,.22);
+    border-radius: __CO_RAD__px;
+    padding: __FI_PAD__px;
+  }
+  .dolor { display: flex; flex-direction: column; gap: __DO_GAP__px; }
+  .dolor + .dolor { border-top: 1px solid __FI_LINEA__; padding-top: __FI_GAP__px; }
+  .dolor span { display: flex; align-items: flex-start; gap: __DO_ICOGAP__px; }
+  .dolor .marca {
+    width: __DO_ICO__px; height: __DO_ICO__px; flex: none; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .dolor .marca svg { width: 62%; height: 62%; }
+  /* El dolor va tachado y apagado; la solucion, entera y en turquesa. */
+  .dolor .mal .marca { background: rgba(220,80,80,.9); }
+  .dolor .mal .t { color: var(--txt); opacity: .62; text-decoration: line-through;
+                   font-weight: 400; font-size: __DO_F__px; line-height: 1.25; }
+  .dolor .bien .marca { background: var(--turquesa); }
+  .dolor .bien .t { color: var(--txt); font-weight: 800; font-size: __DO_F__px;
+                    line-height: 1.25; }
+
+  /* ---- bloque de texto ---- */
+  .texto { position: absolute; top: 4.6%; left: 5.5%; right: 5.5%; }
+  .texto .titular, .texto .divisor, .texto .producto, .texto .bajada {
+    max-width: __TXT_MAX__%;
+  }
+  .titular {
+    font-weight: 800; font-size: __TIT__px;
+    line-height: .98; letter-spacing: -.015em;
+    color: var(--txt); text-transform: uppercase;
+    text-shadow: __TIT_SOMBRA__;
+  }
+  .titular .acento { color: var(--turquesa); }
+
+  /* Linea divisoria turquesa entre titular y producto: aparece en la mayoria
+     de los artes de Jose. */
+  .divisor { height: 3px; width: 46%; background: var(--turquesa); margin: 3.2% 0 2.8%; border-radius: 2px; }
+
+  .producto { font-weight: 700; font-size: __SUB__px; color: var(--txt); line-height: 1.18; }
+  .bajada   { font-weight: 400; font-size: __SUB__px; color: var(--txt); line-height: 1.25; opacity: .95; }
+
+  /* ---- sello de confianza ---- */
+  .sello {
+    position: absolute; top: 4.4%; right: 5%;
+    width: __SELLO_PX__px; height: __SELLO_PX__px; border-radius: 50%;
+    overflow: hidden;
+    background: var(--turquesa); color: var(--navy);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; line-height: 1;
+    box-shadow: 0 6px 24px rgba(0,0,0,.3);
+    padding: 6%;
+  }
+  .sello .num { font-weight: 800; font-size: __SELLO_N__px; flex: none; }
+  .sello .lab { font-weight: 700; font-size: __SELLO_L__px; margin-top: .24em; line-height: 1.12; flex: none; }
+  .sello .ico { width: 72%; margin-bottom: .22em; flex: none; }
+  .sello .ico svg { width: 100%; height: auto; display: block; }
+  /* Bandera de Bolivia en SVG y no emoji: el Chrome del render no siempre trae
+     fuente de emoji a color instalada y saldria en blanco. Mismo criterio que
+     ya se tomo en plantillas/compositions/stickers.html. */
+  .sello .bandera { width: 42%; margin-top: .34em; flex: none; border-radius: 3px; overflow: hidden;
+                    box-shadow: 0 1px 3px rgba(0,0,0,.35); }
+  .sello .bandera svg { width: 100%; height: auto; display: block; }
+
+  /* ---- barra de confianza ---- */
+  /* Va por encima del pie, no encima: el CTA es mas alto de lo que parece y
+     tapaba el tercer item. */
+  .confianza {
+    position: absolute; left: 0; right: 0; bottom: calc(var(--pie) + __CONF_GAP__px);
+    background: rgba(1,26,46,.9);
+    padding: __CONF_P__px 5.5%;
+    display: flex; justify-content: space-between; align-items: center; gap: 3%;
+  }
+  .confianza span {
+    color: #fff; font-weight: 700; font-size: __CONF_F__px;
+    display: flex; align-items: center; gap: .45em; white-space: nowrap;
+  }
+  .confianza .tic {
+    width: __TIC__px; height: __TIC__px; flex: none; border-radius: 50%;
+    background: var(--turquesa); display: flex; align-items: center; justify-content: center;
+  }
+  .confianza .tic svg { width: 62%; height: 62%; }
+
+  /* ---- pie: logo (izq) + CTA WhatsApp (der) ---- */
+  /* Fijo en los 36 artes auditados: logo abajo-izquierda, CTA abajo-derecha.
+     Los dos comparten ALTO y linea base — antes el CTA sobresalia y se metia
+     dentro de la franja de confianza. Ese alto (--pie) es tambien el que usa la
+     franja para saber donde empezar, asi que no se pueden pisar. */
+  :root { --pie: __PIE__px; }
+
+  .logo-caja {
+    position: absolute; left: 0; bottom: 0;
+    height: var(--pie);
+    background: var(--turquesa);
+    border-top-right-radius: __RAD__px;
+    padding: 0 __LOGO_PR__px 0 3.0%;
+    display: flex; align-items: center;
+  }
+  .logo-caja img { height: __LOGO_H__px; display: block; }
+
+  .cta {
+    position: absolute; right: 4.2%; bottom: 0;
+    height: var(--pie);
+    display: flex; flex-direction: column;
+    align-items: stretch; justify-content: center; gap: __CTA_G__px;
+  }
+  .cta .fila {
+    background: var(--turquesa); border-radius: 999px;
+    padding: __CTA_P__px __CTA_PX__px;
+    display: flex; align-items: center; justify-content: center; gap: .5em;
+  }
+  .cta .fila.oscura { background: var(--navy); }
+  .cta .fila svg { width: __WA__px; height: __WA__px; flex: none; }
+  .cta .txt { font-weight: 700; font-size: __CTA_F__px; color: var(--navy); letter-spacing: .02em; }
+  .cta .num { font-weight: 800; font-size: __NUM_F__px; color: #fff; }
+</style>
+
+<div class="lienzo">
+  __CAPA_FONDO__
+  __CAPA_PRODUCTO__
+  __CALLOUTS__
+  __SPLIT__
+
+  <div class="texto">
+    <div class="titular">__TITULAR__</div>
+    <div class="divisor"></div>
+    <div class="producto">__PRODUCTO__</div>
+    <div class="bajada">__BAJADA__</div>
+    __FICHAS__
+    __DOLORES__
+  </div>
+
+  __SELLO__
+
+  __CONFIANZA__
+
+  <div class="logo-caja"><img src="__LOGO__" alt="Device Shop BO"></div>
+
+  <div class="cta">
+    <div class="fila">
+      <svg viewBox="0 0 24 24" fill="#011A2E"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.22 8.22 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.7 8.23-8.24 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.78.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.5.11-.11.25-.29.37-.43.13-.15.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.48c-.16 0-.43.06-.65.31-.22.25-.85.83-.85 2.03s.87 2.35.99 2.51c.12.16 1.71 2.61 4.15 3.66.58.25 1.03.4 1.39.51.58.19 1.11.16 1.53.1.47-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.11-.22-.17-.47-.29z"/></svg>
+      <span class="txt">CONTÁCTANOS</span>
+    </div>
+    <div class="fila oscura"><span class="num">692-14437</span></div>
+  </div>
+</div>

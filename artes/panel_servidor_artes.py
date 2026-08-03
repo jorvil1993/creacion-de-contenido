@@ -19,6 +19,7 @@ import json
 import os
 import sys
 import threading
+import time
 import traceback
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -28,7 +29,7 @@ from urllib.parse import parse_qs, urlparse
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-from artes import a3_copy, a6_qwen, a8_conceptos, a9_prompts, a10_comfy  # noqa: E402
+from artes import a3_copy, a6_qwen, a8_conceptos, a9_prompts, a10_comfy, a11_agy  # noqa: E402
 from artes.a1_marca import ESCENAS, FORMATOS, Arte, render  # noqa: E402
 from artes.a2_recorte import FOTOS_AMAZON, recortar  # noqa: E402
 
@@ -133,18 +134,29 @@ def _generar(tid: str, cfg: dict) -> None:
         else:
             paso(f"foto: {cfg['foto']}")
             origen = FOTOS_AMAZON / cfg["foto"]
-            recorte = TRABAJO / f"{Path(cfg['foto']).stem}-recorte.png"
-            if not recorte.exists():
-                paso("recortando el fondo (rembg isnet-general-use)...")
-                recortar(origen, recorte)
-            else:
-                paso("recorte ya existente, se reusa")
+
+            # Si el producto ya viene compuesto en la imagen (agy la genero a
+            # partir de la foto real como referencia, ver a9_prompts.
+            # generar_imagen_producto_ia), NO se compone el recorte local
+            # encima -- eso duplicaria el producto. Confirmado 2026-08-03: agy
+            # preserva el diseno y la pantalla mucho mejor que Qwen, asi que
+            # esta via se salta rembg por completo.
+            producto_en_imagen = bool(cfg.get("producto_en_imagen"))
+            recorte = None
+            if not producto_en_imagen:
+                recorte = TRABAJO / f"{Path(cfg['foto']).stem}-recorte.png"
+                if not recorte.exists():
+                    paso("recortando el fondo (rembg isnet-general-use)...")
+                    recortar(origen, recorte)
+                else:
+                    paso("recorte ya existente, se reusa")
 
             foto_fondo = None
             if cfg.get("foto_gemini"):
                 foto_gemini_path = SUBIR / Path(cfg["foto_gemini"]).name
                 if foto_gemini_path.exists():
-                    paso(f"usando fondo generado con Gemini: {foto_gemini_path.name}")
+                    paso(f"usando fondo generado con Gemini: {foto_gemini_path.name}"
+                         + (" (con el producto ya compuesto por agy)" if producto_en_imagen else ""))
                     foto_fondo = foto_gemini_path
                 else:
                     paso(f"aviso: foto de Gemini {cfg['foto_gemini']} no encontrada en subir/, se usa fondo por defecto")
@@ -258,6 +270,7 @@ class Handler(BaseHTTPRequestHandler):
                 "n_dolores_max": len(a8_conceptos.DOLORES),
                 "prompts": {k: [vars(p) for p in v]
                             for k, v in a9_prompts.SPLIT.items()},
+                "agy": a11_agy.disponible(),
             })
 
         if u.path == "/api/miniatura":
@@ -335,6 +348,93 @@ class Handler(BaseHTTPRequestHandler):
             avisos: list[str] = []
             a10_comfy.apagar(avisar=avisos.append)
             return self._json({"ok": True, "log": avisos})
+
+        if u.path == "/api/prompt-ia":
+            n = int(self.headers.get("Content-Length", 0))
+            cfg = json.loads(self.rfile.read(n).decode("utf-8"))
+            try:
+                prompt, cid = a9_prompts.generar_prompt_ia(
+                    cfg.get("nombre", ""), cfg.get("titular", ""),
+                    cfg.get("escena_base", ""), cfg.get("formato", "cuadrado"),
+                    correccion=cfg.get("correccion", ""),
+                    conversation_id=cfg.get("conversation_id"),
+                )
+                return self._json({"ok": True, "prompt": prompt, "conversation_id": cid})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)}, 500)
+
+        if u.path == "/api/imagen-ia":
+            n = int(self.headers.get("Content-Length", 0))
+            cfg = json.loads(self.rfile.read(n).decode("utf-8"))
+            prompt = cfg.get("prompt", "").strip()
+            if not prompt:
+                return self._json({"ok": False, "error": "falta el prompt"}, 400)
+            try:
+                nombre = f"agy-{cfg.get('producto', 'arte')}-{int(time.time())}.jpg"
+                destino = SUBIR / nombre
+                a11_agy.generar_imagen(prompt, destino)
+                return self._json({"ok": True, "archivo": nombre})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)}, 500)
+
+        if u.path == "/api/titular-ia":
+            n = int(self.headers.get("Content-Length", 0))
+            cfg = json.loads(self.rfile.read(n).decode("utf-8"))
+            idea = cfg.get("idea", "").strip()
+            # idea puede venir vacia SI es una correccion sobre una conversacion
+            # ya arrancada (el contexto ya lo tiene agy) -- igual que copy-ia
+            # y prompt-ia.
+            es_correccion = bool(cfg.get("correccion") and cfg.get("conversation_id"))
+            if not idea and not es_correccion:
+                return self._json({"ok": False, "error": "escribi la idea libre primero"}, 400)
+            try:
+                titular, cid = a9_prompts.generar_titular_ia(
+                    idea, correccion=cfg.get("correccion", ""),
+                    conversation_id=cfg.get("conversation_id"),
+                )
+                return self._json({"ok": True, "titular": titular, "conversation_id": cid})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)}, 500)
+
+        if u.path == "/api/imagen-producto-ia":
+            n = int(self.headers.get("Content-Length", 0))
+            cfg = json.loads(self.rfile.read(n).decode("utf-8"))
+            foto = cfg.get("foto", "")
+            titular = cfg.get("titular", "")
+            escena_base = cfg.get("escena_base", "")
+            if not foto:
+                return self._json({"ok": False, "error": "elegi una foto base primero"}, 400)
+            origen = FOTOS_AMAZON / foto
+            if not origen.exists():
+                return self._json({"ok": False, "error": f"no existe la foto {foto}"}, 400)
+            try:
+                nombre = f"agy-conproducto-{cfg.get('producto', 'arte')}-{int(time.time())}.jpg"
+                destino = SUBIR / nombre
+                _, cid = a9_prompts.generar_imagen_producto_ia(
+                    titular, escena_base, cfg.get("formato", "cuadrado"),
+                    origen, destino,
+                    correccion=cfg.get("correccion", ""),
+                    conversation_id=cfg.get("conversation_id"),
+                )
+                return self._json({"ok": True, "archivo": nombre, "conversation_id": cid})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)}, 500)
+
+        if u.path == "/api/copy-ia":
+            n = int(self.headers.get("Content-Length", 0))
+            cfg = json.loads(self.rfile.read(n).decode("utf-8"))
+            try:
+                p = a3_copy.por_clave(cfg["producto"])
+                copys, cid = a3_copy.generar_con_ia(
+                    p, ocasion=cfg.get("ocasion", ""),
+                    correccion=cfg.get("correccion", ""),
+                    conversation_id=cfg.get("conversation_id"),
+                )
+                return self._json({"ok": True, "copys": copys, "conversation_id": cid})
+            except KeyError as e:
+                return self._json({"ok": False, "error": f"sin copy verificado para este producto ({e})"}, 400)
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)}, 500)
 
         if u.path != "/api/generar":
             return self.send_error(404)

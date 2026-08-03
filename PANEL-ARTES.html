@@ -27,8 +27,13 @@
   .fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;
          max-height:270px;overflow:auto;padding:3px}
   .fotos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer;
-             border:3px solid transparent;background:#fff;display:block}
-  .fotos img.sel{border-color:var(--tur)}
+             border:3px solid transparent;background:#fff;display:block;opacity:.5;
+             transition:opacity .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease}
+  .fotos img:hover{opacity:.85}
+  .fotos img.sel{border:5px solid var(--tur);opacity:1;transform:scale(1.05);
+             box-shadow:0 0 0 3px rgba(0,199,202,.35),0 6px 22px rgba(0,199,202,.55);
+             position:relative;z-index:1}
+  .fotos img.sel:hover{opacity:1}
   .fotos.chica{max-height:150px;grid-template-columns:repeat(auto-fill,minmax(76px,1fr))}
   .chips{display:flex;flex-wrap:wrap;gap:8px}
   .chip{background:#0a1720;border:1px solid var(--linea);border-radius:999px;
@@ -92,6 +97,11 @@
   .historial img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer;
       border:2px solid transparent}
   .historial img:hover{border-color:var(--tur)}
+  /* ---- tabs ---- */
+  .tabs{display:flex;gap:10px;margin-bottom:20px}
+  .tab-btn{flex:1;background:#0a1720;color:#eaf6f8;border:1px solid var(--linea);
+      border-radius:10px;padding:13px;font-weight:800;font-size:14px;cursor:pointer}
+  .tab-btn.activo{background:var(--tur);color:var(--navy);border-color:var(--tur)}
 </style>
 
 <h1>Panel de artes — DeviceShop</h1>
@@ -102,7 +112,12 @@
   <code>C:\ai-video\venv312\Scripts\python.exe artes/panel_servidor_artes.py</code>
 </div>
 
-<div class="grid">
+<div class="tabs">
+  <button class="tab-btn activo" id="tabClasico">Panel clásico</button>
+  <button class="tab-btn" id="tabAntigravity">🪐 Antigravity</button>
+</div>
+
+<div class="grid" id="vistaClasica">
   <div>
     <div class="caja" id="cajaProductoFoto">
       <h2>1 · Producto y foto</h2>
@@ -131,6 +146,14 @@
       <label style="margin-top:12px">Titular (editable — admite &lt;br&gt; y
         &lt;span class="acento"&gt;)</label>
       <input type="text" id="titular">
+      <label style="margin-top:12px">Idea libre para la escena (opcional)</label>
+      <input type="text" id="ideaLibre" placeholder="Ej: algo del mes de la patria, agosto — si la llenás, reemplaza la escena fija del concepto">
+      <button class="sec oculto" id="btnGenerarTitularIA" style="width:100%;margin-top:8px;padding:8px;font-weight:700">🧠 Generar titular con IA (a partir de la idea libre)</button>
+      <div id="bloqueCorreccionTitularIA" class="oculto" style="margin-top:8px">
+        <input type="text" id="correccionTitularIA" placeholder="Correcciones (ej: más corto, otra palabra resaltada)...">
+        <button class="sec" id="btnRegenerarTitularIA" style="width:100%;margin-top:8px;padding:8px;font-weight:700">🔁 Regenerar con corrección</button>
+      </div>
+      <p class="nota-ia">No repite el titular del concepto elegido — lo escribe de cero a partir de la idea libre, pero con el mismo estilo de los titulares ya publicados (mayúsculas, dos líneas, palabra clave resaltada).</p>
     </div>
 
     <div class="caja">
@@ -186,6 +209,25 @@
 
         <div style="font-size:12.5px;margin-bottom:8px;font-weight:700"><b>2. Elegí la imagen generada por Gemini:</b></div>
         <div class="fotos chica" id="fotosGeminiSubidas"></div>
+
+        <div class="fila-ia">
+          <label><input type="checkbox" id="productoEnImagen"> El producto ya está compuesto en esta imagen (no aplicar recorte local)</label>
+        </div>
+
+        <div id="bloqueIaPrompt" class="oculto" style="margin-top:14px;padding-top:12px;border-top:1px solid #142e3b">
+          <div style="font-size:12.5px;margin-bottom:8px;opacity:.9"><b>O generá uno mejor con IA (agy):</b></div>
+          <button class="sec" id="btnGenerarPromptIA" style="width:100%;padding:8px;font-weight:700">🧠 Generar prompt con IA</button>
+          <pre id="promptIaTxt" class="oculto" style="background:#040b10;border:1px solid #142e3b;border-radius:8px;padding:10px 12px;font:12px/1.45 ui-monospace,monospace;white-space:pre-wrap;margin:10px 0;max-height:160px;overflow:auto"></pre>
+          <div id="bloqueCorreccionIA" class="oculto">
+            <input type="text" id="correccionIA" placeholder="Correcciones (ej: que sea de noche, sin sillón)...">
+            <button class="sec" id="btnRegenerarPromptIA" style="width:100%;margin-top:8px;padding:8px;font-weight:700">🔁 Regenerar con corrección</button>
+          </div>
+          <button class="cp oculto" id="btnCopiarPromptIA" style="width:100%;margin-top:8px">📋 Copiar prompt IA</button>
+          <button class="sec" id="btnGenerarImagenIA" style="width:100%;margin-top:8px;padding:8px;font-weight:700">🎨 Generar SOLO el fondo con agy</button>
+          <p class="nota-ia">Fondo vacío (sin producto) — usa el prompt de arriba y compone después el recorte local encima, como con Gemini Studio manual.</p>
+          <button class="sec" id="btnGenerarImagenProductoIA" style="width:100%;margin-top:8px;padding:8px;font-weight:700">🖼️ Generar fondo CON el producto ya puesto</button>
+          <p class="nota-ia">agy toma la foto real elegida en el paso 1 como referencia y compone el producto directo en la escena — sin recorte local. Marca sola el check de arriba.</p>
+        </div>
       </div>
 
       <!-- Bloque Qwen Local -->
@@ -242,9 +284,16 @@
       <div id="vista"><p class="sub" style="margin:0">Todavía no generaste nada.</p></div>
       <a class="descargar oculto" id="descargar" download>Descargar arte</a>
     </div>
-    <div class="caja" id="cajaCopys" style="display:none">
+    <div class="caja" id="cajaCopys">
       <h2>Copy para el post — 3 variantes</h2>
       <div id="copys"></div>
+      <div id="bloqueCopyIA" class="oculto" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--linea)">
+        <button class="sec" id="btnCopyIA" style="width:100%;padding:8px;font-weight:700">🧠 Generar variante con IA (agy)</button>
+        <div id="bloqueCorreccionCopyIA" class="oculto" style="margin-top:8px">
+          <input type="text" id="correccionCopyIA" placeholder="Correcciones (ej: más corto, sin emojis)...">
+          <button class="sec" id="btnRegenerarCopyIA" style="width:100%;margin-top:8px;padding:8px;font-weight:700">🔁 Regenerar con corrección</button>
+        </div>
+      </div>
     </div>
     <div class="caja">
       <h2>Historial</h2>
@@ -253,9 +302,105 @@
   </div>
 </div>
 
+<div class="grid oculto" id="vistaAntigravity">
+  <div>
+    <div class="caja">
+      <h2>1 · Producto y foto</h2>
+      <div class="fila">
+        <div>
+          <label>Producto</label>
+          <select id="agProducto"></select>
+        </div>
+        <div>
+          <label>Nombre que se imprime en el arte</label>
+          <input type="text" id="agNombre">
+        </div>
+      </div>
+      <label>Foto base — el producto real que agy va a componer</label>
+      <div class="fotos" id="agFotos"></div>
+    </div>
+
+    <div class="caja">
+      <h2>2 · Tu idea</h2>
+      <p class="sub" style="margin:-8px 0 12px">Describí la escena o el momento
+        que querés mostrar. Agy escribe el titular y compone el fondo con tu
+        producto a partir de esto — no hace falta elegir modo, fondo ni nada
+        más: esta pestaña es toda de agy.</p>
+      <input type="text" id="agIdea" placeholder="Ej: el mes de la patria en Bolivia, agosto, banderas...">
+
+      <div class="fila" style="margin-top:14px">
+        <div>
+          <label>Formato</label>
+          <select id="agFormato"></select>
+        </div>
+        <div>
+          <label>Sello (rotalo, no lo pongas en todos)</label>
+          <div class="chips" id="agSellos">
+            <span class="chip on" data-v="">Sin sello</span>
+            <span class="chip" data-v="anios">6 años + bandera</span>
+            <span class="chip" data-v="moto">Envíos · moto</span>
+            <span class="chip" data-v="qr">Pagás al recibir · QR</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="ir" id="agGenerar" style="margin-top:16px">🚀 Generar con Antigravity</button>
+      <div id="agCorreccionRow" class="oculto" style="margin-top:12px">
+        <input type="text" id="agCorreccion" placeholder="Correcciones (ej: que sea de noche, otro color de sello)...">
+        <button class="sec" id="agRegenerar" style="width:100%;margin-top:8px;padding:8px;font-weight:700">🔁 Regenerar todo con corrección</button>
+      </div>
+      <div class="caja" style="margin-top:14px;margin-bottom:0">
+        <h2>Registro</h2>
+        <pre class="log" id="agLog">Esperando…</pre>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="caja" id="agCajaPreview" style="display:none">
+      <h2>3 · Resultado de agy</h2>
+      <p class="sub" style="margin:0 0 8px">Titular generado:</p>
+      <div id="agTitularPreview" style="font-weight:800;font-size:22px;margin-bottom:14px;line-height:1.3"></div>
+      <p class="sub" style="margin:0 0 8px">Fondo con el producto ya puesto:</p>
+      <div id="agImgPreview"></div>
+    </div>
+
+    <button class="ir" id="agGenerarArte" disabled>Generar arte (con el resultado de arriba)</button>
+
+    <div class="caja" style="margin-top:18px">
+      <h2>Vista previa final</h2>
+      <div id="agVistaFinal"><p class="sub" style="margin:0">Todavía no generaste nada.</p></div>
+      <a class="descargar oculto" id="agDescargar" download>Descargar arte</a>
+    </div>
+    <div class="caja" id="agCajaCopys">
+      <h2>Copy para el post — 3 variantes</h2>
+      <div id="agCopys"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 const $ = s => document.querySelector(s);
 let DATOS = null, fotoSel = null, splitIzqSel = null, splitDerSel = null, fotoGeminiSel = null, sello = "", vidrio = false;
+let promptIaConvId = null, copyIaConvId = null, titularIaConvId = null;
+
+// ---- estado de la pestana Antigravity (independiente del panel clasico) ----
+let agFotoSel = null, agSelloSel = "";
+let agTitularIaCid = null, agImagenIaCid = null;
+let agTitularActual = "", agArchivoActual = null;
+
+$("#tabClasico").onclick = () => {
+  $("#tabClasico").classList.add("activo");
+  $("#tabAntigravity").classList.remove("activo");
+  $("#vistaClasica").classList.remove("oculto");
+  $("#vistaAntigravity").classList.add("oculto");
+};
+$("#tabAntigravity").onclick = () => {
+  $("#tabAntigravity").classList.add("activo");
+  $("#tabClasico").classList.remove("activo");
+  $("#vistaAntigravity").classList.remove("oculto");
+  $("#vistaClasica").classList.add("oculto");
+};
 
 // El panel es un solo archivo: si el servidor no está, se esconde lo que no
 // tiene sentido sin él. Mismo criterio que PANEL-PRODUCCION.html.
@@ -269,7 +414,10 @@ function pintar() {
   const sp = $("#producto");
   DATOS.productos.forEach(p => sp.add(new Option(p.clave, p.clave)));
   const sc = $("#concepto");
-  DATOS.conceptos.forEach(c => sc.add(new Option(
+  // "libre" es el comodin que usa la pestana Antigravity (su titular/escena
+  // salen siempre de la idea que escribis ahi, nunca de estos campos fijos)
+  // -- no tiene sentido como opcion en el panel clasico.
+  DATOS.conceptos.filter(c => c.clave !== "libre").forEach(c => sc.add(new Option(
     c.titular.replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, "")
              .replace(/\s+/g, " ").trim(), c.clave)));
   DATOS.formatos.forEach(f => $("#formato").add(new Option(f, f)));
@@ -278,10 +426,11 @@ function pintar() {
   $("#nDolores").value = Math.min(3, DATOS.n_dolores_max);
   Object.keys(DATOS.prompts).forEach(k => $("#comparativa").add(new Option(k, k)));
 
-  sp.onchange = () => { fotos(); actualizarPromptGemini(); };
-  sc.onchange = () => { nota(); actualizarPromptGemini(); };
+  sp.onchange = () => { fotos(); actualizarPromptGemini(); resetIA(); };
+  sc.onchange = () => { nota(); actualizarPromptGemini(); resetIA(); };
   $("#formato").onchange = actualizarPromptGemini;
   $("#titular").oninput = actualizarPromptGemini;
+  $("#ideaLibre").oninput = actualizarPromptGemini;
   $("#modo").onchange = modoCambio;
   $("#tipoFondo").onchange = tipoFondoCambio;
   $("#comparativa").onchange = pintarPromptsSplit;
@@ -290,6 +439,30 @@ function pintar() {
   cargarSubidas();
   cargarFotosGemini();
   actualizarPromptGemini();
+
+  $("#bloqueIaPrompt").classList.toggle("oculto", !DATOS.agy);
+  $("#bloqueCopyIA").classList.toggle("oculto", !DATOS.agy);
+  $("#btnGenerarTitularIA").classList.toggle("oculto", !DATOS.agy);
+  copys(null);
+
+  agPintar();
+}
+
+// Un cambio de producto o concepto invalida la conversacion de agy en curso:
+// seguir corrigiendo sobre un prompt/copy de otro producto no tiene sentido.
+function resetIA() {
+  promptIaConvId = null;
+  $("#promptIaTxt").classList.add("oculto");
+  $("#bloqueCorreccionIA").classList.add("oculto");
+  $("#btnCopiarPromptIA").classList.add("oculto");
+  $("#correccionIA").value = "";
+  copyIaConvId = null;
+  $("#bloqueCorreccionCopyIA").classList.add("oculto");
+  $("#correccionCopyIA").value = "";
+  $("#productoEnImagen").checked = false;
+  titularIaConvId = null;
+  $("#bloqueCorreccionTitularIA").classList.add("oculto");
+  $("#correccionTitularIA").value = "";
 }
 
 function fotos() {
@@ -358,6 +531,9 @@ function actualizarPromptGemini() {
   const titularLimpio = titularRaw.replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
   const esVert = $("#formato").value === "vertical";
   const aspecto = esVert ? "9:16 vertical portrait aspect ratio" : "1:1 square aspect ratio";
+  // La idea libre pisa la escena fija del concepto -- para pedidos puntuales
+  // (ej. "mes de la patria") que no encajan en ninguno de los conceptos fijos.
+  const escenaBase = $("#ideaLibre").value.trim() || c.escena || "Warm cozy indoor setting with soft ambient lighting.";
 
   const prompt = `Photorealistic background scene for commercial social media advertisement in Bolivia.
 
@@ -367,7 +543,7 @@ CAMPAIGN CONTEXT & PRODUCT:
 - Target Audience: Bolivian home readers & book lovers (warm, cozy middle-class atmosphere).
 
 SCENE VISUALS & ENVIRONMENT:
-${c.escena || "Warm cozy indoor setting with soft ambient lighting."}
+${escenaBase}
 
 COMPOSITION & RENDER INSTRUCTIONS:
 - Aspect Ratio: ${aspecto}.
@@ -418,6 +594,10 @@ async function cargarFotosGemini() {
       } else {
         im.classList.add("sel");
         fotoGeminiSel = f;
+        // Heuristica por nombre: las generadas con el boton "CON el producto"
+        // llevan este prefijo. Si Jose eligio otra a mano, el check queda
+        // como estaba -- lo puede tildar el mismo si corresponde.
+        if (f.startsWith("agy-conproducto-")) $("#productoEnImagen").checked = true;
       }
     };
     cont.appendChild(im);
@@ -518,6 +698,7 @@ $("#generar").onclick = async () => {
     sello, vidrio, n_dolores: $("#nDolores").value,
     qwen_escena: tf === "qwen",
     foto_gemini: tf === "gemini" ? fotoGeminiSel : null,
+    producto_en_imagen: tf === "gemini" && $("#productoEnImagen").checked,
     comparativa: $("#comparativa").value, split_izq: splitIzqSel, split_der: splitDerSel,
   };
   try {
@@ -568,7 +749,10 @@ function mostrarArte(nombre) {
 
 function copys(cs) {
   const box = $("#copys"); box.innerHTML = "";
-  if (!cs) { $("#cajaCopys").style.display = "none"; return; }
+  if (!cs) {
+    box.innerHTML = '<p class="sub" style="margin:0">Todavía no hay copy generado.</p>';
+    return;
+  }
   Object.entries(cs).forEach(([k, v]) => {
     const d = document.createElement("div");
     d.className = "copy";
@@ -581,7 +765,347 @@ function copys(cs) {
     };
     box.appendChild(d);
   });
-  $("#cajaCopys").style.display = "block";
+}
+
+// ---- prompt de escena con IA (agy) ----
+async function llamarPromptIA(correccion) {
+  const btn = correccion ? $("#btnRegenerarPromptIA") : $("#btnGenerarPromptIA");
+  const txtOriginal = btn.textContent;
+  btn.disabled = true; btn.textContent = "generando… (agy, ~10-30s)";
+  try {
+    const c = DATOS.conceptos.find(x => x.clave === $("#concepto").value) || {};
+    const cfg = {
+      nombre: $("#nombre").value,
+      titular: $("#titular").value || c.titular || "",
+      formato: $("#formato").value,
+      escena_base: $("#ideaLibre").value.trim() || c.escena || "",
+      correccion: correccion || "",
+      conversation_id: promptIaConvId,
+    };
+    const r = await fetch("/api/prompt-ia", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(cfg)
+    }).then(x => x.json());
+    if (!r.ok) { alert("Error de agy: " + r.error); return; }
+    promptIaConvId = r.conversation_id;
+    $("#promptIaTxt").textContent = r.prompt;
+    $("#promptIaTxt").classList.remove("oculto");
+    $("#bloqueCorreccionIA").classList.remove("oculto");
+    $("#btnCopiarPromptIA").classList.remove("oculto");
+  } catch (e) {
+    alert("Error llamando a agy: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = txtOriginal;
+  }
+}
+$("#btnGenerarPromptIA").onclick = () => llamarPromptIA("");
+$("#btnRegenerarPromptIA").onclick = () => {
+  const c = $("#correccionIA").value.trim();
+  if (!c) { alert("Escribí qué corregir primero."); return; }
+  llamarPromptIA(c);
+};
+$("#btnCopiarPromptIA").onclick = () => {
+  navigator.clipboard.writeText($("#promptIaTxt").textContent);
+  const b = $("#btnCopiarPromptIA");
+  b.textContent = "✓ Copiado"; b.classList.add("ok");
+  setTimeout(() => { b.textContent = "📋 Copiar prompt IA"; b.classList.remove("ok"); }, 1600);
+};
+
+$("#btnGenerarImagenIA").onclick = async () => {
+  // Prefiere el prompt mejorado por IA si ya se generó uno; si no, el armado
+  // por contexto (producto/titular/escena) que siempre esta disponible.
+  const promptIaVisible = !$("#promptIaTxt").classList.contains("oculto");
+  const prompt = (promptIaVisible ? $("#promptIaTxt").textContent : $("#promptGeminiTxt").textContent).trim();
+  if (!prompt) { alert("No hay ningun prompt para generar."); return; }
+  const btn = $("#btnGenerarImagenIA");
+  const txtOriginal = btn.textContent;
+  btn.disabled = true; btn.textContent = "generando imagen… (agy, ~15-40s)";
+  try {
+    const r = await fetch("/api/imagen-ia", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ prompt, producto: $("#producto").value })
+    }).then(x => x.json());
+    if (!r.ok) { alert("Error de agy: " + r.error); return; }
+    fotoGeminiSel = r.archivo;
+    $("#productoEnImagen").checked = false; // esta via SIEMPRE es fondo vacío
+    await cargarFotosGemini();
+  } catch (e) {
+    alert("Error llamando a agy: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = txtOriginal;
+  }
+};
+
+$("#btnGenerarImagenProductoIA").onclick = async () => {
+  if (!fotoSel) { alert("Elegí primero la foto base del producto (paso 1)."); return; }
+  const btn = $("#btnGenerarImagenProductoIA");
+  const txtOriginal = btn.textContent;
+  btn.disabled = true; btn.textContent = "generando… (agy, ~15-40s)";
+  try {
+    const c = DATOS.conceptos.find(x => x.clave === $("#concepto").value) || {};
+    const cfg = {
+      producto: $("#producto").value,
+      foto: fotoSel,
+      titular: $("#titular").value || c.titular || "",
+      formato: $("#formato").value,
+      escena_base: $("#ideaLibre").value.trim() || c.escena || "",
+    };
+    const r = await fetch("/api/imagen-producto-ia", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(cfg)
+    }).then(x => x.json());
+    if (!r.ok) { alert("Error de agy: " + r.error); return; }
+    fotoGeminiSel = r.archivo;
+    $("#productoEnImagen").checked = true;
+    await cargarFotosGemini();
+  } catch (e) {
+    alert("Error llamando a agy: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = txtOriginal;
+  }
+};
+
+// ---- copy con IA (agy) ----
+async function llamarCopyIA(correccion) {
+  const btn = correccion ? $("#btnRegenerarCopyIA") : $("#btnCopyIA");
+  const txtOriginal = btn.textContent;
+  btn.disabled = true; btn.textContent = "generando… (agy, ~10-30s)";
+  try {
+    const cfg = {
+      producto: $("#producto").value,
+      correccion: correccion || "",
+      conversation_id: copyIaConvId,
+    };
+    const r = await fetch("/api/copy-ia", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(cfg)
+    }).then(x => x.json());
+    if (!r.ok) { alert("Error de agy: " + r.error); return; }
+    copyIaConvId = r.conversation_id;
+    copys(r.copys);
+    $("#bloqueCorreccionCopyIA").classList.remove("oculto");
+  } catch (e) {
+    alert("Error llamando a agy: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = txtOriginal;
+  }
+}
+$("#btnCopyIA").onclick = () => llamarCopyIA("");
+$("#btnRegenerarCopyIA").onclick = () => {
+  const c = $("#correccionCopyIA").value.trim();
+  if (!c) { alert("Escribí qué corregir primero."); return; }
+  llamarCopyIA(c);
+};
+
+// ---- titular con IA (agy), a partir de la idea libre ----
+async function llamarTitularIA(correccion) {
+  const idea = $("#ideaLibre").value.trim();
+  if (!correccion && !idea) { alert("Escribí una idea libre primero (arriba)."); return; }
+  const btn = correccion ? $("#btnRegenerarTitularIA") : $("#btnGenerarTitularIA");
+  const txtOriginal = btn.textContent;
+  btn.disabled = true; btn.textContent = "generando… (agy, ~10-20s)";
+  try {
+    const cfg = { idea, correccion: correccion || "", conversation_id: titularIaConvId };
+    const r = await fetch("/api/titular-ia", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(cfg)
+    }).then(x => x.json());
+    if (!r.ok) { alert("Error de agy: " + r.error); return; }
+    titularIaConvId = r.conversation_id;
+    $("#titular").value = r.titular;
+    actualizarPromptGemini();
+    $("#bloqueCorreccionTitularIA").classList.remove("oculto");
+  } catch (e) {
+    alert("Error llamando a agy: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = txtOriginal;
+  }
+}
+$("#btnGenerarTitularIA").onclick = () => llamarTitularIA("");
+$("#btnRegenerarTitularIA").onclick = () => {
+  const c = $("#correccionTitularIA").value.trim();
+  if (!c) { alert("Escribí qué corregir primero."); return; }
+  llamarTitularIA(c);
+};
+
+// ==== pestana Antigravity: producto+foto -> idea -> titular+fondo -> arte ====
+function agPintar() {
+  const sp = $("#agProducto");
+  sp.innerHTML = "";
+  DATOS.productos.forEach(p => sp.add(new Option(p.clave, p.clave)));
+  const sf = $("#agFormato");
+  sf.innerHTML = "";
+  DATOS.formatos.forEach(f => sf.add(new Option(f, f)));
+  sp.onchange = agFotos;
+  agFotos();
+  agMostrarCopys(null);
+}
+
+function agFotos() {
+  const p = DATOS.productos.find(x => x.clave === $("#agProducto").value);
+  if (!p) return;
+  $("#agNombre").value = p.clave.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  const cont = $("#agFotos"); cont.innerHTML = ""; agFotoSel = null;
+  p.fotos.forEach(f => {
+    const im = document.createElement("img");
+    im.src = "/api/miniatura?f=" + encodeURIComponent(f);
+    im.title = f;
+    im.onclick = () => {
+      cont.querySelectorAll("img").forEach(x => x.classList.remove("sel"));
+      im.classList.add("sel"); agFotoSel = f;
+    };
+    cont.appendChild(im);
+  });
+}
+
+$("#agSellos").onclick = e => {
+  const c = e.target.closest(".chip"); if (!c) return;
+  $("#agSellos").querySelectorAll(".chip").forEach(x => x.classList.remove("on"));
+  c.classList.add("on"); agSelloSel = c.dataset.v;
+};
+
+// Un solo boton hace las dos llamadas (titular, despues fondo-con-producto) en
+// orden -- el titular fresco se usa como "foco comercial" del prompt de imagen,
+// para que las dos piezas cuenten la misma idea. Con correccion, cada llamada
+// continua su propia conversacion de agy (no repite el contexto de nuevo).
+async function agGenerarTodo(correccion) {
+  const idea = $("#agIdea").value.trim();
+  if (!correccion && !idea) { alert("Escribí tu idea primero."); return; }
+  if (!agFotoSel) { alert("Elegí la foto base del producto (paso 1)."); return; }
+
+  const btn = correccion ? $("#agRegenerar") : $("#agGenerar");
+  const otro = correccion ? $("#agGenerar") : $("#agRegenerar");
+  const txtOriginal = btn.textContent;
+  btn.disabled = true; otro.disabled = true;
+  const log = $("#agLog");
+  log.textContent = "generando titular con agy… (~10-20s)";
+
+  try {
+    const rt = await fetch("/api/titular-ia", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ idea, correccion: correccion || "", conversation_id: agTitularIaCid })
+    }).then(x => x.json());
+    if (!rt.ok) { log.textContent += "\nERROR (titular): " + rt.error; return; }
+    agTitularIaCid = rt.conversation_id;
+    agTitularActual = rt.titular;
+    $("#agTitularPreview").innerHTML = agTitularActual;
+    $("#agCajaPreview").style.display = "block";
+    log.textContent += "\ntitular listo.";
+
+    log.textContent += "\ngenerando fondo con el producto (agy, ~15-40s)…";
+    const titularLimpio = agTitularActual.replace(/<br\s*\/?>/gi, " ")
+      .replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+    const ri = await fetch("/api/imagen-producto-ia", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        producto: $("#agProducto").value, foto: agFotoSel,
+        titular: titularLimpio, escena_base: correccion || idea,
+        formato: $("#agFormato").value,
+        correccion: correccion || "", conversation_id: agImagenIaCid,
+      })
+    }).then(x => x.json());
+    if (!ri.ok) { log.textContent += "\nERROR (imagen): " + ri.error; return; }
+    agImagenIaCid = ri.conversation_id;
+    agArchivoActual = ri.archivo;
+    $("#agImgPreview").innerHTML = '<img src="/api/subir-miniatura?f=' +
+      encodeURIComponent(ri.archivo) +
+      '" style="width:100%;max-width:320px;border-radius:10px;display:block">';
+    $("#agGenerarArte").disabled = false;
+    $("#agCorreccionRow").classList.remove("oculto");
+    $("#agCorreccion").value = "";
+    log.textContent += "\nLISTO — revisá el resultado. Corré \"Generar arte\" o " +
+      "corregí y volvé a generar.";
+  } catch (e) {
+    log.textContent += "\nERROR: " + e.message;
+  } finally {
+    btn.disabled = false; otro.disabled = false;
+  }
+}
+$("#agGenerar").onclick = () => agGenerarTodo("");
+$("#agRegenerar").onclick = () => {
+  const c = $("#agCorreccion").value.trim();
+  if (!c) { alert("Escribí qué corregir primero."); return; }
+  agGenerarTodo(c);
+};
+
+$("#agGenerarArte").onclick = async () => {
+  if (!agArchivoActual) return;
+  $("#agGenerarArte").disabled = true;
+  $("#agLog").textContent = "arrancando el pipeline final…";
+  const cfg = {
+    producto: $("#agProducto").value, nombre: $("#agNombre").value,
+    foto: agFotoSel, concepto: "libre", modo: "limpio",
+    formato: $("#agFormato").value, escena: "navy",
+    titular: agTitularActual,
+    sello: agSelloSel, vidrio: false, n_dolores: 3,
+    qwen_escena: false, foto_gemini: agArchivoActual, producto_en_imagen: true,
+    comparativa: "", split_izq: null, split_der: null,
+  };
+  try {
+    const r = await fetch("/api/generar", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(cfg)
+    }).then(x => x.json());
+    if (r && r.id) {
+      agSeguir(r.id);
+    } else {
+      throw new Error("Respuesta inválida del servidor");
+    }
+  } catch (err) {
+    $("#agGenerarArte").disabled = false;
+    $("#agLog").textContent = "ERROR al iniciar generación: " + err.message;
+  }
+};
+
+function agSeguir(id) {
+  const t = setInterval(async () => {
+    try {
+      const d = await fetch("/api/trabajo?id=" + id).then(x => x.json());
+      const logElem = $("#agLog");
+      logElem.textContent = (d.log || []).join("\n");
+      logElem.scrollTop = logElem.scrollHeight;
+      if (d.estado === "listo" || d.estado === "error") {
+        clearInterval(t); $("#agGenerarArte").disabled = false;
+        if (d.estado === "listo") {
+          agMostrarArte(d.arte);
+          agMostrarCopys(d.copys);
+          historial();
+        }
+      }
+    } catch (e) {
+      // Ignorar reconexiones temporales
+    }
+  }, 1200);
+}
+
+function agMostrarArte(nombre) {
+  $("#agVistaFinal").innerHTML = '<img src="/api/arte?f=' +
+    encodeURIComponent(nombre) + '&t=' + Date.now() +
+    '" style="width:100%;border-radius:10px;display:block">';
+  const desc = $("#agDescargar");
+  desc.href = "/api/arte?f=" + encodeURIComponent(nombre);
+  desc.download = nombre;
+  desc.classList.remove("oculto");
+}
+
+function agMostrarCopys(cs) {
+  const box = $("#agCopys"); box.innerHTML = "";
+  if (!cs) {
+    box.innerHTML = '<p class="sub" style="margin:0">Todavía no hay copy generado.</p>';
+    return;
+  }
+  Object.entries(cs).forEach(([k, v]) => {
+    const d = document.createElement("div");
+    d.className = "copy";
+    d.innerHTML = '<h3>' + k + '<button class="cp">Copiar</button></h3><pre></pre>';
+    d.querySelector("pre").textContent = v;
+    d.querySelector("button").onclick = ev => {
+      navigator.clipboard.writeText(v);
+      const b = ev.target; b.textContent = "Copiado"; b.classList.add("ok");
+      setTimeout(() => { b.textContent = "Copiar"; b.classList.remove("ok"); }, 1400);
+    };
+    box.appendChild(d);
+  });
 }
 
 // ---- historial ----
