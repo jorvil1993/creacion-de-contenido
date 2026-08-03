@@ -780,6 +780,33 @@ def pruebas_round_trip():
     chk("al volver, el reproductor arranca donde se dejo",
         vuelta.get("sesion", {}).get("t") == 14.6)
 
+    # --- un hook/CTA oculto desaparece de DATA.overlays: bug reportado por
+    # Jose (2026-08-01), "lo quito y vuelvo a renderizar y lo vuelve a
+    # agregar". f6_overlays.py salta a proposito la tarjeta oculta (no la
+    # compone), asi que 05_overlays.eventos.json no trae ese tipo -- si el
+    # navegador reconstruye edicionHookCta SOLO desde ahi, pierde el "oculto"
+    # en cuanto se recarga tras ese render, y el siguiente Render/Preview
+    # lo vuelve a mostrar porque ajustes.hookcta.json termina guardandose
+    # vacio (el estado en pantalla ya no tenia el hook para serializar).
+    (dir_vuelta / "05_overlays.eventos.json").write_text(json.dumps([
+        {"tipo": "anim-apps", "anim": "anim-apps", "medio": "video",
+         "ini": 4.7, "fin": 7.7, "archivo": str(clip)},
+        # sin "hook" ni "cta": el ultimo render los salto por estar ocultos
+    ]), encoding="utf-8")
+    (dir_vuelta / "ajustes.hookcta.json").write_text(json.dumps(
+        {"hook_cta": [{"tipo": "hook", "ini": 0.0, "fin": 3.2, "oculto": True}]}),
+        encoding="utf-8")
+    vuelta_oculto = f10.recolectar(dir_vuelta)
+    chk("recolectar() sigue reportando el hook oculto aunque el render no lo traiga",
+        (vuelta_oculto.get("hook_cta_guardado") or [{}])[0].get("oculto") is True,
+        "hook_cta_guardado sale de ajustes.hookcta.json en disco, no de si el "
+        "ultimo render compuso la tarjeta -- la responsabilidad de no perderlo "
+        "es del navegador al reconstruir edicionHookCta")
+    chk("el navegador reconstruye el hook oculto desde lo guardado, no solo del render",
+        "_bloqueHookCta" in fuente_srv and "g && g.oculto" in fuente_srv,
+        "un `[hook, cta].filter(Boolean)` que solo mira DATA.overlays pierde "
+        "el oculto: sin esta union, quitar el hook y renderizar lo hacia volver")
+
     fuente_srv_txt = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
     chk("el editor guarda solo, sin depender de que se pulse el boton",
         "setInterval(() => guardarAhora(true)" in fuente_srv_txt
@@ -2627,6 +2654,198 @@ def pruebas_ajustes_timeline_vieja():
         "siendo validos, y apartarlos igual dejaria a --reaplicar sin sentido")
 
 
+def pruebas_coleccion_insertos():
+    """Bug reportado por Jose (2026-08-01): previsualizar un video ya renderizado
+    le metia cosas que el no habia puesto, y su PiP desaparecia.
+
+    Causa: "que es un inserto" estaba decidido DOS VECES y de forma distinta.
+    El navegador usaba una lista NEGRA (todo lo que no fuera hook, CTA ni
+    anim-*) para llenar la coleccion de PiP y B-rolls; f10 usaba una lista
+    BLANCA (pip-producto / broll) para decidir que conservaba del render. Los
+    stickers, la ficha de specs y la comparativa caian en el hueco entre las
+    dos, con dos consecuencias que se comian solas:
+
+      · se guardaban en ajustes.eventos.json y salian por --eventos-manual, que
+        REEMPLAZA la lista entera de insertos -> el PiP del guion desaparecia
+        del video sin un solo error;
+      · el render los conservaba por un lado y los ajustes los volvian a sumar
+        por el otro -> la coleccion crecia 4 tarjetas en cada vuelta al editor.
+
+    En la carpeta real de Jose (test1) la coleccion iba por 11 tarjetas: 8
+    stickers duplicados + 3 B-rolls, y ni rastro del PiP.
+    """
+    seccion("21. La coleccion del editor lleva SOLO insertos (f10 + f11)")
+    import json
+    import tempfile
+    import f10_editor_visual as f10
+
+    chk("es_inserto() dice que si a los dos tipos que el editor pone y quita",
+        f10.es_inserto({"tipo": "pip-producto"})
+        and f10.es_inserto({"tipo": "broll", "broll_fullscreen": True})
+        and f10.es_inserto({"tipo": "loquesea", "broll_fullscreen": True}),
+        "un B-roll se reconoce por broll_fullscreen aunque el tipo cambie")
+
+    automaticos = ["hook", "cta", "anim-apps", "anim-sol", "specs", "comparativa"]
+    chk("es_inserto() dice que no a todo lo que coloca el pipeline",
+        all(not f10.es_inserto({"tipo": t}) for t in automaticos),
+        "hook, CTA, animaciones, ficha de specs y comparativa los pone "
+        "f6_overlays en CADA corrida con sus propios datos: si el editor los "
+        "guardara, --eventos-manual los compondria por segunda vez")
+
+    fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+    chk("el navegador filtra por el flag de Python, no por su propia lista",
+        "DATA.movibles.filter(m => m.inserto)" in fuente_srv
+        and 'm.tipo !== "hook"' not in fuente_srv,
+        "dos listas que hay que mantener iguales a mano se separan; una sola no")
+
+    # --- el ciclo completo: render -> editor -> guardar -> recargar ----------
+    tmp = Path(tempfile.mkdtemp())
+    dt = tmp / "corrida"
+    dt.mkdir()
+    clip = dt / "clip.mov"
+    clip.write_bytes(b"x")            # basta con que exista: reconstruible() mira eso
+    def ev(tipo, ini, **extra):
+        return {"tipo": tipo, "ini": ini, "fin": ini + 2.0, "x": 0, "y": 0,
+                "medio": "video", "archivo": str(clip), **extra}
+
+    render = [ev("hook", 0.0), ev("broll", 5.0, broll_fullscreen=True),
+              ev("pip-producto", 20.0),
+              ev("specs", 26.0), ev("comparativa", 30.0), ev("anim-apps", 35.0)]
+    (dt / "05_overlays.eventos.json").write_text(
+        json.dumps({"eventos": render}), encoding="utf-8")
+
+    # Cinco vueltas de "abrir el editor, guardar, volver a abrir". El navegador
+    # guarda los insertos en dos archivos (PiP y B-roll), que es lo que hacen
+    # eventosParaGuardar() y brollParaGuardar().
+    tamanos = []
+    for _ in range(5):
+        todos = f10.eventos_del_editor(dt, ids=set())
+        coleccion = [e for e in todos if f10.es_inserto(e)]
+        tamanos.append(len(coleccion))
+        (dt / "ajustes.eventos.json").write_text(json.dumps(
+            {"eventos": [e for e in coleccion if not f10.es_broll(e)]}), encoding="utf-8")
+        (dt / "ajustes.broll.json").write_text(json.dumps(
+            {"broll": [e for e in coleccion if f10.es_broll(e)]}), encoding="utf-8")
+
+    chk("guardar y recargar no hace crecer la coleccion",
+        len(set(tamanos)) == 1,
+        f"tamanos por vuelta: {tamanos} (antes del arreglo subia de 4 en 4)")
+    chk("la coleccion lleva el PiP y el B-roll, y nada mas",
+        tamanos[0] == 2,
+        f"quedaron {tamanos[0]}: hook, specs, comparativa y anim-apps "
+        f"no son insertos y no deben aparecer")
+
+    guardado = json.loads((dt / "ajustes.eventos.json").read_text(encoding="utf-8"))
+    chk("ajustes.eventos.json (lo que va a --eventos-manual) no lleva intrusos",
+        [e["tipo"] for e in guardado["eventos"]] == ["pip-producto"],
+        f"quedo: {[e['tipo'] for e in guardado['eventos']]}")
+
+    # --- un ajustes.eventos.json ya contaminado se recupera solo -------------
+    dt2 = tmp / "contaminada"
+    dt2.mkdir()
+    (dt2 / "05_overlays.eventos.json").write_text(json.dumps(
+        {"eventos": [ev("hook", 0.0), ev("specs", 11.0)]}), encoding="utf-8")
+    (dt2 / "guion.eventos.json").write_text(json.dumps(
+        {"eventos": [ev("pip-producto", 20.0, tag="pagina-real")]}), encoding="utf-8")
+    (dt2 / "ajustes.eventos.json").write_text(json.dumps(
+        {"eventos": [ev("specs", 11.0)]}), encoding="utf-8")
+    recuperados = [e for e in f10.eventos_del_editor(dt2, ids=set()) if f10.es_inserto(e)]
+    chk("un ajustes.eventos.json lleno de intrusos no se cree: el PiP del guion vuelve",
+        [e["tipo"] for e in recuperados] == ["pip-producto"],
+        "ese archivo lo escribio la version con el fallo, asi que ademas de sobrarle "
+        "intrusos le falta el PiP que --eventos-manual habia borrado del render")
+
+    # --- cinturon en el pipeline: f6 ignora lo que no es inserto -------------
+    import f6_overlays
+    ruta = dt2 / "ajustes.eventos.json"
+    cargados = f6_overlays.cargar_eventos_manual(ruta, dt2, catalogo=[])
+    chk("f6_overlays.cargar_eventos_manual() descarta los intrusos que ya esten en disco",
+        cargados == [],
+        f"cargo {cargados}: un ajustes viejo sin sanear no debe volver a componer "
+        f"intrusos como si fueran insertos")
+
+    # --- mismo agujero, otra lista: las animaciones del guion ---------------
+    # El editor solo miraba el ULTIMO RENDER. Un render que saliera sin
+    # animaciones dejaba el panel vacio aunque el guion pidiera tres, y al tocar
+    # cualquier cosa ahi se guardaba ese vacio: --animaciones-manual apaga el
+    # disparo por palabra en f6, asi que ya no volvian nunca.
+    (dt2 / "guion.animaciones.json").write_text(json.dumps(
+        {"animaciones": [{"nombre": "anim-apps", "ini": 7.8, "variables": {}}]}),
+        encoding="utf-8")
+    datos = f10.recolectar(dt2)
+    chk("recolectar() manda al editor las animaciones que pide el guion",
+        [a["nombre"] for a in (datos["animaciones_guion"] or [])] == ["anim-apps"])
+    chk("sin ajustes.animaciones.json, el editor sabe que no hay decision guardada",
+        datos["animaciones_ajustadas"] is False,
+        "el escalon al guion solo puede usarse cuando nadie toco el panel")
+
+    (dt2 / "ajustes.animaciones.json").write_text(
+        json.dumps({"animaciones": []}), encoding="utf-8")
+    chk("un ajustes.animaciones.json VACIO cuenta como decision, no como ausencia",
+        f10.recolectar(dt2)["animaciones_ajustadas"] is True,
+        "quitar todas las animaciones a mano es una decision legitima: si el "
+        "archivo existe manda el, aunque este vacio")
+
+    fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+    chk("el editor cae al guion solo si nadie ajusto nada Y el render no trae ninguna",
+        "!DATA.animaciones_ajustadas && !animDelRender.length && animGuion.length" in fuente_srv)
+
+    chk("/restablecer devuelve al automatico tambien las animaciones",
+        "ajustes.animaciones.json" in
+        fuente_srv.split("elif partes.path == \"/restablecer\"")[1][:900],
+        "un ajustes.animaciones.json vacio apaga el disparo por palabra en f6: sin "
+        "salida por la interfaz, la unica forma de deshacerlo era borrarlo a mano")
+
+
+def pruebas_video_reciente():
+    """Bug reportado por Jose (2026-08-01): al hacer SOLO Previsualizar (sin haber
+    hecho nunca Renderizar final), el reproductor debia mostrar el 07_PREVIEW.mp4
+    -- eso ya lo decide `video_reciente`, por mtime -- pero `es_renderizado` seguia
+    mirando unicamente 07_FINAL.mp4/06_video.mp4 y caia a 02_cortado.mp4 (el corte
+    crudo) por no encontrarlos. Con `es_renderizado=False` el navegador cree que
+    esta mirando el corte SIN componer, y vuelve a simular encima del preview ya
+    horneado: doble zoom/encuadre (aplicarEncuadre), subtitulos simulados sobre
+    los ya quemados, la pista de musica de la previa sonando junto a la que ya
+    viene mezclada en el audio del preview, y los SFX disparandose por segunda vez.
+    """
+    seccion("22. es_renderizado no ignora un Preview sin Render final (f10)")
+    import json
+    import tempfile
+    import time
+    import f10_editor_visual as f10
+
+    tmp = Path(tempfile.mkdtemp())
+
+    dt_nada = tmp / "sin_nada"
+    dt_nada.mkdir()
+    chk("sin ningun render, es_renderizado sigue en False",
+        f10.recolectar(dt_nada)["es_renderizado"] is False)
+
+    dt_preview = tmp / "solo_preview"
+    dt_preview.mkdir()
+    (dt_preview / "02_cortado.mp4").write_bytes(b"x")
+    (dt_preview / "02_cortado.json").write_text(json.dumps({"palabras": []}),
+                                                encoding="utf-8")
+    time.sleep(0.05)
+    (dt_preview / "07_PREVIEW.mp4").write_bytes(b"y")
+    datos_preview = f10.recolectar(dt_preview)
+    chk("un Preview sin Render final se sigue sirviendo (video_reciente='preview')",
+        datos_preview["video_reciente"] == "preview")
+    chk("...y ESE preview cuenta como renderizado: trae zoom/subtitulos/musica/SFX ya horneados",
+        datos_preview["es_renderizado"] is True,
+        "si queda en False, el navegador simula esos cuatro efectos por segunda vez "
+        "encima de un video que ya los tiene quemados en el pixel/el audio")
+
+    dt_final = tmp / "con_final"
+    dt_final.mkdir()
+    (dt_final / "02_cortado.mp4").write_bytes(b"x")
+    (dt_final / "02_cortado.json").write_text(json.dumps({"palabras": []}),
+                                              encoding="utf-8")
+    (dt_final / "07_FINAL.mp4").write_bytes(b"z")
+    chk("un Render final sigue marcando es_renderizado (sin regresion)",
+        f10.recolectar(dt_final)["es_renderizado"] is True)
+
+
 def _guiones_de_fuente(fuente: str) -> list:
     """Los guiones de un panel EN MEMORIA, con el mismo eval que usa el pipeline."""
     import json
@@ -2666,6 +2885,8 @@ def main():
     pruebas_transiciones_pip()
     pruebas_panel_conectado()
     pruebas_ajustes_timeline_vieja()
+    pruebas_coleccion_insertos()
+    pruebas_video_reciente()
 
     fallan = [n for n, ok in _resultados if not ok]
     print(f"\n{'=' * 60}")

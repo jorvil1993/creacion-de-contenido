@@ -15,7 +15,7 @@ subtítulos — dentro de una única codificación NVENC. La mezcla de audio
 
 Orden de composición (importante): los subtítulos van en la capa visual más
 alta — dentro del filtro de f4, el `ass=` se aplica DESPUÉS de los overlays,
-así ningún overlay (hook, CTA, sticker) tapa el texto.
+así ningún overlay (hook, CTA, animación) tapa el texto.
 
 Los intermedios se escriben en C:\\ai-video\\salida\\<nombre>\\ (fuera de
 OneDrive, regla de la sección 3 del plan); solo el video final se copia a

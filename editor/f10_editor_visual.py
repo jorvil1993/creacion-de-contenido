@@ -23,6 +23,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -52,14 +53,53 @@ def _duracion(ruta: Path) -> float:
         return 0.0
 
 
+def _fuente_video_reciente(dir_trabajo: Path) -> str:
+    """"" (final) o "preview": cuál de los dos renders es el más nuevo en disco.
+
+    Bug reportado por José (2026-08-01): la línea de tiempo lee 05_overlays.eventos.json
+    (que se reescribe en CADA render, sea Preview o final) y por eso mostraba el B-roll
+    recién ajustado; pero el reproductor arrancaba siempre en "" (el 07_FINAL.mp4 del
+    último Render), que podía ser de HORAS antes del último Preview. Resultado: la tira
+    de capas mostraba el B-roll y el video no, como si el editor mintiera. La fuente
+    correcta es la que el disco diga que se generó último, no una que el navegador
+    asuma al cargar la página.
+    """
+    def _mtime(nombre: str) -> float:
+        f = dir_trabajo / nombre
+        return f.stat().st_mtime if f.exists() else -1.0
+
+    final = max(_mtime("07_FINAL.mp4"), _mtime("06_video.mp4"))
+    preview = max(_mtime("07_PREVIEW.mp4"), _mtime("06_preview.mp4"))
+    return "preview" if preview > final else ""
+
+
 def _resolucion(ruta: Path) -> tuple[int, int]:
+    """Ancho×alto REALES tal como se ven, respetando la rotación del archivo.
+
+    José graba vertical, pero el teléfono guarda el video apaisado (1920×1080)
+    con una etiqueta de rotación de 90/270°; ffmpeg y el <video> del navegador
+    lo muestran vertical (1080×1920). `ffprobe stream=width,height` devuelve el
+    tamaño CRUDO sin girar, así que hay que intercambiar los ejes cuando el giro
+    es de ±90°. Sin esto el editor cree que la fuente es apaisada y `aplicarEncuadre`
+    encoge el reencuadre dejando franjas negras alrededor del video en la vista
+    previa. NO afecta al render: el pipeline (f1–f13) lee la rotación por su
+    cuenta y exporta 1080×1920 lleno igual."""
     try:
         r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
-                            "-show_entries", "stream=width,height",
-                            "-of", "csv=s=x:p=0", str(ruta)],
+                            "-show_streams", str(ruta)],
                            capture_output=True, text=True, check=True)
-        w, h = r.stdout.strip().split("x")
-        return int(w), int(h)
+        txt = r.stdout
+        w = int(re.search(r"^width=(\d+)", txt, re.M).group(1))
+        h = int(re.search(r"^height=(\d+)", txt, re.M).group(1))
+        # La rotación puede venir como side_data (displaymatrix: `rotation=`) o
+        # como el tag heredado `rotate=`. Cualquier giro de ±90/270° intercambia
+        # los ejes; 0/180° los deja igual.
+        m = (re.search(r"^rotation=(-?\d+)", txt, re.M)
+             or re.search(r"rotate=(-?\d+)", txt))
+        rot = int(m.group(1)) if m else 0
+        if abs(rot) % 180 == 90:
+            w, h = h, w
+        return w, h
     except Exception:
         return (config.ANCHO, config.ALTO)
 
@@ -606,6 +646,37 @@ def catalogo_musica() -> list:
     return res
 
 
+# Los DOS únicos tipos de evento que el editor pone, mueve y quita. Todo lo
+# demás —hook, CTA, animaciones (`anim-*`), ficha de specs, comparativa y
+# stickers— lo coloca el pipeline con sus propios datos en cada corrida.
+TIPOS_INSERTO = ("pip-producto", "broll")
+
+
+def es_inserto(ev: dict) -> bool:
+    """¿Es un PiP o un B-roll — o sea, de lo que viaja por `--eventos-manual`
+    y `--broll-manual`?
+
+    Esta es LA definición, y la usan los dos lados: Python para decidir qué
+    conserva del último render, y el navegador para llenar la colección de PiP
+    y B-rolls. Cuando estaban duplicadas —el navegador con una lista NEGRA
+    ("todo lo que no sea hook, CTA ni anim-*"), Python con esta lista BLANCA—
+    los stickers, la ficha de specs y la comparativa caían en el hueco entre
+    las dos: entraban en la colección como si fueran PiP, se guardaban en
+    ajustes.eventos.json y de ahí salían por `--eventos-manual`, que REEMPLAZA
+    la lista entera de insertos. El PiP que pedía el guion desaparecía del
+    video, y los stickers se duplicaban en cada vuelta al editor (el render los
+    conservaba por un lado y los ajustes los volvían a sumar por el otro).
+    """
+    return bool(ev.get("broll_fullscreen")) or ev.get("tipo") in TIPOS_INSERTO
+
+
+def es_broll(ev: dict) -> bool:
+    """De los dos tipos de inserto, ¿cuál es? El B-roll ocupa el cuadro entero
+    y va por `--broll-manual` (ajustes.broll.json); el PiP es una tarjeta de
+    esquina y va por `--eventos-manual` (ajustes.eventos.json)."""
+    return bool(ev.get("broll_fullscreen")) or ev.get("tipo") == "broll"
+
+
 def eventos_del_editor(dir_trabajo: Path, ids: set = None) -> list:
     """Insertos y B-rolls con los que arranca el editor, en una sola colección.
 
@@ -635,8 +706,33 @@ def eventos_del_editor(dir_trabajo: Path, ids: set = None) -> list:
                       + _lista_json(dir_trabajo / "guion.broll.json", "broll"),
                       key=lambda e: float(e.get("ini", 0)))
 
-    guardados = (_lista_json(dir_trabajo / "ajustes.eventos.json", "eventos")
-                 + _lista_json(dir_trabajo / "ajustes.broll.json", "broll"))
+    guardados_pip = _lista_json(dir_trabajo / "ajustes.eventos.json", "eventos")
+    guardados_broll = _lista_json(dir_trabajo / "ajustes.broll.json", "broll")
+
+    # Saneo de un `ajustes.eventos.json` escrito por la versión con el fallo que
+    # describe es_inserto(). Si trae stickers, ficha de specs o comparativa, ese
+    # archivo NO es una decisión de José sobre los PiP: es lo que el editor
+    # recogió mal de la pantalla. Se descarta ENTERO —no solo los intrusos—
+    # porque además de sobrar cosas puede faltarle el PiP que pedía el guion,
+    # que `--eventos-manual` había borrado del render en silencio. Los PiP
+    # vuelven a salir del render o, si el render tampoco los tiene, del guion.
+    # `ajustes.broll.json` es otro archivo y no se toca: ahí no cae ningún
+    # intruso (un B-roll siempre lleva `broll_fullscreen`).
+    intrusos = [ev for ev in guardados_pip if not es_inserto(ev)]
+    if intrusos:
+        tipos = ", ".join(sorted({str(ev.get("tipo")) for ev in intrusos}))
+        del_render = [ev for ev in base if es_inserto(ev) and not es_broll(ev)]
+        del_guion = [ev for ev in _lista_json(dir_trabajo / "guion.eventos.json", "eventos")
+                     if es_inserto(ev)]
+        guardados_pip = del_render or del_guion
+        print(f"AVISO: ajustes.eventos.json de {dir_trabajo.name} traía {len(intrusos)} "
+              f"evento(s) que no son insertos ({tipos}) — lo escribió una versión con un "
+              f"fallo de clasificación, así que su lista de PiP no es de fiar. Se descarta "
+              f"y los PiP se recuperan "
+              f"{'del último render' if del_render else 'del guion' if del_guion else '(no hay ninguno)'}"
+              f": {len(guardados_pip)}. Los B-rolls no se tocan.")
+
+    guardados = guardados_pip + guardados_broll
     for ev in guardados:
         # El editor viejo guardaba `asset_id` y no `asset`.
         if not ev.get("asset") and ev.get("asset_id"):
@@ -654,12 +750,10 @@ def eventos_del_editor(dir_trabajo: Path, ids: set = None) -> list:
         return base
 
     # Lo guardado a mano sustituye SOLO los insertos y B-rolls: es lo único que
-    # esos archivos contienen. El hook, el CTA y las animaciones se conservan
-    # del render — si no, guardar un cambio de PiP los hacía desaparecer del
-    # editor, con el panel de Hook y CTA en blanco y sus miniaturas rotas.
-    def es_inserto(ev: dict) -> bool:
-        return bool(ev.get("broll_fullscreen")) or ev.get("tipo") in ("pip-producto", "broll")
-
+    # esos archivos contienen. El hook, el CTA, las animaciones, los stickers y
+    # las tarjetas de Hyperframes se conservan del render — si no, guardar un
+    # cambio de PiP los hacía desaparecer del editor, con el panel de Hook y CTA
+    # en blanco y sus miniaturas rotas.
     conservados = [ev for ev in base if not es_inserto(ev)]
     return sorted(conservados + guardados, key=lambda e: float(e.get("ini", 0)))
 
@@ -682,6 +776,18 @@ def recolectar(dir_trabajo: Path) -> dict:
     if not video.exists():
         video = dir_trabajo / "02_cortado.mp4"
     duracion = _duracion(video)
+    video_reciente = _fuente_video_reciente(dir_trabajo)
+    # Un Preview es un render de verdad (mismo f4_retencion/f6_overlays, solo
+    # que a media resolución): trae el encuadre, los subtítulos, la música y
+    # los SFX ya horneados en los píxeles/el audio, igual que un Render final.
+    # `video` de arriba solo mira 07_FINAL/06_video y cae a 02_cortado.mp4 si
+    # todavía no hay Render final -- eso hacía que una corrida con SOLO un
+    # Preview (sin Render final todavía) se marcara como "no renderizada", y
+    # el navegador volvía a simular subtítulos/música/SFX/zoom ENCIMA del
+    # preview que ya los traía: se oían y se veían dos veces.
+    es_renderizado = (video.name != "02_cortado.mp4"
+                       or (dir_trabajo / "07_PREVIEW.mp4").exists()
+                       or (dir_trabajo / "06_preview.mp4").exists())
 
     # SFX: lo ajustado a mano, si no lo que pidió el guion, y si no el
     # automático. Sin el escalón del guion el editor enseñaba los 5 efectos
@@ -757,6 +863,12 @@ def recolectar(dir_trabajo: Path) -> dict:
         movibles.append({
             "idx": i,
             "tipo": tipo_t,
+            # Quién manda sobre este evento: True = lo pone y lo quita el editor
+            # (va a la colección de PiP y B-rolls y vuelve por --eventos-manual /
+            # --broll-manual); False = lo coloca el pipeline en cada corrida y
+            # aquí solo se enseña. Se decide en Python, en es_inserto(), para que
+            # el navegador no tenga una segunda opinión.
+            "inserto": es_inserto(ev),
             "medio": medio_t,
             "ini": ini_t, "fin": fin_t,
             "x": ev.get("x", 0), "y": ev.get("y", 0),
@@ -807,8 +919,23 @@ def recolectar(dir_trabajo: Path) -> dict:
     # reabrir la corrida se repoblaban desde el ÚLTIMO RENDER, así que mover una
     # animación o estirar el CTA, guardar y volver al día siguiente enseñaba los
     # valores viejos. Se aplicaban igual al renderizar, pero la pantalla mentía.
-    animaciones_guardadas = _lista_json(dir_trabajo / "ajustes.animaciones.json", "animaciones")
+    f_anim_ajustadas = dir_trabajo / "ajustes.animaciones.json"
+    animaciones_guardadas = _lista_json(f_anim_ajustadas, "animaciones")
+    # Que el archivo EXISTA es la decisión, no que tenga elementos: una lista
+    # vacía significa "las quité a mano" y hay que respetarla; que no exista
+    # significa "nunca se tocaron" y ahí manda el guion.
+    animaciones_ajustadas = f_anim_ajustadas.exists()
+    # Lo que pide la columna «Qué se ve» del panel. Los insertos ya tenían este
+    # escalón (`if not base: ... guion.eventos.json`); las animaciones no, así
+    # que un render que saliera sin ninguna dejaba el panel en blanco, y en
+    # cuanto se tocaba algo ahí se guardaba ese vacío y las del guion no volvían
+    # nunca — `--animaciones-manual` apaga el disparo por palabra en f6.
+    animaciones_guion = _lista_json(dir_trabajo / "guion.animaciones.json", "animaciones")
     hook_cta_guardado = _lista_json(dir_trabajo / "ajustes.hookcta.json", "hook_cta")
+    # Stickers quitados a mano. Van aparte de los eventos del render porque un
+    # sticker quitado YA NO SALE en el render siguiente: sin esta lista no habría
+    # forma de volver a encenderlo — desaparecería de la pantalla y del video.
+    stickers_quitados = _lista_json(dir_trabajo / "ajustes.stickers.json", "quitados")
     sesion = {}
     f_sesion = dir_trabajo / "ajustes.sesion.json"
     if f_sesion.exists():
@@ -843,11 +970,14 @@ def recolectar(dir_trabajo: Path) -> dict:
         "duracion": round(duracion, 3),
         "hook_guardado": hook_guardado,
         "animaciones_guardadas": animaciones_guardadas or None,
+        "animaciones_ajustadas": animaciones_ajustadas,
+        "animaciones_guion": animaciones_guion or None,
+        "stickers_quitados": stickers_quitados,
         "hook_cta_guardado": hook_cta_guardado or None,
         "sesion": sesion,
         "insertos_manuales": (dir_trabajo / "ajustes.eventos.json").exists()
                              or (dir_trabajo / "ajustes.broll.json").exists(),
-        "es_renderizado": video.name != "02_cortado.mp4",
+        "es_renderizado": es_renderizado,
         "ancho": config.ANCHO, "alto": config.ALTO, "fps": config.FPS,
         "resolucion_origen": list(resolucion_origen),  # w_in/h_in reales del recorte de f4_retencion
         "encuadre": muestras_encuadre(dir_trabajo, duracion),
@@ -898,6 +1028,7 @@ def recolectar(dir_trabajo: Path) -> dict:
         "sin_musica": sin_musica,
         "silencios": f15_silencios.datos_silencios(dir_trabajo),
         "tira": f14_tira.datos_tira(dir_trabajo),
+        "video_reciente": video_reciente,
         "anim_duraciones": config.ANIMACION_DURACION,
         "texto_destacado_estilos": config.TEXTO_DESTACADO_ESTILOS,
         "texto_destacado_muestra": config.TEXTO_DESTACADO_MUESTRA,

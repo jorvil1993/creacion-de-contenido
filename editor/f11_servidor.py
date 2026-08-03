@@ -815,9 +815,15 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if partes.path == "/guardar":
-            eventos = datos.get("eventos", [])
-            destino = _guardar_eventos(eventos)
-            resultado = {"ok": True, "ruta": str(destino), "n": len(eventos)}
+            # Solo lo que VIENE en el cuerpo, como el resto de los ajustes de
+            # abajo. Antes se escribía siempre con `datos.get("eventos", [])`:
+            # un POST parcial —guardar solo el hook, por ejemplo— dejaba
+            # ajustes.eventos.json con la lista vacía y borraba los insertos sin
+            # que nadie lo hubiera pedido.
+            resultado = {"ok": True}
+            if "eventos" in datos:
+                destino = _guardar_eventos(datos["eventos"])
+                resultado.update({"ruta": str(destino), "n": len(datos["eventos"])})
             if "broll" in datos:
                 destino_broll = _guardar_broll(datos["broll"])
                 resultado["ruta_broll"] = str(destino_broll)
@@ -930,8 +936,15 @@ class Handler(BaseHTTPRequestHandler):
             # `ajustes.eventos.json` con la lista vacía era una trampa sin
             # salida: cada render arrancaba sin insertos y la única forma de
             # deshacerlo era borrar el archivo a mano desde el explorador.
+            #
+            # `ajustes.animaciones.json` cayó en esa misma trampa y no estaba
+            # aquí: un archivo con la lista vacía apaga el disparo por palabra
+            # en f6, así que las animaciones que pedía el guion no volvían nunca
+            # —le pasó a José con el guion 7, que pedía dos y el video salía sin
+            # ninguna.
             borrados = []
-            for nombre in ("ajustes.eventos.json", "ajustes.broll.json"):
+            for nombre in ("ajustes.eventos.json", "ajustes.broll.json",
+                           "ajustes.animaciones.json"):
                 f = DIR_TRABAJO / nombre
                 if f.exists():
                     f.unlink()
@@ -2389,12 +2402,24 @@ async function cargar() {
     `${DATA.duracion.toFixed(1)}s · ${DATA.overlays.length} overlays · ${DATA.palabras.length} palabras`;
   document.getElementById("tTotal").textContent = DATA.duracion.toFixed(2) + "s";
 
+  // Cuál de los dos renders es mas nuevo en disco lo dice el servidor
+  // (video_reciente), no una variable que arranca en "" al abrir la pagina.
+  // Sin esto, un Preview seguido de recargar la pestaña volvia a mostrar el
+  // 07_FINAL.mp4 de antes de ese Preview: la tira de capas ya reflejaba el
+  // cambio (lee 05_overlays.eventos.json, que se reescribe en cada render)
+  // pero el reproductor se quedaba mostrando el video viejo.
+  fuenteVideo = DATA.video_reciente || "";
   video.src = "/video?t=" + Date.now() + (fuenteVideo ? "&fuente=" + fuenteVideo : "");
   construirTimeline();
 
-  edicionPip = DATA.movibles.filter(m =>
-    m.tipo !== "hook" && m.tipo !== "cta" && !m.tipo.startsWith("anim-")
-  ).map(m => ({
+  // La colección lleva SOLO insertos: PiP y B-rolls. Quién es inserto y quién
+  // no lo decide Python (f10.es_inserto) y viaja en `m.inserto` — antes se
+  // decidía otra vez aquí con una lista negra ("todo menos hook, CTA y anim-*")
+  // y los stickers, la ficha de specs y la comparativa se colaban: se
+  // guardaban en ajustes.eventos.json, salían por --eventos-manual (que
+  // REEMPLAZA la lista de insertos, así que el PiP del guion desaparecía del
+  // video) y se duplicaban en cada vuelta al editor.
+  edicionPip = DATA.movibles.filter(m => m.inserto).map(m => ({
     ini: m.ini, fin: m.fin, x: m.x, y: m.y,
     // Solo los assets que EXISTEN en el catálogo pueden volver como asset_id.
     // Adivinarlo por el prefijo del nombre dejaba pasar `video:…` y
@@ -2452,13 +2477,25 @@ async function cargar() {
   // Los tiempos guardados a mano mandan sobre los del ultimo render; el
   // `archivo` (para el preview animado) sale igual del render, que es donde
   // vive la tarjeta ya compuesta.
-  const hcBase = [hook, cta].filter(Boolean);
-  const hcGuardado = DATA.hook_cta_guardado;
-  edicionHookCta = hcBase.map(o => {
-    const g = (hcGuardado || []).find(x => x.tipo === o.tipo);
-    return { tipo: o.tipo, ini: g ? g.ini : o.ini, fin: g ? g.fin : o.fin,
-             oculto: g ? !!g.oculto : false, archivo: o.archivo };
-  });
+  // Un hook/cta oculto no se compone (f6_overlays.py lo salta a propósito) y
+  // por eso desaparece de DATA.overlays -- reconstruirlo SOLO desde ahí perdía
+  // la marca "oculto" en cuanto se recargaba tras ese render, y el siguiente
+  // Render volvía a mostrarlo (Jose, 2026-08-01: "lo quito y lo vuelve a
+  // agregar"). Cada bloque sale de la UNION: lo que trae el render (si se
+  // compuso) + lo guardado (si está oculto, con sus propios tiempos).
+  const hcGuardado = DATA.hook_cta_guardado || [];
+  const _bloqueHookCta = (tipo, delRender) => {
+    const g = hcGuardado.find(x => x.tipo === tipo);
+    if (delRender) {
+      return { tipo, ini: g ? g.ini : delRender.ini, fin: g ? g.fin : delRender.fin,
+               oculto: g ? !!g.oculto : false, archivo: delRender.archivo };
+    }
+    if (g && g.oculto) {
+      return { tipo, ini: g.ini, fin: g.fin, oculto: true, archivo: null };
+    }
+    return null;
+  };
+  edicionHookCta = [_bloqueHookCta("hook", hook), _bloqueHookCta("cta", cta)].filter(Boolean);
   hookCtaModificado = !!(hcGuardado && hcGuardado.length);
   pintarHookCta();
   pintarZonaSegura();
@@ -2486,25 +2523,39 @@ async function cargar() {
     variante: o.variante, palabra: o.palabra, miniatura_archivo: o.miniatura_archivo,
     archivo: o.archivo,
   }));
-  // Lo ajustado a mano manda. Solo guarda nombre/ini/variante, asi que la
-  // duracion y el archivo del preview se recuperan de la animacion del mismo
-  // nombre en el render; si es una que todavia no se ha renderizado nunca, el
-  // preview cae a la plantilla por nombre y la duracion al valor por defecto.
+  // Una lista de {nombre, ini, variante, variables} —el formato con el que se
+  // guardan los ajustes y con el que el guion pide sus animaciones— convertida
+  // en bloques pintables. La duracion y el archivo del preview se recuperan de
+  // la animacion del mismo nombre en el render; si es una que todavia no se ha
+  // renderizado nunca, el preview cae a la plantilla por nombre y la duracion
+  // al valor por defecto.
+  const bloquesAnim = (lista) => lista.map(a => {
+    const ref = animDelRender.find(o => o.nombre === a.nombre) || {};
+    // Antes caía siempre a 2.4s fijo si todavía no se había renderizado — la
+    // barra mentía en la línea de tiempo para cualquier animación cuya
+    // duración real fuera otra (stickers 2.5s, texto-destacado 2.5s, etc.).
+    const dur = ref.dur || (DATA.anim_duraciones && DATA.anim_duraciones[a.nombre]) || 2.4;
+    return {
+      nombre: a.nombre, ini: a.ini, fin: a.ini + dur, dur,
+      variante: a.variante ?? ref.variante ?? null, palabra: a.palabra || "",
+      miniatura_archivo: ref.miniatura_archivo || null, archivo: ref.archivo || null,
+      variables: a.variables || null,
+    };
+  });
+
+  // Prioridad: lo ajustado a mano -> el último render -> lo que pidió el guion.
+  // El último escalón faltaba: un render que saliera sin animaciones dejaba el
+  // panel vacío aunque el guion pidiera tres, y en cuanto se tocaba algo ahí
+  // ese vacío se guardaba y ya no volvían nunca (--animaciones-manual apaga el
+  // disparo por palabra en f6). Es el mismo escalón que los insertos ya tenían.
   const animGuardadas = DATA.animaciones_guardadas;
+  const animGuion = DATA.animaciones_guion || [];
   if (animGuardadas && animGuardadas.length) {
-    edicionAnimaciones = animGuardadas.map(a => {
-      const ref = animDelRender.find(o => o.nombre === a.nombre) || {};
-      // Antes caía siempre a 2.4s fijo si todavía no se había renderizado — la
-      // barra mentía en la línea de tiempo para cualquier animación cuya
-      // duración real fuera otra (stickers 2.5s, texto-destacado 2.5s, etc.).
-      const dur = ref.dur || (DATA.anim_duraciones && DATA.anim_duraciones[a.nombre]) || 2.4;
-      return {
-        nombre: a.nombre, ini: a.ini, fin: a.ini + dur, dur,
-        variante: a.variante ?? ref.variante ?? null, palabra: a.palabra || "",
-        miniatura_archivo: ref.miniatura_archivo || null, archivo: ref.archivo || null,
-        variables: a.variables || null,
-      };
-    });
+    edicionAnimaciones = bloquesAnim(animGuardadas);
+  } else if (!DATA.animaciones_ajustadas && !animDelRender.length && animGuion.length) {
+    // Ojo con el orden de las dos condiciones: que el archivo de ajustes EXISTA
+    // (aunque esté vacío) es una decisión —"las quité"— y manda sobre el guion.
+    edicionAnimaciones = bloquesAnim(animGuion);
   } else {
     edicionAnimaciones = animDelRender;
   }
@@ -4170,7 +4221,9 @@ document.getElementById("btnGuardar").addEventListener("click", async () => {
 });
 
 // Que archivo esta mirando el reproductor: "" = el render bueno, "preview" = el
-// de prueba a media resolucion.
+// de prueba a media resolucion. cargar() la recalcula en cada llamada a partir
+// de DATA.video_reciente (que archivo es mas nuevo en disco) — este valor
+// inicial solo cubre el instante antes de la primera carga.
 let fuenteVideo = "";
 
 let sondeoRender = null;
@@ -4214,10 +4267,8 @@ async function iniciarRender(preview = false) {
       if (est.ok) {
         barra.style.width = "100%";
         texto.textContent = "Listo — recargando...";
-        // El preview vive en sus propios archivos, asi que hay que pedir esa
-        // fuente: si no, el reproductor seguiria con el render anterior y
-        // pareceria que los cambios no se aplicaron.
-        fuenteVideo = preview ? "preview" : "";
+        // cargar() ya deduce la fuente correcta de DATA.video_reciente (el
+        // archivo que se acaba de escribir es, por definicion, el mas nuevo).
         await cargar(); // recarga /datos y el <video src> con los cambios ya aplicados
         video.load();
         texto.textContent = preview

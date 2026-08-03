@@ -1,9 +1,8 @@
 """
 Fase 5 — Overlays y producción visual.
 
-Genera y compone: banner de hook (primeros 3s), tarjeta de cierre con CTA
-(logo + WhatsApp), y stickers simples en los huecos que dejó marcados el
-motor de la regla de 5s (f4_retencion.py).
+Genera y compone: banner de hook (primeros 3s) y tarjeta de cierre con CTA
+(logo + WhatsApp).
 
 Nota de alcance (ver BITACORA-A.md): el plan pide también inserto PiP de
 producto, tarjeta de specs y comparativa lado a lado — todas necesitan
@@ -31,15 +30,6 @@ ANCHO, ALTO = config.ANCHO, config.ALTO
 NAVY = (10, 42, 62, 255)
 CIAN = (79, 209, 217, 255)
 BLANCO = (255, 255, 255, 255)
-
-# Palabras clave -> tipo de sticker. Placeholder genérico (no depende del
-# catálogo real de sesión B, que no se leyó por estar fuera de mi territorio
-# esta noche). Reemplazar/ampliar en Fase 7 con el catálogo real.
-PALABRAS_CLAVE_STICKER = {
-    "envío": "bandera", "envíos": "bandera", "bolivia": "bandera", "nacional": "bandera",
-    "whatsapp": "destello", "pedido": "destello", "garantía": "destello", "oferta": "destello",
-}
-
 
 def _fuente(nombre_archivo: str, tamano: int) -> ImageFont.FreeTypeFont:
     ruta = config.DIR_FUENTES / nombre_archivo
@@ -216,31 +206,6 @@ def render_cta_cierre(ruta_salida: Path, eco: str = ""):
     # superior está vacía y la cabeza ocupa el centro. A media altura el logo
     # caía sobre la cara.
     return 0, int(ALTO * 0.13), w, h
-
-
-def render_sticker_destello(ruta_salida: Path, tam=150):
-    """Estrella simple (destello) en cian — sustituto liviano del emoji animado
-    de la agencia hasta que exista un asset animado real."""
-    img = Image.new("RGBA", (tam, tam), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    cx, cy, r_ext, r_int = tam / 2, tam / 2, tam / 2 - 6, tam / 5
-    puntos = []
-    for i in range(8):
-        ang = i * 3.14159 / 4
-        r = r_ext if i % 2 == 0 else r_int
-        puntos.append((cx + r * __import__("math").sin(ang), cy - r * __import__("math").cos(ang)))
-    draw.polygon(puntos, fill=CIAN)
-    img.save(ruta_salida)
-
-
-def render_sticker_bandera(ruta_salida: Path, w=150, h=100):
-    """Bandera de Bolivia simplificada (3 franjas) en tarjeta redondeada."""
-    img, draw = _rounded_card((w, h), BLANCO, radio=16)
-    franja = h // 3
-    draw.rectangle([6, 6, w - 6, franja], fill=(213, 43, 30, 255))
-    draw.rectangle([6, franja, w - 6, franja * 2], fill=(249, 227, 0, 255))
-    draw.rectangle([6, franja * 2, w - 6, h - 6], fill=(0, 121, 52, 255))
-    img.save(ruta_salida)
 
 
 def render_pip_producto(ruta_foto: Path, ruta_salida: Path, ancho=520, alto=680,
@@ -1306,57 +1271,6 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
         else:
             print("AVISO: sin insertos por palabra clave y sin fotos en assets/productos/.")
 
-    # ---- STICKERS ---------------------------------------------------------
-    # Migrados a Hyperframes: los de PIL eran una estrella y un tricolor
-    # estáticos. Los de la plantilla entran con rebote, pulsan y la bandera
-    # ondea — que es lo que hacen los stickers de la agencia (sección 5.1).
-    ruta_destello = dir_tmp / "ov_destello.png"
-    ruta_bandera = dir_tmp / "ov_bandera.png"
-    if not hf:
-        render_sticker_destello(ruta_destello)
-        render_sticker_bandera(ruta_bandera)
-
-    posiciones_esquina = [(60, 260), (ANCHO - 210, 260), (60, 1000), (ANCHO - 210, 1000)]
-    idx_pos = 0
-    dur_sticker = f8_hyperframes.DURACIONES["stickers"] if hf else 1.5
-
-    def _agregar_sticker(clave: str, t0: float, tipo: str):
-        nonlocal idx_pos
-        t1 = min(t0 + dur_sticker, duracion_total)
-        if hf:
-            # `stickers.html` acepta destello | envio | bandera
-            clip = f8_hyperframes.render("stickers", {"tipo": clave})
-            if clip:
-                eventos.append({"tipo": tipo, "archivo": clip, "medio": "video",
-                                "x": 0, "y": 0, "ini": round(t0, 3), "fin": round(t1, 3)})
-                ventanas_ocupadas.append((t0, t1))
-                return True
-        archivo = ruta_destello if clave == "destello" else ruta_bandera
-        if not archivo.exists():
-            render_sticker_destello(ruta_destello)
-            render_sticker_bandera(ruta_bandera)
-        x, y = posiciones_esquina[idx_pos % len(posiciones_esquina)]
-        idx_pos += 1
-        eventos.append({"tipo": tipo, "archivo": archivo, "x": x, "y": y,
-                        "ini": round(t0, 3), "fin": round(t1, 3)})
-        ventanas_ocupadas.append((t0, t1))
-        return True
-
-    vistos = set()
-    for p in palabras:
-        clave = PALABRAS_CLAVE_STICKER.get(_normalizar(p["texto"]))
-        if clave and p["inicio"] not in vistos and _libre(p["inicio"], p["inicio"] + dur_sticker):
-            vistos.add(p["inicio"])
-            _agregar_sticker(clave, p["inicio"], f"sticker-{clave}")
-
-    for hueco in huecos:
-        centro = (hueco["inicio"] + hueco["fin"]) / 2
-        if not _libre(centro, centro + dur_sticker):
-            continue
-        # sin azar: alterna por el segundo en que cae, así el render es reproducible
-        clave = "destello" if int(centro) % 2 == 0 else "bandera"
-        _agregar_sticker(clave, centro, "sticker-hueco")
-
     return eventos
 
 
@@ -1556,6 +1470,23 @@ def cargar_eventos_manual(ruta_json: Path, dir_tmp: Path, catalogo: list = None)
 
     catalogo = _cargar_catalogo() if catalogo is None else catalogo
     por_id = {a["id"]: a for a in catalogo}
+
+    # Cinturón contra los ajustes que dejó escritos la versión con el fallo de
+    # clasificación del editor visual: `--eventos-manual` REEMPLAZA la lista de
+    # insertos, así que un archivo lleno de stickers borraba el PiP que pedía el
+    # guion y componía los stickers dos veces (una como inserto y otra desde su
+    # propio bloque). Aquí solo entran PiP y B-rolls; el resto lo pone el
+    # pipeline con sus propios datos más abajo, en esta misma corrida.
+    def _es_inserto(ev: dict) -> bool:
+        return bool(ev.get("broll_fullscreen")) or \
+            ev.get("tipo", "pip-producto") in ("pip-producto", "broll")
+
+    intrusos = [ev for ev in datos if not _es_inserto(ev)]
+    if intrusos:
+        tipos = ", ".join(sorted({str(ev.get("tipo")) for ev in intrusos}))
+        print(f"AVISO: {len(intrusos)} evento(s) de {ruta_json.name} no son insertos "
+              f"({tipos}) — los coloca el pipeline por su cuenta, se ignoran.")
+        datos = [ev for ev in datos if _es_inserto(ev)]
 
     eventos = []
     for i, ev in enumerate(datos):
@@ -1771,7 +1702,7 @@ def _duracion_video(ruta: Path) -> float:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Overlays: hook, CTA, stickers")
+    parser = argparse.ArgumentParser(description="Overlays: hook, CTA, animaciones, insertos")
     parser.add_argument("video", type=str)
     parser.add_argument("plan_retencion", type=str)
     parser.add_argument("transcripcion", type=str)
