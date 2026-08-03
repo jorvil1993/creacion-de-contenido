@@ -26,7 +26,10 @@ import argparse
 import json
 import mimetypes
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -67,6 +70,57 @@ def _permitida(ruta: Path) -> bool:
         except ValueError:
             continue
     return False
+
+
+def _examinar_pc() -> Path | None:
+    """Abre el explorador nativo de Windows para elegir un video de cualquier
+    carpeta del disco (no solo `entrada/`).
+
+    El diálogo lo dispara PowerShell (`System.Windows.Forms.OpenFileDialog`)
+    en vez de tkinter: tkinter necesita su propio bucle en el hilo principal y
+    este handler corre en un hilo cualquiera de `ThreadingHTTPServer`. El
+    resultado se escribe a un archivo temporal en vez de leerlo de stdout
+    porque la consola de PowerShell no siempre habla UTF-8 y un nombre de
+    archivo con tilde llegaría roto (ver nota de codificación en el resto del
+    proyecto).
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        salida = Path(tmp) / "elegido.txt"
+        ps = (
+            "Add-Type -AssemblyName System.Windows.Forms | Out-Null; "
+            "$f = New-Object System.Windows.Forms.OpenFileDialog; "
+            "$f.Filter = 'Videos (*.mp4;*.mov;*.mkv;*.avi)|*.mp4;*.mov;*.mkv;*.avi|"
+            "Todos los archivos (*.*)|*.*'; "
+            "$f.Title = 'Elegir grabación'; "
+            f"if ($f.ShowDialog() -eq 'OK') "
+            f"{{ [IO.File]::WriteAllText('{salida}', $f.FileName, [Text.Encoding]::UTF8) }}"
+        )
+        subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps])
+        if not salida.exists():
+            return None          # canceló el diálogo
+        texto = salida.read_text(encoding="utf-8-sig").strip()
+        return Path(texto) if texto else None
+
+
+def _copiar_a_entrada(origen: Path) -> Path:
+    """Copia (no mueve) un video elegido fuera de `entrada/` hacia ahí.
+
+    Todo lo demás en este servidor —proxy, detección de bordes, `_permitida`—
+    da por sentado que el material vive en `entrada/` o en la carpeta de
+    preparación. Copiar en vez de mover es a propósito: el original de José
+    puede seguir viviendo donde sea que lo tenga guardado.
+    """
+    config.DIR_ENTRADA.mkdir(parents=True, exist_ok=True)
+    destino = config.DIR_ENTRADA / origen.name
+    if destino.resolve() == origen.resolve():
+        return destino
+    n = 1
+    base = destino
+    while destino.exists():
+        destino = base.with_name(f"{base.stem} ({n}){base.suffix}")
+        n += 1
+    shutil.copy2(origen, destino)
+    return destino
 
 
 def _preparar_clip_async(ruta: Path):
@@ -237,6 +291,18 @@ class Handler(BaseHTTPRequestHandler):
                 with _LOCK:
                     self._json(_CLIPS.get(str(objetivo), {"estado": "trabajando"}))
 
+            elif partes.path == "/examinar":
+                origen = _examinar_pc()
+                if origen is None:
+                    self._json({"ok": False, "cancelado": True})
+                    return
+                if not origen.is_file():
+                    self._json({"ok": False, "error": "El archivo elegido ya no existe"},
+                                code=400)
+                    return
+                destino = _copiar_a_entrada(origen)
+                self._json({"ok": True, "ruta": str(destino.resolve())})
+
             elif partes.path == "/previa":
                 clips = datos.get("clips") or []
                 for c in clips:
@@ -379,6 +445,7 @@ select, input[type=text] { background: #0b1216; color: var(--fg); border: 1px so
   <div class="col-izq">
     <div class="panel">
       <h2>Videos en entrada/</h2>
+      <button id="btnExaminar" style="width:100%; margin-bottom:10px">Examinar mi PC…</button>
       <div id="listaVideos"></div>
       <p class="hint" id="rutaEntrada"></p>
     </div>
@@ -473,6 +540,36 @@ async function cargar() {
   }
   pintar();
 }
+
+async function refrescarVideos() {
+  const d = await (await fetch("/datos")).json();
+  DATOS.videos = d.videos;
+  pintarVideos();
+}
+
+$("#btnExaminar").onclick = async () => {
+  const btn = $("#btnExaminar");
+  const texto = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Elegí un archivo en la ventana que se abrió…";
+  try {
+    const r = await (await fetch("/examinar", {method: "POST"})).json();
+    if (r.ok) {
+      await refrescarVideos();
+      const v = DATOS.videos.find(x => x.ruta === r.ruta);
+      if (v) agregar(v);
+      pintar();
+      nota("Se copió a entrada/" + (v ? ": " + v.nombre : "."));
+    } else if (!r.cancelado) {
+      nota("No se pudo cargar el archivo: " + (r.error || "error desconocido"));
+    }
+  } catch (e) {
+    nota("No se pudo abrir el explorador de Windows: " + e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = texto;
+  }
+};
 
 function pintarVideos() {
   const cont = $("#listaVideos");
