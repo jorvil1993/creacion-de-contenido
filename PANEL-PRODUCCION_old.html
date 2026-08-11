@@ -736,11 +736,7 @@ async function pipeDetectar(){
       clearTimeout(reloj);
       if(!r.ok) continue;
       const d=await r.json();
-      // `d.app` lo manda otro servidor local que también contesta /api/estado
-      // (hoy el calendario del mes, en 8900 — dentro de esta misma lista de
-      // puertos). Sin este filtro, con 8899 ocupado el panel se engancharía a
-      // él y todos los controles del pipeline apuntarían al servidor equivocado.
-      if(d && d.ok && !d.app){ API=base; PIPE=d; return d; }
+      if(d && d.ok){ API=base; PIPE=d; return d; }
     }catch(e){ /* no está ahí: se prueba el siguiente */ }
   }
   return null;
@@ -955,31 +951,7 @@ document.addEventListener('mouseout',e=>{
 
 /* ═══════════ LOS 10 GUIONES ═══════════ */
 const G=[
-{n:1,t:'Los saqué al sol. Mira.',rum:82,bloque:'Comparación',hook:'accion',hooksegs:2.0,cierresegs:0,
- hooktxt:'Exterior, sol fuerte: muestras celular y e-reader lado a lado',
- utileria:['Tu celular con el brillo al máximo','Kindle','Trípode o alguien que sostenga la cámara'],
- set:['Al mediodía, sol directo, sin sombra','La comparación grabala 3 veces: es LA toma del video'],
- tele:'Los saqué al sol. Mira. || Mismo sol, misma hora. En uno ves tu cara. En el otro ves la página. || Y no es el brillo: sube el celular al máximo y sigue igual. || Uno tira luz hacia ti. El otro deja que el sol le pegue, como a una hoja. || Escríbeme si lees afuera.',
- tomas:[
-  ['0–3s','Primer plano de los dos · HOOK','Los dos aparatos juntos bajo el sol, encuadre cerrado. Que se vea tu reflejo en el celular. Esta toma es el video entero: grabala 3 veces.','Los saqué al sol. Mira.'],
-  ['3–14s','Primer plano · comparación','Mueves los dos aparatos para que el sol les pegue igual. Sin cortes.','Mismo sol, misma hora. En uno ves tu cara. En el otro ves la página.'],
-  ['14–25s','Primer plano del celular','Subes el brillo del celular a la vista de la cámara. Sigue sin verse.','Y no es el brillo: sube el celular al máximo y sigue igual.'],
-  ['25–35s','Plano medio · tú','Te incluyes en cuadro, con el sol de fondo, sosteniendo el Kindle.','Uno tira luz hacia ti. El otro deja que el sol le pegue, como a una hoja.'],
-  ['35–40s','Primer plano · CIERRE','Vuelves al encuadre de los dos aparatos del segundo 0.','Escríbeme si lees afuera.']],
- tl:[
-  ['0–3s','Los saqué al sol. Mira.','YO','Tu comparación real, los dos aparatos + banner de hook','camara_dslr','—'],
-  ['3–6s','Mismo sol, misma hora.','YO','Tu toma de la comparación','—','entra 01-comercial a −20 dB'],
-  ['6–8s','En uno ves tu cara.','YO','Punch-in sobre el reflejo del celular','impacto_vidrio','—'],
-  ['8–11s','En el otro ves la página.','ANIM','H03 anim-sol arriba a la derecha','ui_sparkle','—'],
-  ['11–14s','Y no es el brillo:','YO','Tu toma del brillo al máximo','ui_boton','—'],
-  ['14–16s','sube el celular al máximo','YO','Punch-in sobre el dedo en el deslizador','ui_click','—'],
-  ['16–18s','y sigue igual.','ANIM','H03 anim-sol, otra variante','riser_sweep_1','sube a −18 dB'],
-  ['18–21s','Uno tira luz hacia ti.','YO','Plano medio con el sol de fondo','transicion_corte_2','—'],
-  ['21–24s','El otro deja que el sol le pegue,','PIP','P03 arriba a la izquierda','camara_flash','—'],
-  ['24–26s','como a una hoja.','YO','Primer plano: sostienes el aparato plano, como una hoja','whoosh_metal','—'],
-  ['26–29s','Escríbeme si lees afuera.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
-
-{n:2,t:'Intenta estar cinco minutos sin mirar el celular. No puedes.',rum:90,bloque:'Atención',hook:'fisico',hooksegs:3.0,cierresegs:0,
+{n:7,t:'Intenta estar cinco minutos sin mirar el celular. No puedes.',rum:90,bloque:'Atención',hook:'fisico',hooksegs:3.0,cierresegs:0,
  hooktxt:'Entras de pie al plano caminando hacia cámara',
  utileria:['Kindle Paperwhite — lo levantas en la toma 4','Celular en mano — scrolleando en la toma 2'],
  set:['Ventana a 45° a tu izquierda','2 m de separación de la pared','De pie frente a cámara','Cámara ya grabando antes de que entres al plano'],
@@ -1003,7 +975,159 @@ const G=[
   ['43–47s','Donde abres un libro y el ruido por fin desaparece: sin notificaciones, sin pantallas que te quemen la vista, sin tentaciones a un toque. Un espacio donde tu atención vuelve a ser tuya.','PIP','P02 arriba a la derecha: lectura placentera en ambiente cálido','camara_click_2','—'],
   ['47–52s','Es hora de ganarles la pelea. Envíaselo a esa persona que no suelta el celular ni en la mesa.','ANIM','tarjeta-cta con el hook repetido y botón de compartir','tada_cierre','fade out']]},
 
-{n:3,t:'¿Cuántos libros dejaste a medias?',rum:82,bloque:'Atención',hook:'objeto',hooksegs:1.5,cierresegs:0,
+{n:1,t:'El celular te está robando el sueño',rum:89,bloque:'Sueño y vista',hook:'fisico',hooksegs:2.0,cierresegs:0,
+ hooktxt:'Arrancas mirando el celular en la cara y lo bajas de golpe',
+ utileria:['Tu celular — tomas 1 y 2','Kindle Paperwhite — tomas 4 y 5'],
+ set:['De noche, o con la persiana baja','Lámpara cálida detrás tuyo','La cama o un sillón oscuro de fondo'],
+ tele:'Por eso no puedes dormir de noche. || Te acuestas cansado, agarras el celular un ratito… y a la hora sigues despierto con los ojos ardiendo. || No es que tengas insomnio. Es que esa pantalla te está tirando luz directo a los ojos, y tu cerebro cree que es de día. || Hay pantallas que no emiten luz: la reflejan, como el papel. Por eso los que leen en estas se duermen leyendo, en vez de desvelarse. || Si quieres que te explique cuál te conviene, escríbeme. Y deja de dormir con el celular en la cara.',
+ tomas:[
+  ['0–3s','Primer plano · HOOK','Empiezas con el celular pegado a la cara, iluminándote en la oscuridad. Lo bajas de golpe y miras a cámara. El hook lo dices ya con el celular abajo.','Por eso no puedes dormir de noche.'],
+  ['3–12s','Plano medio','Sostienes el celular apagado en la mano, gesticulando con él.','Te acuestas cansado, agarras el celular un ratito… y a la hora sigues despierto con los ojos ardiendo.'],
+  ['12–20s','Plano cerrado','Señalas tus propios ojos al decir "directo a los ojos".','No es que tengas insomnio. Es que esa pantalla te está tirando luz directo a los ojos, y tu cerebro cree que es de día.'],
+  ['20–30s','Plano medio · con producto','Dejas el celular fuera de cuadro y levantas el Kindle en su lugar. El cambio de objeto es el argumento.','Hay pantallas que no emiten luz: la reflejan, como el papel. Por eso los que leen en estas se duermen leyendo, en vez de desvelarse.'],
+  ['30–36s','Plano medio · CIERRE','Vuelves a la postura inicial, pero con el Kindle en vez del celular.','Si quieres que te explique cuál te conviene, escríbeme. Y deja de dormir con el celular en la cara.']],
+ tl:[
+  ['0–3s','Por eso no puedes dormir de noche.','B-ROLL','F01 a pantalla completa + banner de hook','impacto_latido bajo','—'],
+  ['3–6s','Te acuestas cansado, agarras el celular un ratito…','ANIM','H08 arriba a la derecha: las apps que te desvelan','transicion_corte','entra 02-lofi a −22 dB'],
+  ['6–9s','…y a la hora sigues despierto','PIP','F03 arriba a la derecha','ui_blip_2','—'],
+  ['9–11s','con los ojos ardiendo.','B-ROLL','F02 a pantalla completa','pop','—'],
+  ['11–14s','No es que tengas insomnio.','YO','Punch-in en "insomnio"','impacto_hit_2','baja a −24 dB'],
+  ['14–17s','Es que esa pantalla te está tirando luz','YO','Señalas tus propios ojos','—','—'],
+  ['17–20s','directo a los ojos,','PIP','F29 arriba a la izquierda: la luz que golpea','ui_blip_1','—'],
+  ['20–23s','y tu cerebro cree que es de día.','B-ROLL','F04 a pantalla completa: sol de mediodía','whoosh_deep_1','—'],
+  ['23–26s','Hay pantallas que no emiten luz: la reflejan, como el papel.','ANIM','H03 anim-sol: la luz le pega y la página sigue legible','whoosh_simple al cambiar de objeto','sube a −19 dB'],
+  ['26–29s','Por eso los que leen en estas se duermen leyendo,','PIP','P01 arriba a la derecha','camara_enfoque_1','—'],
+  ['29–32s','en vez de desvelarse.','B-ROLL','F05 a pantalla completa','reverso_whoosh','—'],
+  ['32–35s','Si quieres que te explique cuál te conviene, escríbeme.','YO','Vuelves a la postura inicial, con el Kindle','—','—'],
+  ['35–38s','Y deja de dormir con el celular en la cara.','ANIM','tarjeta-cta + WhatsApp','tada_cierre','fade out']]},
+
+{n:18,t:'Tu hijo no lee por esta razón',rum:88,bloque:'Hijos',hook:'talking',hooksegs:0,cierresegs:0,
+ hooktxt:'Directo a cámara, sin preámbulo. La frase sola es el gancho',
+ utileria:['Kindle Kids o Paperwhite — toma 4'],
+ set:['Living o comedor, no dormitorio','Luz natural de día','Arrancas con las manos vacías'],
+ tele:'Tu hijo no lee por esta razón. || No es que sea flojo, ni que los chicos de ahora no lean. Es que el libro compite contra algo diseñado para ser irresistible. || Tú de chico competías contra la tele. Y la tele se acababa. Esto no se acaba nunca. || Lo que funciona no es quitarle la pantalla. Es darle una pantalla que solo tenga libros adentro. || Mándale esto a la mamá o al papá que dice que su hijo no lee.',
+ tomas:[
+  ['0–3s','Plano medio corto · HOOK','Ya sentado, mirada fija a cámara, arrancas sin moverte. Pausá medio segundo después de "razón".','Tu hijo no lee por esta razón.'],
+  ['3–14s','Mismo plano','Niegas con la cabeza en "no es que sea flojo".','No es que sea flojo, ni que los chicos de ahora no lean. Es que el libro compite contra algo diseñado para ser irresistible.'],
+  ['14–25s','Plano cerrado','Marca el contraste con las manos: una para "la tele", otra para "esto".','Tú de chico competías contra la tele. Y la tele se acababa. Esto no se acaba nunca.'],
+  ['25–35s','Plano medio · con producto','Levantas el Kindle Kids. Gesto de entregárselo a alguien.','Lo que funciona no es quitarle la pantalla. Es darle una pantalla que solo tenga libros adentro.'],
+  ['35–40s','Plano medio · CIERRE','Vuelves a la postura del arranque.','Mándale esto a la mamá o al papá que dice que su hijo no lee.']],
+ tl:[
+  ['0–3s','Tu hijo no lee por esta razón.','YO','Tú solo + banner de hook','impacto_hit_2 al terminar la frase','—'],
+  ['3–6s','No es que sea flojo,','PIP','F18 arriba a la derecha','pop','entra 02-lofi a −21 dB'],
+  ['6–9s','ni que los chicos de ahora no lean.','ANIM','H07 destello mientras niegas con la cabeza','—','—'],
+  ['9–12s','Es que el libro compite contra algo','B-ROLL','F14 a pantalla completa','whoosh_swoosh_3','—'],
+  ['12–14s','diseñado para ser irresistible.','YO','Punch-in en "irresistible"','impacto_hit','—'],
+  ['14–17s','Tú de chico competías contra la tele.','YO','Marcas con una mano','transicion_corte','baja a −23 dB'],
+  ['17–19s','Y la tele se acababa.','PIP','F15 arriba a la izquierda','ui_apagar','—'],
+  ['19–22s','Esto no se acaba nunca.','ANIM','H08 arriba a la derecha: las apps no se acaban nunca','riser_1','—'],
+  ['22–25s','Lo que funciona no es quitarle la pantalla.','YO','Plano cerrado','reverso_2','—'],
+  ['25–28s','Es darle una pantalla','B-ROLL','F19 a pantalla completa','riser_reveal suave','sube a −19 dB'],
+  ['28–31s','que solo tenga libros adentro.','PIP','P07 arriba a la izquierda','camara_click_1','—'],
+  ['31–34s','Mándale esto a la mamá o al papá','YO','Vuelves a la postura del arranque','—','—'],
+  ['34–37s','que dice que su hijo no lee.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
+
+{n:13,t:'El error al regalar libros a quien ama leer',rum:86,bloque:'Regalo',hook:'objeto',hooksegs:1.5,cierresegs:0,
+ hooktxt:'Arrancas sosteniendo un libro envuelto para regalo',
+ utileria:['Un libro envuelto o con moño — toma 1','Kindle con moño — tomas 4 y 5'],
+ set:['Mesa despejada','Luz cálida lateral'],
+ tele:'Error al regalar libros a un lector. || Le regalas un libro… y resulta que ya lo leyó. O no era su género. O ya lo tenía. || El que lee mucho es el más difícil de acertar, justamente porque lee mucho. || Por eso lo que nunca falla no es un libro. Es lo que le deja elegir cualquiera, cuando quiera. || Mándale esto a quien te va a regalar algo.',
+ tomas:[
+  ['0–3s','Plano medio · HOOK','Sostienes el libro envuelto frente al pecho. Al decir el hook lo bajas un poco, como decepcionado.','Error al regalar libros a un lector.'],
+  ['3–14s','Mismo plano','Enumerá con los dedos: ya lo leyó, no era su género, ya lo tenía.','Le regalas un libro… y resulta que ya lo leyó. O no era su género. O ya lo tenía.'],
+  ['14–25s','Plano cerrado','Dejas el libro en la mesa, fuera de cuadro. Manos vacías.','El que lee mucho es el más difícil de acertar, justamente porque lee mucho.'],
+  ['25–35s','Plano medio · con producto','Levantas el Kindle con moño, en el mismo lugar donde estaba el libro.','Por eso lo que nunca falla no es un libro. Es lo que le deja elegir cualquiera, cuando quiera.'],
+  ['35–40s','Plano medio · CIERRE','Sostienes el Kindle como sostenías el libro al inicio.','Mándale esto a quien te va a regalar algo.']],
+ tl:[
+  ['0–3s','Error al regalar libros a un lector.','YO','Sostienes el libro envuelto + banner de hook','whoosh_simple_2','—'],
+  ['3–5s','Le regalas un libro…','YO','Bajas el libro, cara de decepción','—','entra 04-corporate a −20 dB'],
+  ['5–8s','y resulta que ya lo leyó.','PIP','F08 arriba a la derecha','ui_blip_1','—'],
+  ['8–10s','O no era su género.','YO','Segundo dedo','ui_blip_2','—'],
+  ['10–12s','O ya lo tenía.','PIP','F09 arriba a la izquierda: su estantería llena','ui_blip_3','—'],
+  ['12–15s','El que lee mucho es el más difícil de acertar,','B-ROLL','F30 a pantalla completa','transicion_swipe','—'],
+  ['15–18s','justamente porque lee mucho.','YO','Plano cerrado, manos vacías','—','baja a −23 dB'],
+  ['18–21s','Por eso lo que nunca falla no es un libro.','YO','Dejas el libro fuera de cuadro','whoosh_rapido','—'],
+  ['21–24s','Es lo que le deja elegir cualquiera,','YO','Levantas el Kindle con moño','riser_reveal','sube a −19 dB'],
+  ['24–26s','cuando quiera.','ANIM','H06 anim-moto: llega a tu puerta','camara_flash_pop_3','—'],
+  ['26–29s','Mándale esto a quien','ANIM','H07 bandera mientras sostienes el Kindle','—','—'],
+  ['29–32s','te va a regalar algo.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
+
+{n:28,t:'Lo metí al agua a propósito',rum:86,bloque:'Comparación',hook:'accion',hooksegs:2.0,cierresegs:0,
+ hooktxt:'Muestras el aparato y lo hundes en el agua mientras hablas',
+ utileria:['Kindle resistente al agua — Paperwhite o superior, NUNCA el Basic','Fuente, balde transparente o lavaplatos lleno','Toalla a mano — toma 3'],
+ set:['Luz fuerte para que se vean las gotas','La toma del agua grabala 3 veces: es LA toma del video'],
+ tele:'Lo metí al agua. A propósito. || Todos hemos tenido el susto: el celular al borde de la tina, de la piscina, del lavaplatos. || Este se puede mojar. Se cae a la piscina, lo sacas, lo secas y sigue. || Por eso se lee en la tina, en la playa, bajo la lluvia. Sin cuidarlo como un huevo. || Etiqueta a quien lee en la tina.',
+ tomas:[
+  ['0–3s','Primer plano del agua · HOOK','La mano entra al cuadro con el aparato y lo hunde. Graba esto primero y repetilo 3 veces: es LA toma del video.','Lo metí al agua. A propósito.'],
+  ['3–13s','Plano medio · tú','Ya seco, mirando a cámara, con el aparato en la mano goteando.','Todos hemos tenido el susto: el celular al borde de la tina, de la piscina, del lavaplatos.'],
+  ['13–24s','Primer plano · sacada','Sacas el aparato del agua y lo secas con la toalla. Que se vea la pantalla funcionando mojada.','Este se puede mojar. Se cae a la piscina, lo sacas, lo secas y sigue.'],
+  ['24–34s','Plano medio · tú','Relajado, sosteniendo el aparato ya seco.','Por eso se lee en la tina, en la playa, bajo la lluvia. Sin cuidarlo como un huevo.'],
+  ['34–40s','Primer plano · CIERRE','Repites el gesto de hundirlo, igual que el segundo 0. Cierra el loop perfecto.','Etiqueta a quien lee en la tina.']],
+ tl:[
+  ['0–3s','Lo metí al agua. A propósito.','YO','Tu toma real del agua + banner de hook','impacto_vidrio + agua natural del clip','—'],
+  ['3–5s','Todos hemos tenido el susto:','YO','Plano medio, aparato goteando','transicion_corte','entra 01-comercial a −20 dB'],
+  ['5–8s','el celular al borde de la tina,','PIP','F12 arriba a la derecha','pop','—'],
+  ['8–10s','de la piscina, del lavaplatos.','ANIM','H05 anim-splash a pantalla completa','whoosh_rapido_2','—'],
+  ['10–13s','Este se puede mojar.','YO','Plano medio, sostienes el aparato','—','—'],
+  ['13–16s','Se cae a la piscina,','YO','Tu toma real de la sacada del agua','whoosh_aspero','sube a −18 dB'],
+  ['16–18s','lo sacas, lo secas','PIP','F11 arriba a la izquierda','ui_sparkle','—'],
+  ['18–20s','y sigue.','YO','Punch-in sobre la pantalla encendida mojada','impacto_hit_5','—'],
+  ['20–23s','Por eso se lee en la tina, en la playa,','YO','Plano medio, secas el aparato con la toalla','transicion_swipe','—'],
+  ['23–26s','bajo la lluvia.','ANIM','H05 anim-splash, otra variante','whoosh_swish_2','—'],
+  ['26–29s','Sin cuidarlo como un huevo.','YO','Plano medio, aparato seco','—','baja a −21 dB'],
+  ['29–32s','Etiqueta a quien lee en la tina.','ANIM','tarjeta-cta + repetición del hook','tada_cierre','fade out']]},
+
+{n:19,t:'Esta pantalla sí se la doy',rum:84,bloque:'Hijos',hook:'objeto',hooksegs:1.5,cierresegs:0,
+ hooktxt:'Sostienes el Kindle Kids y lo giras hacia cámara',
+ utileria:['Kindle Kids o Paperwhite — tomas 1, 3 y 5','Un celular para el contraste — toma 2'],
+ set:['Living con luz de día','Sofá o mesa de comedor'],
+ tele:'Esta pantalla sí se la doy. || Le quito el celular a las ocho y empieza la pelea de todas las noches. Ya la conoces. || Pero cuando le doy esto no hay pelea. Porque no siente que le estoy quitando algo: le estoy dando otra cosa. || No tiene juegos, no tiene YouTube, no tiene internet para otra cosa. Y no le tira luz a los ojos antes de dormir. || Si peleas por las pantallas en tu casa, escríbeme.',
+ tomas:[
+  ['0–3s','Plano medio · HOOK','Sostienes el Kindle con las dos manos y lo giras hacia cámara al decir "esta".','Esta pantalla sí se la doy.'],
+  ['3–14s','Mismo plano','Dejas el Kindle y levantas el celular. Cara de cansancio al hablar de la pelea.','Le quito el celular a las ocho y empieza la pelea de todas las noches. Ya la conoces.'],
+  ['14–25s','Plano cerrado','Sueltas el celular fuera de cuadro y vuelves a agarrar el Kindle.','Pero cuando le doy esto no hay pelea. Porque no siente que le estoy quitando algo: le estoy dando otra cosa.'],
+  ['25–35s','Plano medio','Enumerá con los dedos lo que NO tiene.','No tiene juegos, no tiene YouTube, no tiene internet para otra cosa. Y no le tira luz a los ojos antes de dormir.'],
+  ['35–40s','Plano medio · CIERRE','Vuelves a girar el aparato hacia cámara como en el segundo 0.','Si peleas por las pantallas en tu casa, escríbeme.']],
+ tl:[
+  ['0–3s','Esta pantalla sí se la doy.','YO','Giras el aparato hacia cámara + banner de hook','camara_enfoque_2','—'],
+  ['3–6s','Le quito el celular a las ocho','YO','Dejas el Kindle, levantas el celular','transicion_corte','entra 02-lofi a −21 dB'],
+  ['6–9s','y empieza la pelea de todas las noches.','ANIM','H08 arriba a la derecha: las apps por las que pelean','ui_error suave','—'],
+  ['9–11s','Ya la conoces.','YO','Punch-in, cara de cansancio','—','—'],
+  ['11–14s','Pero cuando le doy esto no hay pelea.','YO','Sueltas el celular y vuelves al Kindle','whoosh_simple','—'],
+  ['14–17s','Porque no siente que le estoy quitando algo:','YO','Plano cerrado, gesto de dar con las dos manos','whoosh_deep_2','baja a −23 dB'],
+  ['17–20s','le estoy dando otra cosa.','B-ROLL','F19 a pantalla completa','riser_reveal','sube a −19 dB'],
+  ['20–22s','No tiene juegos,','YO','Primer dedo','ui_blip_1','—'],
+  ['22–24s','no tiene YouTube,','ANIM','H08 arriba a la izquierda, otra variante: eso es lo que NO tiene','ui_blip_2','—'],
+  ['24–26s','no tiene internet para otra cosa.','PIP','P07 arriba a la izquierda','ui_blip_3','—'],
+  ['26–29s','Y no le tira luz a los ojos antes de dormir.','B-ROLL','F05 a pantalla completa','reverso_whoosh','—'],
+  ['29–32s','Si peleas por las pantallas en tu casa, escríbeme.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
+
+{n:14,t:'Ese regalo va a quedar guardado',rum:83,bloque:'Regalo',hook:'fisico',hooksegs:2.5,cierresegs:0,
+ hooktxt:'Abres un cajón lleno de regalos sin usar y lo cierras',
+ utileria:['Un cajón o caja con cosas sin usar — toma 1','Perfume, taza y un adorno — toma 2','Kindle con moño — tomas 4 y 5'],
+ set:['Mesa o cómoda','Luz cálida lateral'],
+ tele:'Ese regalo va a quedar guardado. || El perfume que no usa. La taza número doce. El adorno que va al cajón. || Regalar bien no es gastar más. Es acertar en algo que use todos los días. || Si la persona lee, o tú quieres que lea, esto lo va a agarrar todas las noches. No una vez. || Escríbeme y te ayudo a elegir según la persona.',
+ tomas:[
+  ['0–3s','Plano medio · HOOK','Abres el cajón, miras adentro, lo cierras y miras a cámara. El hook lo dices al cerrarlo.','Ese regalo va a quedar guardado.'],
+  ['3–13s','Primer plano de los objetos','Vas mostrando uno por uno: perfume, taza, adorno. Los dejas caer suave en la mesa.','El perfume que no usa. La taza número doce. El adorno que va al cajón.'],
+  ['13–24s','Plano medio · tú','Manos vacías, hablando directo.','Regalar bien no es gastar más. Es acertar en algo que use todos los días.'],
+  ['24–34s','Plano medio · con producto','Levantas el Kindle con moño y lo dejas donde estaban los otros objetos.','Si la persona lee, o tú quieres que lea, esto lo va a agarrar todas las noches. No una vez.'],
+  ['34–40s','Plano medio · CIERRE','Vuelves a la postura del cajón cerrado.','Escríbeme y te ayudo a elegir según la persona.']],
+ tl:[
+  ['0–3s','Ese regalo va a quedar guardado.','YO','Abres el cajón y lo cierras + banner de hook','ui_atras al cerrar el cajón','—'],
+  ['3–5s','El perfume que no usa.','YO','Tu toma del perfume','impacto_hit_3','entra 04-corporate a −20 dB'],
+  ['5–7s','La taza número doce.','YO','Tu toma de la taza','impacto_hit_3','—'],
+  ['7–9s','El adorno que va al cajón.','B-ROLL','F30 a pantalla completa','transicion_swipe','—'],
+  ['9–12s','Regalar bien no es gastar más.','YO','Plano medio, manos vacías','—','baja a −23 dB'],
+  ['12–15s','Es acertar en algo que use todos los días.','PIP','F13 arriba a la derecha','pop','—'],
+  ['15–18s','Si la persona lee,','YO','Levantas el Kindle con moño','riser_reveal','sube a −19 dB'],
+  ['18–20s','o tú quieres que lea,','PIP','P06 arriba a la izquierda','camara_flash_pop_5','—'],
+  ['20–23s','esto lo va a agarrar todas las noches.','ANIM','H04 anim-bateria: dura semanas, no una noche','whoosh_swish_3','—'],
+  ['23–25s','No una vez.','YO','Punch-in','impacto_hit','—'],
+  ['25–28s','Escríbeme y te ayudo','ANIM','H06 anim-moto: te llega a la puerta','—','—'],
+  ['28–31s','a elegir según la persona.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
+
+{n:8,t:'¿Cuántos libros dejaste a medias?',rum:82,bloque:'Atención',hook:'objeto',hooksegs:1.5,cierresegs:0,
  hooktxt:'Levantas un libro con el separador clavado en la página 30',
  utileria:['Un libro con separador clavado a un tercio — tomas 1, 2 y 5','Kindle — toma 4'],
  set:['Mesa de luz o repisa','Luz suave de tarde'],
@@ -1026,7 +1150,56 @@ const G=[
   ['23–26s','es que agarrar la lectura cueste menos','PIP','P01 arriba a la izquierda','camara_click_4','—'],
   ['26–28s','que agarrar el celular.','ANIM','H08 arriba a la derecha + punch-in en \"celular\"','impacto_hit_2','—'],
   ['28–30s','Ahí sí se termina.','ANIM','H07 destello sobre el aparato','riser_reveal','—'],
-  ['30–33s','Comenta en qué página quedó el tuyo.','ANIM','tarjeta-cta + "comenta 👇"','tada_cierre','fade out']]}
+  ['30–33s','Comenta en qué página quedó el tuyo.','ANIM','tarjeta-cta + "comenta 👇"','tada_cierre','fade out']]},
+
+{n:27,t:'Los saqué al sol. Mira.',rum:82,bloque:'Comparación',hook:'accion',hooksegs:2.0,cierresegs:0,
+ hooktxt:'Exterior, sol fuerte: muestras celular y e-reader lado a lado',
+ utileria:['Tu celular con el brillo al máximo','Kindle','Trípode o alguien que sostenga la cámara'],
+ set:['Al mediodía, sol directo, sin sombra','La comparación grabala 3 veces: es LA toma del video'],
+ tele:'Los saqué al sol. Mira. || Mismo sol, misma hora. En uno ves tu cara. En el otro ves la página. || Y no es el brillo: sube el celular al máximo y sigue igual. || Uno tira luz hacia ti. El otro deja que el sol le pegue, como a una hoja. || Escríbeme si lees afuera.',
+ tomas:[
+  ['0–3s','Primer plano de los dos · HOOK','Los dos aparatos juntos bajo el sol, encuadre cerrado. Que se vea tu reflejo en el celular. Esta toma es el video entero: grabala 3 veces.','Los saqué al sol. Mira.'],
+  ['3–14s','Primer plano · comparación','Mueves los dos aparatos para que el sol les pegue igual. Sin cortes.','Mismo sol, misma hora. En uno ves tu cara. En el otro ves la página.'],
+  ['14–25s','Primer plano del celular','Subes el brillo del celular a la vista de la cámara. Sigue sin verse.','Y no es el brillo: sube el celular al máximo y sigue igual.'],
+  ['25–35s','Plano medio · tú','Te incluyes en cuadro, con el sol de fondo, sosteniendo el Kindle.','Uno tira luz hacia ti. El otro deja que el sol le pegue, como a una hoja.'],
+  ['35–40s','Primer plano · CIERRE','Vuelves al encuadre de los dos aparatos del segundo 0.','Escríbeme si lees afuera.']],
+ tl:[
+  ['0–3s','Los saqué al sol. Mira.','YO','Tu comparación real, los dos aparatos + banner de hook','camara_dslr','—'],
+  ['3–6s','Mismo sol, misma hora.','YO','Tu toma de la comparación','—','entra 01-comercial a −20 dB'],
+  ['6–8s','En uno ves tu cara.','YO','Punch-in sobre el reflejo del celular','impacto_vidrio','—'],
+  ['8–11s','En el otro ves la página.','ANIM','H03 anim-sol arriba a la derecha','ui_sparkle','—'],
+  ['11–14s','Y no es el brillo:','YO','Tu toma del brillo al máximo','ui_boton','—'],
+  ['14–16s','sube el celular al máximo','YO','Punch-in sobre el dedo en el deslizador','ui_click','—'],
+  ['16–18s','y sigue igual.','ANIM','H03 anim-sol, otra variante','riser_sweep_1','sube a −18 dB'],
+  ['18–21s','Uno tira luz hacia ti.','YO','Plano medio con el sol de fondo','transicion_corte_2','—'],
+  ['21–24s','El otro deja que el sol le pegue,','PIP','P03 arriba a la izquierda','camara_flash','—'],
+  ['24–26s','como a una hoja.','YO','Primer plano: sostienes el aparato plano, como una hoja','whoosh_metal','—'],
+  ['26–29s','Escríbeme si lees afuera.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
+
+{n:32,t:'Vendo estos y no te vendo el caro',rum:81,bloque:'Rompe-creencias',hook:'talking',hooksegs:0,cierresegs:0,
+ hooktxt:'Directo a cámara. La frase contradice lo que se espera de un vendedor',
+ utileria:['Dos modelos sobre la mesa: uno de gama alta y uno medio — toma 3'],
+ set:['Fondo limpio, tu setup habitual','Luz a 45°','Arrancas con las manos vacías'],
+ tele:'Vendo estos y no te vendo el caro. || Me escriben pidiendo el más caro y les digo que no. Que con ese no van a leer más. || Si vas a leer novelas en la cama, el de arriba no te da nada que el de abajo no te dé. Estás pagando por lo que no vas a usar. || Prefiero que compres el que te sirve y vuelvas, a venderte uno caro y que se te quede guardado. || Dime qué lees y te digo cuál NO comprar.',
+ tomas:[
+  ['0–3s','Plano medio · HOOK','Mirada fija, sin gestos. La frase sola hace el trabajo. Pausá después de "caro".','Vendo estos y no te vendo el caro.'],
+  ['3–14s','Mismo plano','Niegas con la cabeza en "les digo que no".','Me escriben pidiendo el más caro y les digo que no. Que con ese no van a leer más.'],
+  ['14–26s','Plano medio · con los dos','Levantas los dos aparatos, uno en cada mano, y los comparas a la vista.','Si vas a leer novelas en la cama, el de arriba no te da nada que el de abajo no te dé. Estás pagando por lo que no vas a usar.'],
+  ['26–36s','Plano cerrado','Dejas el caro fuera de cuadro. Te quedas con el que sí recomiendas.','Prefiero que compres el que te sirve y vuelvas, a venderte uno caro y que se te quede guardado.'],
+  ['36–40s','Plano medio · CIERRE','Vuelves a la postura del arranque, manos vacías.','Dime qué lees y te digo cuál NO comprar.']],
+ tl:[
+  ['0–3s','Vendo estos y no te vendo el caro.','YO','Tú solo + banner de hook','impacto_bang_cine','—'],
+  ['3–6s','Me escriben pidiendo el más caro','YO','Niegas con la cabeza','—','entra 03-corporate a −21 dB'],
+  ['6–8s','y les digo que no.','ANIM','H07 destello mientras niegas','pop','—'],
+  ['8–11s','Que con ese no van a leer más.','YO','Punch-in','impacto_hit_3','—'],
+  ['11–14s','Si vas a leer novelas en la cama,','B-ROLL','F05 a pantalla completa','whoosh_deep_1','—'],
+  ['14–17s','el de arriba no te da nada','YO','Levantas los dos aparatos, uno en cada mano','whoosh_swish_1','—'],
+  ['17–20s','que el de abajo no te dé.','ANIM','H02 comparativa — la arma el pipeline solo con las specs del catálogo','riser_cortado','sube a −19 dB'],
+  ['20–23s','Estás pagando por lo que no vas a usar.','YO','Punch-in sobre el aparato caro','impacto_grave_2','—'],
+  ['23–26s','Prefiero que compres el que te sirve y vuelvas,','YO','Dejas el caro fuera de cuadro','transicion_corte','—'],
+  ['26–29s','a venderte uno caro','PIP','P02 arriba a la izquierda','camara_click_5','—'],
+  ['29–31s','y que se te quede guardado.','ANIM','H07 bandera: mejor que vuelvas','reverso_4','—'],
+  ['31–34s','Dime qué lees y te digo cuál NO comprar.','ANIM','tarjeta-cta','tada_cierre','fade out']]}
 ];
 
 const HOOKLBL={fisico:['h-fisico','⚡ Hook físico'],objeto:['h-objeto','📦 Hook con objeto'],
@@ -2609,19 +2782,4 @@ document.querySelectorAll('nav button').forEach(b=>{
 });
 renderGuiones();renderPrompts();renderLotes();
 pipeArrancar();
-
-/* ═══════════ ENTRADA POR HASH (#guion-N) ═══════════
-   El calendario del mes (deviceshop\marketing\CALENDARIO-MES.html) enlaza cada
-   tarjeta de video acá con `#guion-N`. Es de SOLO LECTURA: abre y muestra ese
-   guion reutilizando irAGuion(), no escribe nada ni cambia ningún estado. Un
-   número que no exista se ignora y el panel queda como siempre. */
-function abrirGuionDelHash(){
-  const m=/^#guion-(\d+)$/.exec(location.hash||'');
-  if(!m) return;
-  const n=+m[1];
-  if(!G.some(g=>g.n===n)) return;
-  irAGuion(n);
-}
-abrirGuionDelHash();
-window.addEventListener('hashchange',abrirGuionDelHash);
 </script>

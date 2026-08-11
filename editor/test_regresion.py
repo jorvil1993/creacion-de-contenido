@@ -501,6 +501,67 @@ def pruebas_coherencia():
 
 
 # ===========================================================================
+# 5b. CTA configurable: una sola decision debe sobrevivir editor y render
+# ===========================================================================
+def pruebas_cta_configurable():
+    seccion("5b. CTA configurable por objetivo")
+
+    import f6_overlays
+
+    viejo = f6_overlays.configurar_cta(None)
+    chk("un proyecto viejo conserva el CTA de venta de siempre",
+        viejo["objetivo"] == "comprar"
+        and viejo["mensaje"] == "¡Pide el tuyo ya!"
+        and viejo["mostrar_whatsapp"] is True)
+
+    social = f6_overlays.configurar_cta({
+        "objetivo": "compartir",
+        "mensaje": "  Envíale   esto a quien lee en celular  ",
+        "palabra_clave": "  LECTOR  ",
+        "campania": "  agosto-paperwhite  ",
+    })
+    chk("el render respeta objetivo, texto y etiquetas elegidos en el editor",
+        social == {
+            "objetivo": "compartir",
+            "mensaje": "Envíale esto a quien lee en celular",
+            "mostrar_whatsapp": False,
+            "palabra_clave": "LECTOR",
+            "campania": "agosto-paperwhite",
+        }, str(social))
+
+    invalido = f6_overlays.configurar_cta({"objetivo": "inventado", "mensaje": ""})
+    chk("un objetivo manipulado a mano cae a un preset seguro",
+        invalido["objetivo"] == config.CTA_OBJETIVO_DEFAULT
+        and invalido["mensaje"] == config.CTA_OBJETIVOS[config.CTA_OBJETIVO_DEFAULT]["mensaje"])
+
+    vars_base = {"mensaje": "A", "whatsapp": "1", "handle": "@d", "eco": "",
+                 "objetivo": "comprar", "palabra_clave": ""}
+    vars_social = dict(vars_base, objetivo="compartir")
+    chk("cambiar el objetivo invalida el cache de Hyperframes",
+        f8_hyperframes._clave("tarjeta-cta", vars_base)
+        != f8_hyperframes._clave("tarjeta-cta", vars_social),
+        "si la clave fuera igual, Preview reutilizaria la tarjeta vieja")
+
+    plantilla = (config.RAIZ_PROYECTO / "plantillas" / "compositions"
+                 / "tarjeta-cta.html").read_text(encoding="utf-8")
+    chk("la plantilla oculta WhatsApp en CTA sociales y muestra la palabra clave",
+        'includes(v.objetivo || "comprar")' in plantilla
+        and 'id="cta-palabra"' in plantilla
+        and "v.palabra_clave" in plantilla)
+
+    fuente_f10 = (AQUI / "f10_editor_visual.py").read_text(encoding="utf-8")
+    fuente_srv = (AQUI / "f11_servidor.py").read_text(encoding="utf-8")
+    chk("el editor expone, edita y vuelve a guardar el CTA completo",
+        all(t in fuente_f10 for t in ("cta_objetivos", "palabra_clave", "campania"))
+        and all(t in fuente_srv for t in (
+            "ctaObjetivo", "ctaMensaje", "ctaPalabraClave", "ctaCampania",
+            "hookCtaParaGuardar")))
+    chk("el boton que solo limpia espacio ya no dice Publicar",
+        "✅ Finalizar y liberar espacio" in fuente_srv
+        and ">✅ Publicar</button>" not in fuente_srv)
+
+
+# ===========================================================================
 # 6. La red contra el bug invisible: definiciones duplicadas
 # ===========================================================================
 def pruebas_duplicados():
@@ -767,7 +828,12 @@ def pruebas_round_trip():
     (dir_vuelta / "ajustes.animaciones.json").write_text(
         json.dumps({"animaciones": [{"nombre": "anim-apps", "ini": 9.9}]}), encoding="utf-8")
     (dir_vuelta / "ajustes.hookcta.json").write_text(
-        json.dumps({"hook_cta": [{"tipo": "hook", "ini": 0.0, "fin": 6.0}]}), encoding="utf-8")
+        json.dumps({"hook_cta": [
+            {"tipo": "hook", "ini": 0.0, "fin": 6.0},
+            {"tipo": "cta", "ini": 20.0, "fin": 26.5,
+             "objetivo": "compartir", "mensaje": "Envíale esto a alguien",
+             "palabra_clave": "LECTOR", "campania": "agosto-paperwhite"},
+        ]}), encoding="utf-8")
     (dir_vuelta / "ajustes.sesion.json").write_text(json.dumps({"t": 14.6}), encoding="utf-8")
 
     vuelta = f10.recolectar(dir_vuelta)
@@ -777,6 +843,14 @@ def pruebas_round_trip():
     chk("al volver, el hook estirado sigue estirado",
         (vuelta.get("hook_cta_guardado") or [{}])[0].get("fin") == 6.0,
         "y no en los 3.2s del ultimo render")
+    cta_vuelta = next((b for b in vuelta.get("hook_cta_guardado") or []
+                       if b.get("tipo") == "cta"), {})
+    chk("al volver, el objetivo y el texto del CTA siguen guardados",
+        cta_vuelta.get("objetivo") == "compartir"
+        and cta_vuelta.get("mensaje") == "Envíale esto a alguien"
+        and cta_vuelta.get("palabra_clave") == "LECTOR"
+        and cta_vuelta.get("campania") == "agosto-paperwhite",
+        "ajustes.hookcta.json conserva toda la decision editorial, no solo los tiempos")
     chk("al volver, el reproductor arranca donde se dejo",
         vuelta.get("sesion", {}).get("t") == 14.6)
 
@@ -803,7 +877,9 @@ def pruebas_round_trip():
         "ultimo render compuso la tarjeta -- la responsabilidad de no perderlo "
         "es del navegador al reconstruir edicionHookCta")
     chk("el navegador reconstruye el hook oculto desde lo guardado, no solo del render",
-        "_bloqueHookCta" in fuente_srv and "g && g.oculto" in fuente_srv,
+        "_bloqueHookCta" in fuente_srv
+        and "if (!delRender && !g) return null" in fuente_srv
+        and "oculto: g ? !!g.oculto : false" in fuente_srv,
         "un `[hook, cta].filter(Boolean)` que solo mira DATA.overlays pierde "
         "el oculto: sin esta union, quitar el hook y renderizar lo hacia volver")
 
@@ -2448,25 +2524,40 @@ def pruebas_panel_conectado():
         fila = next(x for x in releidos if x["n"] == g["n"])["tl"][ri]
         if cambiadas != 1 or fila[2] != "PIP" or fila[3] != "P05 arriba a la izquierda: x":
             malos.append(f"G{g['n']}: {cambiadas} filas cambiadas, quedo {fila[2:4]}")
-    chk("escribir una fila toca esa fila y ninguna otra, en los 10 guiones",
+    chk("escribir una fila toca esa fila y ninguna otra, en todos los guiones",
         not malos, "; ".join(malos[:3]) if malos else f"{len(guiones)} guiones")
 
     # --- comillas y apostrofos sobreviven -----------------------------------
-    # La fila 9 del guion 8 lleva comillas escapadas en el fuente (punch-in en
-    # \"celular\"): por eso la fila se ubica por POSICION y no buscando su texto.
+    # Alguna fila del panel lleva comillas escapadas en el fuente (`punch-in en
+    # \"celular\"`): por eso la fila se ubica por POSICION y no buscando su
+    # texto. Se BUSCA esa fila en vez de citarla por numero: desde que el
+    # calendario del mes manda, el panel se recarga cada mes con los guiones de
+    # ese mes renumerados desde 1, y un numero fijo aqui caducaria solo.
+    escapada = None
+    for g in guiones:
+        rangos = ps._lineas_filas(fuente, *ps._bloque_guion(fuente, g["n"]))
+        for ri, (a, b) in enumerate(rangos):
+            if "\\" in fuente[a:b]:
+                escapada = (g["n"], ri)
+                break
+        if escapada:
+            break
+    if escapada is None:          # ningun guion del mes trae escapes: sirve cualquiera
+        escapada = (guiones[0]["n"], len(guiones[0]["tl"]) - 1)
+    g_esc, ri_esc = escapada
     raro = "Con 'apostrofo', \"comillas\" y una barra \\ suelta"
-    con_raro = ps.escribir_fila(fuente, 8, 9, "ANIM", raro)
+    con_raro = ps.escribir_fila(fuente, g_esc, ri_esc, "ANIM", raro)
     try:
-        fila = next(x for x in _guiones_de_fuente(con_raro) if x["n"] == 8)["tl"][9]
+        fila = next(x for x in _guiones_de_fuente(con_raro) if x["n"] == g_esc)["tl"][ri_esc]
         ok = fila[3] == raro
     except Exception as e:
         ok, fila = False, str(e)
     chk("un texto con comillas, apostrofos y barras se relee tal cual", ok,
-        f"quedo: {fila!r}")
+        f"G{g_esc}/{ri_esc} quedo: {fila!r}")
 
     # --- un tipo inventado no llega al archivo ------------------------------
     try:
-        ps.escribir_fila(fuente, 7, 0, "CUALQUIERA", "x")
+        ps.escribir_fila(fuente, guiones[0]["n"], 0, "CUALQUIERA", "x")
         ok = False
     except ValueError:
         ok = True
@@ -2476,12 +2567,13 @@ def pruebas_panel_conectado():
     # --- CRLF: el panel es CRLF entero --------------------------------------
     # read_text() normal lo entrega con \n, y reescribirlo asi convertia el
     # archivo entero a LF: 1.797 lineas de diff por cambiar un campo.
-    con_segs = ps.escribir_segundos(fuente, 7, "hooksegs", 2.5)
+    n_segs = guiones[0]["n"]
+    con_segs = ps.escribir_segundos(fuente, n_segs, "hooksegs", 2.5)
     chk("los finales de linea CRLF sobreviven a una escritura",
         con_segs.count("\r\n") == fuente.count("\r\n") and "\r\n" in fuente,
         f"antes {fuente.count(chr(13) + chr(10))}, despues {con_segs.count(chr(13) + chr(10))}")
     chk("escribir_segundos() cambia hooksegs del guion pedido",
-        re.search(r"\{n:7,[^\n]*hooksegs:2\.5", con_segs) is not None)
+        re.search(r"\{n:%d,[^\n]*hooksegs:2\.5" % n_segs, con_segs) is not None)
 
     # --- el JS del panel y el servidor escriben LO MISMO --------------------
     # Son dos implementaciones del mismo algoritmo (una para cuando hay pipeline
@@ -2492,9 +2584,16 @@ def pruebas_panel_conectado():
         chk(f"el panel trae su propia copia de {nombre}() para el modo sin servidor",
             f"function {nombre}(" in panel_txt)
 
-    casos = [[7, 9, "B-ROLL", "P02 detras de mi: prueba"],
-             [8, 9, "PIP", 'H08 arriba a la izquierda + punch-in en "celular"'],
-             [1, 12, "ANIM", "tarjeta-cta + WhatsApp"]]
+    # Los casos se arman con los guiones que el panel traiga HOY (uno por guion,
+    # rotando el tipo y una fila distinta cada vez): citarlos por numero fijo
+    # caducaba con la primera recarga mensual del panel.
+    plantillas = [("B-ROLL", "P02 detras de mi: prueba"),
+                  ("PIP", 'H08 arriba a la izquierda + punch-in en "celular"'),
+                  ("ANIM", "tarjeta-cta + WhatsApp")]
+    casos = []
+    for i, (tipo, texto) in enumerate(plantillas):
+        g = guiones[i % len(guiones)]
+        casos.append([g["n"], min(9 + i, len(g["tl"]) - 1), tipo, texto])
     js = """
 const fs=require('fs'), vm=require('vm');
 const html=fs.readFileSync(process.argv[1],'utf8');
@@ -2509,7 +2608,7 @@ const ctx={console,document:{getElementById:el,querySelectorAll:()=>[],
  location:{protocol:'file:',hostname:'',origin:'null'},
  navigator:{clipboard:{writeText:()=>Promise.resolve()}},
  localStorage:{getItem:()=>null,setItem:noop},fetch:()=>Promise.reject(new Error('sin red')),
- setTimeout:noop,setInterval:noop,clearInterval:noop,innerWidth:1200,
+ setTimeout:noop,setInterval:noop,clearInterval:noop,innerWidth:1200,addEventListener:noop,
  AbortController:function(){this.signal=null;this.abort=noop;}};
 ctx.window=ctx; vm.createContext(ctx);
 vm.runInContext(codigo+';globalThis.__W=escribirFilaEnFuente;',ctx);
@@ -2867,6 +2966,7 @@ def main():
     pruebas_insertos()
     pruebas_encuadre_guion()
     pruebas_coherencia()
+    pruebas_cta_configurable()
     pruebas_duplicados()
     pruebas_round_trip()
     pruebas_preview_animaciones()

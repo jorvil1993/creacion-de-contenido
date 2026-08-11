@@ -45,12 +45,44 @@ def correr(nombre, tl, palabras, esperado_fn):
     return ok
 
 
+# El guion contra el que se prueba el alineador. Se busca POR SU HOOK y no por
+# su numero: desde que el calendario del mes manda, `PANEL-PRODUCCION.html` se
+# recarga cada mes con los guiones de ese mes RENUMERADOS desde 1, o sea que el
+# numero de un guion cambia sin que cambie una sola letra de su contenido. Las
+# fixtures de aqui abajo (la improvisacion linea por linea, el beat omitido) son
+# de ESTE guion y de ningun otro.
+HOOK_FIXTURE = "Intenta estar cinco minutos sin mirar el celular. No puedes."
+
+
+def guion_fixture() -> tuple:
+    """El guion de las fixtures, del panel vivo o del archivo `_old`.
+
+    Si el mes en curso no lo lleva, se lee del respaldo `PANEL-PRODUCCION_old.html`,
+    que es permanente. Estas pruebas son del ALINEADOR, no del contenido del mes:
+    quedarse sin probarlo porque agosto no programo ese video seria perder la red
+    justo donde no hay que perderla.
+    """
+    raiz = Path(__file__).resolve().parent.parent
+    for ruta in (None, raiz / "PANEL-PRODUCCION_old.html"):
+        if ruta is not None and not ruta.exists():
+            continue
+        try:
+            datos = f13_guion.cargar_datos_html(ruta)
+        except Exception:
+            continue
+        for g in datos["G"]:
+            if g["t"] == HOOK_FIXTURE:
+                return g, ("PANEL-PRODUCCION.html" if ruta is None else ruta.name)
+    raise SystemExit(
+        f"No encontre el guion de las fixtures ({HOOK_FIXTURE!r}) ni en el panel "
+        f"vivo ni en PANEL-PRODUCCION_old.html")
+
+
 def main():
-    datos = f13_guion.cargar_datos_html()
-    g7 = [g for g in datos["G"] if g["n"] == 7][0]
-    tl = g7["tl"]
+    g, de_donde = guion_fixture()
+    tl = g["tl"]
     dichos = [b[1] for b in tl]
-    print(f"Guion 7: \"{g7['t']}\" — {len(tl)} beats\n")
+    print(f"Guion {g['n']} ({de_donde}): \"{g['t']}\" — {len(tl)} beats\n")
 
     todo_ok = True
 

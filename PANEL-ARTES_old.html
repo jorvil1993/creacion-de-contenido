@@ -124,10 +124,6 @@
   <button class="tab-btn" id="tabEditorial">📄 Editorial</button>
 </div>
 
-<!-- Lo llena precargarDesdeURL() cuando el calendario del mes abre este panel
-     con la tarjeta ya elegida. Sin query params no se muestra nunca. -->
-<div class="aviso" id="avisoPrecarga" style="display:none"></div>
-
 <div class="caja" id="cajaPersonaReferencia" style="margin-bottom:20px">
   <h2>Persona de referencia (opcional)</h2>
   <p class="sub" style="margin:-6px 0 10px">Si elegís una, agy la usa como
@@ -1047,88 +1043,9 @@ $("#tabCarrusel").onclick = () => mostrarTab("car");
 $("#tabTanda").onclick = () => mostrarTab("tanda");
 $("#tabEditorial").onclick = () => mostrarTab("ed");
 
-// ---- precarga por URL (la manda el calendario del mes) ----------------------
-// deviceshop\marketing\CALENDARIO-MES.html abre este panel con la pieza ya
-// elegida:  ?pestana=…&concepto=…&producto=…&formato=…&escena=…&titular=…&persona=…
-// Es ADITIVO y de una sola dirección: sin query params el panel queda
-// exactamente igual que siempre. Por la URL viaja SOLO lo corto — los prompts
-// completos y los copys los sigue generando el flujo del panel, y la .ficha.json
-// del arte los registra igual que hoy.
-const PRECARGA_CONTROLES = {
-  clasico: { producto: "#producto", formato: "#formato", titular: "#titular" },
-  ag:      { producto: "#agProducto", formato: "#agFormato", titular: "#agTitularDirecto" },
-  il:      { producto: "#ilProducto", formato: "#ilFormato" },
-  esq:     { producto: "#esqProducto", formato: "#esqFormato", titular: "#esqTitular" },
-  car:     { producto: "#carProducto", formato: "#carFormato" },
-  tanda:   { producto: "#tnProducto", formato: "#tnFormato" },
-  ed:      { producto: "#edProducto", formato: "#edFormato" },
-};
-
-function precargarDesdeURL() {
-  const q = new URLSearchParams(location.search);
-  if (![...q.keys()].length) return;
-
-  const pedida = q.get("pestana");
-  const pestana = PRECARGA_CONTROLES[pedida] ? pedida : "clasico";
-  if (pedida) mostrarTab(pestana);
-
-  const puesto = [], ignorado = [];
-  // Un select solo se toca si el valor pedido es una de sus opciones: una clave
-  // vieja en un enlace guardado no debe dejar el control en un estado imposible
-  // ni, peor, en blanco. Lo que no encaja se avisa arriba y no se aplica.
-  const ponerSelect = (sel, valor, etiqueta) => {
-    if (!valor) return;
-    const el = $(sel);
-    if (!el || el.disabled) { ignorado.push(etiqueta); return; }
-    if (![...el.options].some(o => o.value === valor)) { ignorado.push(etiqueta); return; }
-    el.value = valor;
-    el.dispatchEvent(new Event("change"));
-    puesto.push(etiqueta);
-  };
-  const ponerTexto = (sel, valor, etiqueta) => {
-    if (!valor) return;
-    const el = $(sel);
-    if (!el) { ignorado.push(etiqueta); return; }
-    el.value = valor;
-    el.dispatchEvent(new Event("input"));
-    puesto.push(etiqueta);
-  };
-
-  // Concepto y escena son controles del panel clásico y de ningún otro.
-  if (pestana === "clasico") {
-    ponerSelect("#concepto", q.get("concepto"), "concepto");
-    ponerSelect("#escena", q.get("escena"), "escena");
-  } else {
-    ["concepto", "escena"].forEach(k => { if (q.get(k)) ignorado.push(k); });
-  }
-
-  const ctrl = PRECARGA_CONTROLES[pestana];
-  ponerSelect(ctrl.producto, q.get("producto"), "producto");
-  ponerSelect(ctrl.formato, q.get("formato"), "formato");
-  // El titular va SIEMPRE al final: elegir un concepto dispara nota(), que pisa
-  // el titular con el del concepto. Puesto antes, el de la URL se perdía sin que
-  // nada lo dijera.
-  if (ctrl.titular) ponerTexto(ctrl.titular, q.get("titular"), "titular");
-  else if (q.get("titular")) ignorado.push("titular");
-
-  const persona = q.get("persona");
-  if (persona) {
-    if ((DATOS.personas || []).includes(persona)) { personaSel = persona; puesto.push("persona"); }
-    else ignorado.push("persona");
-  }
-
-  const caja = $("#avisoPrecarga");
-  if (!caja) return;
-  caja.innerHTML = "<b>📅 Precargado desde el calendario del mes.</b> " +
-    (puesto.length ? "Ya elegido: " + puesto.join(", ") + "." : "No había nada que precargar.") +
-    (ignorado.length ? " <span style='opacity:.8'>Sin aplicar (no existe en esta pestaña): "
-                       + ignorado.join(", ") + ".</span>" : "");
-  caja.style.display = "block";
-}
-
 // El panel es un solo archivo: si el servidor no está, se esconde lo que no
 // tiene sentido sin él. Mismo criterio que PANEL-PRODUCCION.html.
-fetch("/api/estado").then(r => r.json()).then(d => { DATOS = d; pintar(); precargarDesdeURL(); personaPintar(); comfyEstado(); historial(); })
+fetch("/api/estado").then(r => r.json()).then(d => { DATOS = d; pintar(); personaPintar(); comfyEstado(); historial(); })
   .catch(() => {
     $("#sinServidor").style.display = "block";
     $("#generar").disabled = true;
