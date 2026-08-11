@@ -44,9 +44,24 @@ def _pedir(ruta: str, datos: dict | None = None) -> dict:
     return json.load(urllib.request.urlopen(req, timeout=120))
 
 
-def workflow(imagen: str, prompt: str, semilla: int, pasos: int = 20) -> dict:
-    """Grafo en formato API. Cada clave es un nodo; los enlaces son [id, salida]."""
-    return {
+def workflow(imagen: str, prompt: str, semilla: int, pasos: int = 20,
+             denoise: float = 1.0, mascara: str | None = None) -> dict:
+    """Grafo en formato API. Cada clave es un nodo; los enlaces son [id, salida].
+
+    Sin `mascara`: comportamiento original -- denoise se aplica parejo a toda
+    la imagen (con denoise=1.0 el producto se redibuja, ver
+    artes-qwen-pipeline.md).
+
+    Con `mascara` (nombre de archivo ya copiado a ENTRADA_COMFY, tipicamente
+    el alfa RGBA que ya saca a2_recorte.recortar() con rembg): se agrega
+    SetLatentNoiseMask para que el sampler SOLO toque la zona de fondo,
+    dejando el producto intacto sin importar el denoise. Nodos confirmados
+    contra /object_info del servidor real, 2026-08-03 (LoadImageMask,
+    InvertMask, GrowMask, SetLatentNoiseMask): el alfa de rembg es
+    producto=opaco(1)/fondo=transparente(0), por eso se invierte antes de
+    usarlo como mascara de ruido (1 = se regenera).
+    """
+    grafo = {
         "1": {"class_type": "UNETLoader",
               "inputs": {"unet_name": MODELO, "weight_dtype": "default"}},
         "2": {"class_type": "CLIPLoader",
@@ -63,29 +78,58 @@ def workflow(imagen: str, prompt: str, semilla: int, pasos: int = 20) -> dict:
                          "vae": ["3", 0], "image1": ["4", 0]}},
         "7": {"class_type": "VAEEncode",
               "inputs": {"pixels": ["4", 0], "vae": ["3", 0]}},
-        "8": {"class_type": "KSampler",
-              "inputs": {"model": ["1", 0], "seed": semilla, "steps": pasos,
-                         "cfg": 2.5, "sampler_name": "euler", "scheduler": "simple",
-                         "positive": ["5", 0], "negative": ["6", 0],
-                         "latent_image": ["7", 0], "denoise": 1.0}},
         "9": {"class_type": "VAEDecode",
               "inputs": {"samples": ["8", 0], "vae": ["3", 0]}},
         "10": {"class_type": "SaveImage",
                "inputs": {"images": ["9", 0], "filename_prefix": "arte_qwen"}},
     }
 
+    latent_para_sampler = ["7", 0]
+    if mascara:
+        grafo["11"] = {"class_type": "LoadImageMask",
+                        "inputs": {"image": mascara, "channel": "alpha"}}
+        grafo["12"] = {"class_type": "InvertMask", "inputs": {"mask": ["11", 0]}}
+        # +8px: sin esto queda una costura visible justo en el borde del
+        # producto -- un margen chico deja que el fondo nuevo se funda con
+        # el borde en vez de pegar contra un corte duro.
+        grafo["13"] = {"class_type": "GrowMask",
+                        "inputs": {"mask": ["12", 0], "expand": 8, "tapered_corners": True}}
+        grafo["14"] = {"class_type": "SetLatentNoiseMask",
+                        "inputs": {"samples": ["7", 0], "mask": ["13", 0]}}
+        latent_para_sampler = ["14", 0]
+
+    grafo["8"] = {"class_type": "KSampler",
+                  "inputs": {"model": ["1", 0], "seed": semilla, "steps": pasos,
+                             "cfg": 2.5, "sampler_name": "euler", "scheduler": "simple",
+                             "positive": ["5", 0], "negative": ["6", 0],
+                             "latent_image": latent_para_sampler, "denoise": denoise}}
+    return grafo
+
 
 def editar(foto: Path, prompt: str, semilla: int = 1, pasos: int = 20,
-           espera: int = 900) -> Path:
-    """Manda la foto a Qwen y devuelve la imagen editada."""
+           espera: int = 900, denoise: float = 1.0,
+           mascara: Path | None = None) -> Path:
+    """Manda la foto a Qwen y devuelve la imagen editada.
+
+    Si `mascara` viene (el PNG con alfa del recorte), preserva el producto
+    con SetLatentNoiseMask en vez de dejar que denoise=1.0 lo redibuje.
+    """
     ENTRADA_COMFY.mkdir(parents=True, exist_ok=True)
     copia = ENTRADA_COMFY / foto.name
     if copia.resolve() != foto.resolve():
         copia.write_bytes(foto.read_bytes())
 
+    nombre_mascara = None
+    if mascara:
+        copia_mascara = ENTRADA_COMFY / mascara.name
+        if copia_mascara.resolve() != mascara.resolve():
+            copia_mascara.write_bytes(mascara.read_bytes())
+        nombre_mascara = copia_mascara.name
+
     cliente = str(uuid.uuid4())
-    r = _pedir("/prompt", {"prompt": workflow(copia.name, prompt, semilla, pasos),
-                           "client_id": cliente})
+    grafo = workflow(copia.name, prompt, semilla, pasos, denoise=denoise,
+                      mascara=nombre_mascara)
+    r = _pedir("/prompt", {"prompt": grafo, "client_id": cliente})
     pid = r["prompt_id"]
     print(f"  encolado {pid}", flush=True)
 

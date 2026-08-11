@@ -69,8 +69,16 @@ def html(clave: str) -> str:
 
 
 def ancho(clave: str) -> float:
-    """% del ancho del lienzo. Los de icono necesitan mas aire que el numerico."""
-    return 20.5 if clave in ("moto", "manos", "qr") else 18.0
+    """% del ancho del lienzo. Los de icono necesitan mas aire que el numerico.
+
+    Ajustado 2026-08-04: primero se agrando (20.5->22.5, 18->19.5) para darle
+    aire al texto, pero Jose lo vio al reves de lo que pidio -- el circulo
+    quedo grande con contenido chico adentro, mucho relleno vacio. Se achica
+    el circulo Y se sube el % que ocupa el contenido (ver .sello padding e
+    .ico en plantillas/hook-escena.html) para que el circulo quede ajustado
+    al contenido, no al reves.
+    """
+    return 17.5 if clave in ("moto", "manos", "qr") else 15.5
 
 
 _SELLOS = {
@@ -87,11 +95,11 @@ _SELLOS = {
     ),
     "manos": (
         f'<span class="ico">{MANOS}</span>'
-        '<span class="lab">PAGÁS<br>AL RECIBIR</span>'
+        '<span class="lab">PAGAS<br>AL RECIBIR</span>'
     ),
     "qr": (
         f'<span class="ico">{QR}</span>'
-        '<span class="lab">PAGÁS<br>AL RECIBIR</span>'
+        '<span class="lab">PAGAS<br>AL RECIBIR</span>'
     ),
     "": "",
 }

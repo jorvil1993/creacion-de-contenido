@@ -1232,6 +1232,47 @@ COLOR_BLANCO = "#FFFFFF"
 WHATSAPP_NUMERO = "69214437"
 TIKTOK_HANDLE = "@deviceshopbo"
 
+# CTA del cierre. El objetivo no cambia lo que Jose ya dijo en la grabacion:
+# decide que texto visual aparece y si tiene sentido mostrar WhatsApp. Los
+# valores viven en config para que el editor y el render usen exactamente los
+# mismos presets y los proyectos viejos (sin estos campos) sigan funcionando.
+CTA_OBJETIVO_DEFAULT = "comprar"
+CTA_MENSAJE_MAX_CARACTERES = 80
+CTA_PALABRA_CLAVE_MAX_CARACTERES = 24
+CTA_CAMPANIA_MAX_CARACTERES = 40
+CTA_OBJETIVOS = {
+    "comprar": {
+        "etiqueta": "Venta / pedido",
+        "mensaje": "¡Pide el tuyo ya!",
+        "mostrar_whatsapp": True,
+    },
+    "whatsapp": {
+        "etiqueta": "Consulta por WhatsApp",
+        "mensaje": "Escríbeme y te ayudo a elegir",
+        "mostrar_whatsapp": True,
+    },
+    "comentar": {
+        "etiqueta": "Comentarios",
+        "mensaje": "Comenta aquí abajo",
+        "mostrar_whatsapp": False,
+    },
+    "compartir": {
+        "etiqueta": "Compartidos",
+        "mensaje": "Envíale esto a alguien",
+        "mostrar_whatsapp": False,
+    },
+    "guardar": {
+        "etiqueta": "Guardados",
+        "mensaje": "Guárdalo para después",
+        "mostrar_whatsapp": False,
+    },
+    "seguir": {
+        "etiqueta": "Seguidores",
+        "mensaje": "Síguenos para más",
+        "mostrar_whatsapp": False,
+    },
+}
+
 
 def abrir_imagen(ruta):
     """Abre una foto YA GIRADA según su etiqueta EXIF de orientación.

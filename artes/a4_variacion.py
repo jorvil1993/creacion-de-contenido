@@ -29,30 +29,33 @@ PALANCAS = [
 
 # Sellos. El vacio es a proposito y es mayoria: la prueba social pega cuando no
 # esta siempre, y un sello en cada pieza lo convierte en decoracion.
-SELLOS = [
-    ("6", "AÑOS EN<br>BOLIVIA"),
-    ("", ""),
-    ("", ""),
-    ("ENVÍO", "A TODA<br>BOLIVIA"),
-    ("", ""),
-    ("6", "AÑOS EN<br>BOLIVIA"),
-]
+#
+# Corregido el 2026-08-10: eran pares ("6", "AÑOS EN<br>BOLIVIA") de cuando el
+# sello se dibujaba como numero + etiqueta. Desde que `a5_sellos` los hace con
+# icono SVG, `Arte` recibe UNA clave ("anios" | "moto" | "qr" | ""), y estos
+# pares reventaban el render con TypeError. Son las claves de a5_sellos.
+SELLOS = ["anios", "", "", "moto", "", "qr"]
+
+# Moldes. Andromeda fusiona en una sola entidad los anuncios que se parecen mas
+# del 60% y los hace competir entre ellos en vez de ampliar alcance: seis veces
+# el mismo molde con otro titular NO cuenta como seis creatividades. Por eso la
+# tanda rota tambien el molde, no solo el fondo.
+MOLDES = ["limpio", "chat", "limpio", "comparativa", "fichas", "limpio"]
 
 
 @dataclass
 class Variacion:
     escena: str
-    sello_num: str
-    sello_lab: str
+    sello: str
+    modo: str
     confianza: list[str]
 
 
 def para(indice: int) -> Variacion:
     """Devuelve la variacion que le toca al arte numero `indice`."""
-    s_num, s_lab = SELLOS[indice % len(SELLOS)]
     return Variacion(
         escena=ESCENAS_ROTACION[indice % len(ESCENAS_ROTACION)],
-        sello_num=s_num,
-        sello_lab=s_lab,
+        sello=SELLOS[indice % len(SELLOS)],
+        modo=MOLDES[indice % len(MOLDES)],
         confianza=PALANCAS[indice % len(PALANCAS)],
     )

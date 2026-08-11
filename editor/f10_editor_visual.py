@@ -898,6 +898,8 @@ def recolectar(dir_trabajo: Path) -> dict:
             "archivo": str(archivo_path.resolve()) if archivo_path else None,
             "miniatura_archivo": miniatura,
             "texto": ev.get("texto"), "eco": ev.get("eco"),
+            "mensaje": ev.get("mensaje"), "objetivo": ev.get("objetivo"),
+            "palabra_clave": ev.get("palabra_clave"), "campania": ev.get("campania"),
             "anim": ev.get("anim"), "variante": ev.get("variante"), "motor": ev.get("motor"),
             "palabra": ev.get("palabra", ""),
         })
@@ -974,6 +976,13 @@ def recolectar(dir_trabajo: Path) -> dict:
         "animaciones_guion": animaciones_guion or None,
         "stickers_quitados": stickers_quitados,
         "hook_cta_guardado": hook_cta_guardado or None,
+        "cta_objetivos": config.CTA_OBJETIVOS,
+        "cta_objetivo_default": config.CTA_OBJETIVO_DEFAULT,
+        "cta_limites": {
+            "mensaje": config.CTA_MENSAJE_MAX_CARACTERES,
+            "palabra_clave": config.CTA_PALABRA_CLAVE_MAX_CARACTERES,
+            "campania": config.CTA_CAMPANIA_MAX_CARACTERES,
+        },
         "sesion": sesion,
         "insertos_manuales": (dir_trabajo / "ajustes.eventos.json").exists()
                              or (dir_trabajo / "ajustes.broll.json").exists(),

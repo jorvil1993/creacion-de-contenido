@@ -20,6 +20,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -30,11 +31,75 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config
 import f10_editor_visual as f10
 import f15_silencios
+import f_agy_video
 
 DIR_TRABAJO: Path = None
 RAICES_PERMITIDAS: list = None
 _CATALOGO_CACHE: list = None
 ESTADO_RENDER = {"proceso": None, "log": None}
+
+# Trabajos de generación con agy (imagen de ambiente / imagen con producto) en
+# curso — mismo patrón que ESTADO_RENDER pero para algo que tarda 15-40s, no
+# minutos. Ver editor/f_agy_video.py y panel_servidor.py (misma integración,
+# hecha primero para PANEL-PRODUCCION.html — acá se repite para que también
+# esté disponible reeditando un video ya renderizado).
+TRABAJOS_IA: dict = {}
+
+
+def _proveedor_ia_de(conversation_id: str) -> str:
+    return conversation_id.split(":", 1)[0] if ":" in conversation_id else "agy"
+
+
+def _ia_ambiente(tid: str, cfg: dict) -> None:
+    log = TRABAJOS_IA[tid]["log"]
+
+    def paso(t):
+        log.append(t)
+
+    try:
+        nombre = (cfg.get("nombre") or "").strip()
+        if not nombre:
+            raise RuntimeError("falta un nombre para el archivo")
+        proveedor = cfg.get("proveedor", "agy")
+        paso(f"generando imagen de ambiente con {proveedor}... esto tarda 15-40s")
+        ruta, cid = f_agy_video.generar_ambiente(
+            nombre, cfg.get("idea", ""), cfg.get("contexto_guion", ""),
+            conversation_id=cfg.get("conversation_id"), proveedor=proveedor)
+        paso(f"LISTO: {ruta.name}")
+        TRABAJOS_IA[tid].update(estado="listo", archivo=str(ruta), conversation_id=cid)
+    except Exception as e:
+        paso(f"ERROR: {e}")
+        TRABAJOS_IA[tid]["estado"] = "error"
+
+
+def _ia_producto(tid: str, cfg: dict) -> None:
+    log = TRABAJOS_IA[tid]["log"]
+
+    def paso(t):
+        log.append(t)
+
+    try:
+        nombre = (cfg.get("nombre") or "").strip()
+        foto = cfg.get("foto", "")
+        if not nombre:
+            raise RuntimeError("falta un nombre para el archivo")
+        if not foto:
+            raise RuntimeError("elegí un producto primero")
+        origen = config.RAIZ_PROYECTO / foto
+        if not origen.exists():
+            raise RuntimeError(f"no existe la foto {foto}")
+        proveedor = cfg.get("proveedor", "agy")
+        paso(f"generando imagen con el producto real ({proveedor})... esto tarda 15-40s")
+        ruta, cid = f_agy_video.generar_producto(
+            nombre, cfg.get("escena", ""), origen,
+            correccion=cfg.get("correccion", ""),
+            conversation_id=cfg.get("conversation_id"),
+            prompt_armado=cfg.get("prompt", ""), proveedor=proveedor)
+        paso(f"LISTO: {ruta.name}")
+        TRABAJOS_IA[tid].update(estado="listo", archivo=str(ruta), conversation_id=cid)
+    except Exception as e:
+        paso(f"ERROR: {e}")
+        TRABAJOS_IA[tid]["estado"] = "error"
 
 
 def _escritura_atomica(destino: Path, datos) -> Path:
@@ -603,7 +668,19 @@ class Handler(BaseHTTPRequestHandler):
                     "proyectos": _listar_proyectos()
                 })
             elif ruta == "/datos":
-                self._json(f10.recolectar(DIR_TRABAJO))
+                datos = f10.recolectar(DIR_TRABAJO)
+                datos["agy"] = f_agy_video.disponible()
+                datos["proveedores_ia"] = f_agy_video.proveedores_disponibles()
+                datos["productos_ia"] = f_agy_video.productos_disponibles()
+                self._json(datos)
+
+            elif ruta == "/trabajo-ia":
+                tid = (qs.get("id") or [""])[0]
+                self._json(TRABAJOS_IA.get(tid) or {"estado": "desconocido"})
+
+            elif ruta == "/fotos-producto":
+                producto = (qs.get("producto") or [""])[0]
+                self._json({"fotos": f_agy_video.fotos_de_producto(producto)})
             elif ruta == "/transiciones-estado":
                 # Empalmes entre cortes + estado guardado de transiciones y de la
                 # animación de PiP, para poblar el panel del editor.
@@ -1142,6 +1219,51 @@ class Handler(BaseHTTPRequestHandler):
             ESTADO_RENDER["archivo_log"] = archivo_log
             self._json({"ok": True, "pid": proceso.pid, "log": str(log_path)})
 
+        elif partes.path == "/generar-ambiente-ia":
+            tid = f"ia{len(TRABAJOS_IA) + 1}"
+            TRABAJOS_IA[tid] = {"estado": "corriendo", "log": []}
+            threading.Thread(target=_ia_ambiente, args=(tid, datos), daemon=True).start()
+            self._json({"id": tid})
+
+        elif partes.path == "/generar-producto-ia":
+            if not datos.get("foto"):
+                self._json({"ok": False, "error": "elegí un producto primero"}, code=400)
+                return
+            tid = f"ia{len(TRABAJOS_IA) + 1}"
+            TRABAJOS_IA[tid] = {"estado": "corriendo", "log": []}
+            threading.Thread(target=_ia_producto, args=(tid, datos), daemon=True).start()
+            self._json({"id": tid})
+
+        elif partes.path == "/prompt-producto-ia":
+            correccion = datos.get("correccion", "")
+            es_correccion = bool(correccion and datos.get("conversation_id"))
+            if not datos.get("escena") and not es_correccion:
+                self._json({"ok": False, "error": "escribí la idea de la escena primero"}, code=400)
+                return
+            try:
+                prompt, cid = f_agy_video.prompt_producto_texto(
+                    datos.get("escena", ""), correccion=correccion,
+                    conversation_id=datos.get("conversation_id"))
+                self._json({"ok": True, "prompt": prompt, "conversation_id": cid,
+                            "proveedor": _proveedor_ia_de(cid)})
+            except Exception as e:
+                self._json({"ok": False, "error": str(e)}, code=500)
+
+        elif partes.path == "/prompt-veo-ia":
+            correccion = datos.get("correccion", "")
+            es_correccion = bool(correccion and datos.get("conversation_id"))
+            if not datos.get("idea") and not es_correccion:
+                self._json({"ok": False, "error": "escribí la idea del concepto primero"}, code=400)
+                return
+            try:
+                prompt, cid = f_agy_video.generar_prompt_veo(
+                    datos.get("idea", ""), datos.get("contexto_guion", ""),
+                    correccion=correccion, conversation_id=datos.get("conversation_id"))
+                self._json({"ok": True, "prompt": prompt, "conversation_id": cid,
+                            "proveedor": _proveedor_ia_de(cid)})
+            except Exception as e:
+                self._json({"ok": False, "error": str(e)}, code=500)
+
         else:
             self.send_error(404, "Ruta desconocida")
 
@@ -1336,6 +1458,18 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
 .hook-caja { display: flex; flex-direction: column; gap: 8px; }
 .hook-caja textarea { font: inherit; background: var(--bg); color: var(--fg); border: 1px solid var(--linea);
                        border-radius: 6px; padding: 8px; resize: vertical; min-height: 44px; }
+.cta-campos { margin-top: 6px; padding: 12px; border: 1px solid var(--linea);
+              border-radius: 8px; display: grid; grid-template-columns: minmax(160px,.7fr) minmax(260px,1.3fr);
+              gap: 10px 12px; background: var(--bg); }
+.cta-campos label { display: flex; flex-direction: column; gap: 4px; }
+.cta-campos input, .cta-campos select { font: inherit; background: var(--panel); color: var(--fg);
+              border: 1px solid var(--linea); border-radius: 6px; padding: 7px 8px; min-width: 0; }
+.cta-campos .cta-ancho { grid-column: 1 / -1; }
+.cta-campos details { grid-column: 1 / -1; }
+.cta-campos summary { cursor: pointer; color: var(--fg-2); font-size: 13px; }
+.cta-opcionales { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-top: 10px; }
+@media (max-width: 720px) { .cta-campos, .cta-opcionales { grid-template-columns: 1fr; }
+  .cta-campos .cta-ancho { grid-column: auto; } }
 .hook-preview { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
 .hook-preview img { width: 90px; border-radius: 6px; background: #000; }
 /* Las dos previas al MISMO ancho. Antes solo había regla para `img`, y esa
@@ -1452,7 +1586,7 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       <button class="btn-primario" id="btnRender" type="button"
               title="El render bueno. Se guarda todo antes. Copia el resultado a OneDrive, listo para subir.">🎬 Render</button>
       <button class="btn-primario" id="btnListoPublicar" type="button"
-              title="Cuando el video ya esté como lo querés subir: borra de C:\ai-video los pasos intermedios de esta corrida (pesan ~4 veces más que el video). No toca el .mp4 de OneDrive ni tus ajustes.">✅ Publicar</button>
+              title="Cuando el video ya esté terminado: conserva el MP4 y tus ajustes, y borra de C:\ai-video los pasos intermedios de esta corrida.">✅ Finalizar y liberar espacio</button>
       <span class="hint" id="infoLimpiar"></span>
     </div>
     <div id="cajaProgreso" style="display:none;">
@@ -1507,18 +1641,37 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
     <h2>Hook y CTA <span class="hint" id="infoHookCta"></span></h2>
     <p class="hint">El hook (primeros segundos) y el CTA (cierre) son tarjetas de Hyperframes —
       no se ven animadas acá (ningún navegador reproduce ProRes 4444), solo un fotograma
-      representativo. El CTA repite un eco corto del hook para cerrar el loop; cambia solo.</p>
+      representativo. Los cambios del CTA se ven al hacer Preview o Render.</p>
     <div class="hook-caja">
       <label class="hint" for="hookTexto"><b>Texto del hook</b> — lo que se lee en los primeros
-        segundos. Es lo ÚNICO editable acá: el CTA no se escribe, se arma solo con el WhatsApp
-        del catálogo más un <b>eco</b> de este mismo texto (las primeras palabras), para que el
-        video cierre con la frase con la que abrió.</label>
+        segundos.</label>
       <textarea id="hookTexto" maxlength="140"></textarea>
+      <div class="cta-campos">
+        <label class="hint" for="ctaObjetivo"><b>¿Qué querés lograr?</b>
+          <select id="ctaObjetivo"></select>
+        </label>
+        <label class="hint" for="ctaMensaje"><b>Texto visible del CTA</b>
+          <input id="ctaMensaje" type="text" maxlength="80" placeholder="¡Pide el tuyo ya!">
+        </label>
+        <p class="hint cta-ancho" id="ctaObjetivoAyuda" style="margin:0;"></p>
+        <details>
+          <summary>Opcional: palabra para comentarios y nombre de campaña</summary>
+          <div class="cta-opcionales">
+            <label class="hint" for="ctaPalabraClave"><b>Palabra clave</b>
+              <input id="ctaPalabraClave" type="text" maxlength="24" placeholder="p. ej. KINDLE">
+            </label>
+            <label class="hint" for="ctaCampania"><b>Campaña interna</b>
+              <input id="ctaCampania" type="text" maxlength="40" placeholder="p. ej. paperwhite-agosto">
+            </label>
+          </div>
+        </details>
+      </div>
       <div class="hook-preview">
         <div id="hookMedio"><p class="hint">hook · <span id="hookRango">?</span>
           <span class="badge aviso" id="hookZonaAviso" style="display:none;"></span></p>
           <button type="button" class="btn-quitar-hc" id="btnQuitarHook">Quitar hook</button></div>
         <div id="ctaMedio"><p class="hint">cta · <span id="ctaRango">?</span><br>
+          mostrará: "<span id="ctaResumen"></span>"<br>
           repite del hook: "<span id="ctaEco"></span>"
           <span class="badge aviso" id="ctaZonaAviso" style="display:none;"></span></p>
           <button type="button" class="btn-quitar-hc" id="btnQuitarCta">Quitar CTA</button></div>
@@ -1569,9 +1722,74 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
       <div class="filtros">
         <strong id="editandoInfo">Elegí un asset:</strong>
         <label><input type="checkbox" id="chkTodos"> ver todos (<span id="totalCatalogo">198</span>)</label>
+        <button type="button" id="btnGenerarIAToggle">🤖 Generar con IA</button>
         <button type="button" id="btnCancelarEdicion">cancelar</button>
       </div>
       <div class="grid-catalogo" id="gridCatalogo"></div>
+
+      <div class="editor-caja" id="cajaGenerarIA" style="margin-top:12px;">
+        <p class="hint" style="margin:0 0 8px;">Generar imágenes con:
+          <select id="iaProveedor" style="margin-left:4px;padding:4px 6px;background:var(--bg);color:var(--fg);border:1px solid var(--linea);border-radius:6px;"></select>
+          <span>ChatGPT usa la sesión de Codex CLI, sin API ni clave.</span>
+        </p>
+        <p class="hint" id="iaSinAgy" style="display:none;color:#ff9955;">agy no está instalado
+          o no se detecta — hace falta Antigravity CLI logueado con Google AI Pro.</p>
+        <p class="hint">agy no genera video, solo imagen fija. Entra siempre como <b>PiP
+          (tarjeta)</b>, nunca a pantalla completa. Se guarda en
+          <code>assets/generado/manual/</code> y queda seleccionado para este inserto.</p>
+
+        <div style="margin-bottom:14px;">
+          <strong style="font-size:12px;">1 · Imagen de ambiente (sin producto)</strong><br>
+          <input type="text" id="iaAmbNombre" placeholder="nombre del archivo (ej. sol, cama…)"
+                 style="width:100%;max-width:320px;margin:6px 0;padding:5px 8px;background:var(--bg);
+                        color:var(--fg);border:1px solid var(--linea);border-radius:6px;">
+          <textarea id="iaAmbIdea" rows="2" placeholder="idea libre (vacío = usa el prompt ya conocido de ese nombre, si lo tiene)"
+                    style="width:100%;padding:5px 8px;background:var(--bg);color:var(--fg);
+                           border:1px solid var(--linea);border-radius:6px;resize:vertical;"></textarea>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+            <button class="btn-primario" type="button" id="btnIaAmb" style="margin-bottom:0;">🎨 Generar imagen</button>
+            <span class="hint" id="iaAmbMsg"></span>
+          </div>
+          <div id="iaAmbLog" class="hint" style="white-space:pre-wrap;display:none;margin-top:6px;"></div>
+        </div>
+
+        <div style="margin-bottom:14px;border-top:1px solid var(--linea);padding-top:12px;">
+          <strong style="font-size:12px;">2 · Imagen con el producto real</strong><br>
+          <select id="iaProdProducto" style="width:100%;max-width:320px;margin:6px 0;padding:5px 8px;
+                  background:var(--bg);color:var(--fg);border:1px solid var(--linea);border-radius:6px;"></select><br>
+          <div id="iaProdGaleria" style="display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow:auto;margin:0 0 8px;"></div>
+          <input type="text" id="iaProdNombre" placeholder="nombre del archivo (ej. kindle-cama…)"
+                 style="width:100%;max-width:320px;margin:6px 0;padding:5px 8px;background:var(--bg);
+                        color:var(--fg);border:1px solid var(--linea);border-radius:6px;">
+          <textarea id="iaProdEscena" rows="2" placeholder="escena (ej. alguien leyendo en la cama de noche, luz cálida)"
+                    style="width:100%;padding:5px 8px;background:var(--bg);color:var(--fg);
+                           border:1px solid var(--linea);border-radius:6px;resize:vertical;"></textarea>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+            <button class="btn-primario" type="button" id="btnIaProdPrompt" style="margin-bottom:0;">📝 Revisar el prompt primero</button>
+            <button class="btn-primario" type="button" id="btnIaProdImg" style="margin-bottom:0;">🎨 Generar imagen</button>
+            <span class="hint" id="iaProdMsg"></span>
+          </div>
+          <div id="iaProdPromptTxt" class="hint" style="white-space:pre-wrap;display:none;margin-top:6px;
+               background:var(--bg);border:1px solid var(--linea);border-radius:6px;padding:8px;"></div>
+          <div id="iaProdLog" class="hint" style="white-space:pre-wrap;display:none;margin-top:6px;"></div>
+        </div>
+
+        <div style="border-top:1px solid var(--linea);padding-top:12px;">
+          <strong style="font-size:12px;">3 · Prompt para Google Flow / Veo (B-roll con movimiento)</strong><br>
+          <p class="hint" style="margin:4px 0;">agy no genera el clip — redacta el prompt. Lo pegás
+            en Google Flow y subís el resultado a <code>assets/generado/video/manual/</code> como siempre.</p>
+          <textarea id="iaVeoIdea" rows="2" placeholder="concepto (ej. alguien apagando todas las notificaciones de golpe)"
+                    style="width:100%;padding:5px 8px;background:var(--bg);color:var(--fg);
+                           border:1px solid var(--linea);border-radius:6px;resize:vertical;"></textarea>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+            <button class="btn-primario" type="button" id="btnIaVeo" style="margin-bottom:0;">✍️ Generar prompt</button>
+            <button class="btn-primario" type="button" id="btnIaVeoCopiar" style="margin-bottom:0;display:none;">📋 Copiar</button>
+            <span class="hint" id="iaVeoMsg"></span>
+          </div>
+          <div id="iaVeoPromptTxt" class="hint" style="white-space:pre-wrap;display:none;margin-top:6px;
+               background:var(--bg);border:1px solid var(--linea);border-radius:6px;padding:8px;"></div>
+        </div>
+      </div>
     </div>
 
     <div class="editor-caja" id="cajaSegmento">
@@ -1783,15 +2001,15 @@ main { display: flex; align-items: flex-start; gap: 20px; padding: 20px;
          reemplaza lo que tengas ahora — guardá antes la actual si la querés conservar.</p>
       <div id="listaVersiones"></div>
     </div>
-    <p class="hint">Los botones de <b>Preview</b>, <b>Render</b> y <b>Publicar</b> están debajo
+    <p class="hint">Los botones de <b>Preview</b>, <b>Render</b> y <b>Finalizar y liberar espacio</b> están debajo
       del video, para tenerlos a mano sin bajar hasta acá. Se guarda siempre antes de renderizar.
       <b>Preview</b> compone exactamente igual pero a media resolución, no toca el archivo final
       y no publica nada — para comprobar un ajuste. <b>Render</b> hace el bueno y lo copia a
-      OneDrive listo para subir. <b>Publicar</b> — cuando el video ya esté como lo querés subir —
+      OneDrive listo para subir. <b>Finalizar y liberar espacio</b> — cuando el video ya esté listo —
       borra de <b>C:\ai-video</b> los pasos intermedios de esta corrida —el compuesto sin audio,
       los clips de los insertos, las previsualizaciones— que juntos pesan unas 4 veces más que el
       video. No toca el .mp4 de <code>salida/</code> en OneDrive, que es el que subís, ni los
-      ajustes que hiciste. Si el video todavía no está publicado no borra nada y te lo dice.</p>
+      ajustes que hiciste. Si todavía no existe un Render final, no borra nada y te lo dice.</p>
   </div>
   </div>
 </main>
@@ -2439,6 +2657,18 @@ async function cargar() {
   renderPipsLista();
   construirOverlays(); // depende de edicionPip: tiene que ir después de poblarlo
 
+  { const proveedores = DATA.proveedores_ia || [];
+    const disponibles = proveedores.filter(p => p.disponible);
+    const selProv = document.getElementById("iaProveedor");
+    const previo = selProv.value || "agy";
+    selProv.innerHTML = proveedores.map(p => `<option value="${p.id}" ${p.disponible ? "" : "disabled"}>${p.nombre}${p.disponible ? "" : " (no disponible)"}</option>`).join("");
+    selProv.value = disponibles.some(p => p.id === previo) ? previo : (disponibles[0] || {}).id || "";
+    document.getElementById("iaSinAgy").style.display = disponibles.length ? "none" : "block";
+  }
+  { const selProd = document.getElementById("iaProdProducto");
+    selProd.innerHTML = (DATA.productos_ia || []).map(p => `<option value="${p.producto}">${p.producto}</option>`).join("");
+    if (selProd.value) iaCargarFotosProducto(); }
+
   edicionSfx = DATA.sfx.map((e, i) => ({ ...e, id: i }));
   // Pool completo para el selector sobrio/normal/cargado (bloque 3): si el
   // backend no manda uno más ancho (ajustes.sfx.json guardado a mano no lo
@@ -2486,17 +2716,28 @@ async function cargar() {
   const hcGuardado = DATA.hook_cta_guardado || [];
   const _bloqueHookCta = (tipo, delRender) => {
     const g = hcGuardado.find(x => x.tipo === tipo);
-    if (delRender) {
-      return { tipo, ini: g ? g.ini : delRender.ini, fin: g ? g.fin : delRender.fin,
-               oculto: g ? !!g.oculto : false, archivo: delRender.archivo };
+    if (!delRender && !g) return null;
+    const bloque = {
+      tipo,
+      ini: g ? g.ini : delRender.ini,
+      fin: g ? g.fin : delRender.fin,
+      oculto: g ? !!g.oculto : false,
+      archivo: delRender ? delRender.archivo : null,
+    };
+    if (tipo === "cta") {
+      const objetivo = (g?.objetivo || delRender?.objetivo
+                         || DATA.cta_objetivo_default || "comprar");
+      const preset = (DATA.cta_objetivos || {})[objetivo] || {};
+      bloque.objetivo = objetivo;
+      bloque.mensaje = g?.mensaje || delRender?.mensaje || preset.mensaje || "¡Pide el tuyo ya!";
+      bloque.palabra_clave = g?.palabra_clave || delRender?.palabra_clave || "";
+      bloque.campania = g?.campania || delRender?.campania || "";
     }
-    if (g && g.oculto) {
-      return { tipo, ini: g.ini, fin: g.fin, oculto: true, archivo: null };
-    }
-    return null;
+    return bloque;
   };
   edicionHookCta = [_bloqueHookCta("hook", hook), _bloqueHookCta("cta", cta)].filter(Boolean);
   hookCtaModificado = !!(hcGuardado && hcGuardado.length);
+  poblarEditorCta();
   pintarHookCta();
   pintarZonaSegura();
 
@@ -3168,6 +3409,75 @@ function medioAnimacion(a) {
   return v;
 }
 
+function bloqueCtaEditable() {
+  return edicionHookCta.find(b => b.tipo === "cta") || null;
+}
+
+function actualizarAyudaCta() {
+  const sel = document.getElementById("ctaObjetivo");
+  const ayuda = document.getElementById("ctaObjetivoAyuda");
+  if (!sel || !ayuda || !DATA) return;
+  const preset = (DATA.cta_objetivos || {})[sel.value] || {};
+  ayuda.textContent = (preset.mostrar_whatsapp
+    ? "La tarjeta muestra el WhatsApp de DeviceShop. "
+    : "La tarjeta no muestra WhatsApp. ")
+    + "Solo cambia el cierre visual; lo que dijiste en la grabación no se modifica.";
+}
+
+function poblarEditorCta() {
+  const bloque = bloqueCtaEditable();
+  const sel = document.getElementById("ctaObjetivo");
+  const mensaje = document.getElementById("ctaMensaje");
+  const palabra = document.getElementById("ctaPalabraClave");
+  const campania = document.getElementById("ctaCampania");
+  if (!sel || !mensaje || !palabra || !campania) return;
+
+  sel.innerHTML = "";
+  Object.entries(DATA.cta_objetivos || {}).forEach(([clave, preset]) => {
+    const opt = document.createElement("option");
+    opt.value = clave;
+    opt.textContent = preset.etiqueta || clave;
+    sel.appendChild(opt);
+  });
+  const objetivo = bloque?.objetivo || DATA.cta_objetivo_default || "comprar";
+  sel.value = objetivo;
+  sel.dataset.anterior = objetivo;
+  const preset = (DATA.cta_objetivos || {})[objetivo] || {};
+  mensaje.value = bloque?.mensaje || preset.mensaje || "¡Pide el tuyo ya!";
+  palabra.value = bloque?.palabra_clave || "";
+  campania.value = bloque?.campania || "";
+  for (const el of [sel, mensaje, palabra, campania]) el.disabled = !bloque;
+  actualizarAyudaCta();
+}
+
+function guardarFormularioCta() {
+  const bloque = bloqueCtaEditable();
+  if (!bloque) return;
+  bloque.objetivo = document.getElementById("ctaObjetivo").value;
+  bloque.mensaje = document.getElementById("ctaMensaje").value;
+  bloque.palabra_clave = document.getElementById("ctaPalabraClave").value;
+  bloque.campania = document.getElementById("ctaCampania").value;
+  hookCtaModificado = true;
+  pintarHookCta();
+  agendarGuardado();
+}
+
+document.getElementById("ctaObjetivo").addEventListener("change", (ev) => {
+  const presets = DATA.cta_objetivos || {};
+  const anterior = ev.currentTarget.dataset.anterior;
+  const input = document.getElementById("ctaMensaje");
+  const textoAnterior = (presets[anterior] || {}).mensaje || "";
+  if (!input.value.trim() || input.value.trim() === textoAnterior) {
+    input.value = (presets[ev.currentTarget.value] || {}).mensaje || input.value;
+  }
+  ev.currentTarget.dataset.anterior = ev.currentTarget.value;
+  actualizarAyudaCta();
+  guardarFormularioCta();
+});
+for (const id of ["ctaMensaje", "ctaPalabraClave", "ctaCampania"]) {
+  document.getElementById(id).addEventListener("input", guardarFormularioCta);
+}
+
 // El hook y el CTA son tarjetas de Hyperframes: ProRes 4444 en .mov, que un
 // <img> no puede pintar — de ahi los dos iconos rotos que se veian. Se enseñan
 // con el mismo preview animado que las animaciones, y en su propia pista para
@@ -3177,6 +3487,9 @@ function pintarHookCta() {
   const pista = document.getElementById("pistaHookCta");
   if (!cont || !pista || !DATA) return;
   cont.innerHTML = "";
+  const resumenCta = document.getElementById("ctaResumen");
+  const bloqueCta = bloqueCtaEditable();
+  if (resumenCta) resumenCta.textContent = bloqueCta?.mensaje || "";
 
   for (const bloque of edicionHookCta) {
     const caja = document.getElementById(bloque.tipo === "hook" ? "hookMedio" : "ctaMedio");
@@ -3269,10 +3582,21 @@ const btnQuitarCta = document.getElementById("btnQuitarCta");
 if (btnQuitarCta) btnQuitarCta.addEventListener("click", () => alternarOcultoHookCta("cta"));
 
 function hookCtaParaGuardar() {
-  return edicionHookCta.map(b => ({
-    tipo: b.tipo, ini: Math.round(b.ini * 100) / 100, fin: Math.round(b.fin * 100) / 100,
-    oculto: !!b.oculto,
-  }));
+  return edicionHookCta.map(b => {
+    const base = {
+      tipo: b.tipo, ini: Math.round(b.ini * 100) / 100, fin: Math.round(b.fin * 100) / 100,
+      oculto: !!b.oculto,
+    };
+    if (b.tipo === "cta") {
+      base.objetivo = b.objetivo || DATA.cta_objetivo_default || "comprar";
+      base.mensaje = (b.mensaje || "").trim().slice(0, (DATA.cta_limites || {}).mensaje || 80);
+      base.palabra_clave = (b.palabra_clave || "").trim().slice(
+        0, (DATA.cta_limites || {}).palabra_clave || 24);
+      base.campania = (b.campania || "").trim().slice(
+        0, (DATA.cta_limites || {}).campania || 40);
+    }
+    return base;
+  });
 }
 
 function renderAnimGrid() {
@@ -3636,6 +3960,198 @@ function elegirAsset(asset) {
   renderPipsLista();
   construirOverlays();
 }
+
+// --- Generar con IA (agy) — imagen de ambiente, imagen con producto real,
+// prompt de Veo. agy no genera video (confirmado preguntándole a él mismo sus
+// tools): solo imagen fija y texto. Ver editor/f_agy_video.py. ------------
+function elegirGenerado(rutaAbsoluta) {
+  // Mismas reglas que la rama de imagen en elegirAsset(): siempre PiP
+  // (tarjeta), nunca a pantalla completa (esta UI reserva el pantalla
+  // completa para clips de video reales) — y como no es un id del catálogo,
+  // viaja por `archivo`, no por `asset_id`.
+  const nuevo = {
+    ini: video.currentTime, fin: Math.min(DATA.duracion, video.currentTime + 2.8),
+    x: 620, y: 134, asset_id: null, asset: null, archivo: rutaAbsoluta,
+    tarjeta: null, tipo: "pip-producto", medio: "imagen", broll_fullscreen: false,
+  };
+  if (editandoIdx === -1) {
+    edicionPip.push(nuevo);
+  } else {
+    const viejo = edicionPip[editandoIdx];
+    edicionPip[editandoIdx] = { ...nuevo, ini: viejo.ini, fin: viejo.fin };
+  }
+  document.getElementById("cajaCatalogo").classList.remove("activa");
+  document.getElementById("cajaGenerarIA").classList.remove("activa");
+  editandoIdx = null;
+  renderPipsLista();
+  construirOverlays();
+}
+
+function iaNombreProveedorEditor() {
+  const sel = document.getElementById("iaProveedor");
+  return sel.options[sel.selectedIndex]?.text.replace(" (no disponible)", "") || "IA";
+}
+
+function pollearTrabajoIA(id, logElem) {
+  return new Promise((resolve, reject) => {
+    const t = setInterval(async () => {
+      try {
+        const d = await fetch("/trabajo-ia?id=" + id).then(x => x.json());
+        if (logElem) {
+          logElem.style.display = "block";
+          logElem.textContent = (d.log || []).join("\n");
+          logElem.scrollTop = logElem.scrollHeight;
+        }
+        if (d.estado === "listo" || d.estado === "error") {
+          clearInterval(t);
+          if (d.estado === "listo") resolve(d);
+          else reject(new Error(((d.log || []).slice(-1)[0] || "error desconocido").replace(/^ERROR:\s*/, "")));
+        }
+      } catch (e) { /* reconexión temporal, se ignora */ }
+    }, 1200);
+  });
+}
+
+async function iaGenerarAmbienteEditor() {
+  const nombre = document.getElementById("iaAmbNombre").value.trim();
+  if (!nombre) { alert("Escribí un nombre para el archivo primero."); return; }
+  const btn = document.getElementById("btnIaAmb"), msg = document.getElementById("iaAmbMsg");
+  btn.disabled = true; msg.textContent = `generando… (${iaNombreProveedorEditor()}, ~15-40s)`;
+  try {
+    const r = await fetch("/generar-ambiente-ia", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre, idea: document.getElementById("iaAmbIdea").value.trim(),
+        proveedor: document.getElementById("iaProveedor").value }),
+    }).then(x => x.json());
+    if (!r || !r.id) throw new Error(r.error || "respuesta inválida");
+    const d = await pollearTrabajoIA(r.id, document.getElementById("iaAmbLog"));
+    msg.textContent = "✓ listo, agregado";
+    elegirGenerado(d.archivo);
+  } catch (e) {
+    msg.textContent = "Error: " + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+let iaProdPromptConvId = null;
+let iaProdFotoSel = null;
+
+// Galería de fotos REALES de un producto (igual que PANEL-ARTES.html: elegir
+// producto, ver todas sus fotos, clic para marcar cuál mandar de referencia)
+// en vez de asumir que "la frontal" siempre es la mejor.
+async function iaCargarFotosProducto() {
+  const producto = document.getElementById("iaProdProducto").value;
+  const cont = document.getElementById("iaProdGaleria");
+  cont.innerHTML = ""; iaProdFotoSel = null;
+  if (!producto) return;
+  const r = await fetch("/fotos-producto?producto=" + encodeURIComponent(producto)).then(x => x.json());
+  (r.fotos || []).forEach((f, i) => {
+    const im = document.createElement("img");
+    im.src = "/archivo?ruta=" + encodeURIComponent(f);
+    im.title = f.split(/[\\/]/).pop();
+    im.style.cssText = "width:64px;height:64px;object-fit:cover;border-radius:6px;cursor:pointer;"
+      + "border:3px solid transparent;opacity:.55;transition:opacity .15s,border-color .15s";
+    im.onclick = () => {
+      cont.querySelectorAll("img").forEach(x => { x.style.borderColor = "transparent"; x.style.opacity = ".55"; });
+      im.style.borderColor = "var(--acento)"; im.style.opacity = "1";
+      iaProdFotoSel = f;
+    };
+    if (i === 0) im.onclick();
+    cont.appendChild(im);
+  });
+}
+document.getElementById("iaProdProducto").addEventListener("change", iaCargarFotosProducto);
+
+async function iaRevisarPromptProductoEditor() {
+  const escena = document.getElementById("iaProdEscena").value.trim();
+  if (!escena) { alert("Escribí la escena primero."); return; }
+  const btn = document.getElementById("btnIaProdPrompt"), msg = document.getElementById("iaProdMsg");
+  btn.disabled = true; msg.textContent = "pensando… (agy, ~10-30s)";
+  try {
+    const r = await fetch("/prompt-producto-ia", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ escena, conversation_id: iaProdPromptConvId }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    iaProdPromptConvId = r.conversation_id;
+    const caja = document.getElementById("iaProdPromptTxt");
+    caja.textContent = r.prompt; caja.style.display = "block";
+    msg.textContent = "";
+  } catch (e) {
+    msg.textContent = "Error: " + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function iaGenerarProductoEditor() {
+  const nombre = document.getElementById("iaProdNombre").value.trim();
+  const foto = iaProdFotoSel;
+  if (!nombre) { alert("Escribí un nombre para el archivo primero."); return; }
+  if (!foto) { alert("Elegí una foto de la galería primero."); return; }
+  const promptTxt = document.getElementById("iaProdPromptTxt");
+  const promptArmado = promptTxt.style.display !== "none" ? promptTxt.textContent : "";
+  const btn = document.getElementById("btnIaProdImg"), msg = document.getElementById("iaProdMsg");
+  btn.disabled = true; msg.textContent = `generando… (${iaNombreProveedorEditor()}, ~15-40s)`;
+  try {
+    const r = await fetch("/generar-producto-ia", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre, foto, escena: document.getElementById("iaProdEscena").value.trim(),
+        prompt: promptArmado,
+        proveedor: document.getElementById("iaProveedor").value,
+      }),
+    }).then(x => x.json());
+    if (!r || !r.id) throw new Error(r.error || "respuesta inválida");
+    const d = await pollearTrabajoIA(r.id, document.getElementById("iaProdLog"));
+    msg.textContent = "✓ listo, agregado";
+    elegirGenerado(d.archivo);
+  } catch (e) {
+    msg.textContent = "Error: " + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+let iaVeoConvId = null;
+
+async function iaGenerarPromptVeoEditor() {
+  const idea = document.getElementById("iaVeoIdea").value.trim();
+  if (!idea) { alert("Escribí el concepto primero."); return; }
+  const btn = document.getElementById("btnIaVeo"), msg = document.getElementById("iaVeoMsg");
+  btn.disabled = true; msg.textContent = "pensando… (agy, ~10-30s)";
+  try {
+    const r = await fetch("/prompt-veo-ia", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idea, conversation_id: iaVeoConvId }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    iaVeoConvId = r.conversation_id;
+    const caja = document.getElementById("iaVeoPromptTxt");
+    caja.textContent = r.prompt; caja.style.display = "block";
+    document.getElementById("btnIaVeoCopiar").style.display = "inline-block";
+    msg.textContent = "";
+  } catch (e) {
+    msg.textContent = "Error: " + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById("btnIaAmb").addEventListener("click", iaGenerarAmbienteEditor);
+document.getElementById("btnIaProdPrompt").addEventListener("click", iaRevisarPromptProductoEditor);
+document.getElementById("btnIaProdImg").addEventListener("click", iaGenerarProductoEditor);
+document.getElementById("btnIaVeo").addEventListener("click", iaGenerarPromptVeoEditor);
+document.getElementById("btnIaVeoCopiar").addEventListener("click", () => {
+  navigator.clipboard.writeText(document.getElementById("iaVeoPromptTxt").textContent);
+  const b = document.getElementById("btnIaVeoCopiar");
+  const orig = b.textContent; b.textContent = "✓ Copiado";
+  setTimeout(() => { b.textContent = orig; }, 1600);
+});
+document.getElementById("btnGenerarIAToggle").addEventListener("click", () => {
+  document.getElementById("cajaGenerarIA").classList.toggle("activa");
+});
 
 // --- Modal para elegir el tramo de un clip de B-roll (BLOQUE 4) -----------
 let segmentoAsset = null;
@@ -4285,7 +4801,7 @@ async function iniciarRender(preview = false) {
 document.getElementById("btnRender").addEventListener("click", () => iniciarRender(false));
 document.getElementById("btnPreview").addEventListener("click", () => iniciarRender(true));
 
-// --- "Listo para publicar": liberar el disco de esta corrida ---------------
+// --- Finalizar y liberar el disco de esta corrida ---------------------------
 function mb(bytes) { return (bytes / 1048576).toFixed(1) + " MB"; }
 
 const btnListoPublicar = document.getElementById("btnListoPublicar");
@@ -4321,7 +4837,7 @@ if (btnListoPublicar) {
       const ok = confirm(
         "Liberar " + mb(plan.bytes) + " de C:\\ai-video borrando:\n\n" + lista
         + "\n\nSE CONSERVAN:\n"
-        + "  · el video publicado: " + plan.publicado.join(", ") + "\n"
+        + "  · el video final: " + plan.publicado.join(", ") + "\n"
         + "  · el 07_FINAL.mp4 y el corte crudo (para seguir editando)\n"
         + "  · todos tus ajustes\n\n¿Seguimos?");
       if (!ok) { info.textContent = ""; return; }

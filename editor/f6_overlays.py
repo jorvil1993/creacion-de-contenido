@@ -145,18 +145,60 @@ def _texto_contorneado(draw, centro_x, y, texto, fuente, color, grosor=6):
               stroke_width=grosor, stroke_fill=(0, 0, 0, 230))
 
 
-def render_cta_cierre(ruta_salida: Path, eco: str = ""):
-    """Cierre SIN caja de fondo: logo + ícono de WhatsApp + número + handle.
+def _campo_cta(valor, maximo: int) -> str:
+    """Texto compacto y seguro para JSON, PIL y la plantilla HTML."""
+    return " ".join(str(valor or "").split())[:maximo]
 
-    La versión anterior era un rectángulo navy sólido con borde cian, que se
-    veía pegado encima del video. Aquí se aplica el mismo criterio que a los
-    subtítulos: contorno negro en vez de fondo opaco. El texto se lee igual
-    sobre cualquier imagen y el video respira.
 
-    `eco`: repetición corta del hook, para cerrar el loop (sección 4.5 del
-    plan). Es el respaldo PIL de lo que hace `tarjeta-cta.html` de Hyperframes.
+def configurar_cta(manual: dict = None) -> dict:
+    """Normaliza el CTA guardado por el editor y conserva compatibilidad.
+
+    Los proyectos viejos solo tienen tiempos en ``ajustes.hookcta.json``. En
+    ese caso mantienen el cierre de venta histórico. Un objetivo desconocido
+    tampoco puede ocultar WhatsApp ni dejar la tarjeta sin mensaje.
     """
-    w, h = ANCHO, (560 if eco else 470)
+    manual = manual if isinstance(manual, dict) else {}
+    objetivo = _campo_cta(manual.get("objetivo"), 24).lower()
+    if objetivo not in config.CTA_OBJETIVOS:
+        objetivo = config.CTA_OBJETIVO_DEFAULT
+    preset = config.CTA_OBJETIVOS[objetivo]
+    mensaje = _campo_cta(manual.get("mensaje"), config.CTA_MENSAJE_MAX_CARACTERES)
+    return {
+        "objetivo": objetivo,
+        "mensaje": mensaje or preset["mensaje"],
+        "mostrar_whatsapp": bool(preset["mostrar_whatsapp"]),
+        "palabra_clave": _campo_cta(
+            manual.get("palabra_clave"), config.CTA_PALABRA_CLAVE_MAX_CARACTERES),
+        "campania": _campo_cta(
+            manual.get("campania"), config.CTA_CAMPANIA_MAX_CARACTERES),
+    }
+
+
+def render_cta_cierre(ruta_salida: Path, eco: str = "", mensaje: str = None,
+                       mostrar_whatsapp: bool = True, palabra_clave: str = ""):
+    """Respaldo PIL del cierre configurable de ``tarjeta-cta.html``."""
+    mensaje = _campo_cta(mensaje, config.CTA_MENSAJE_MAX_CARACTERES) or \
+              config.CTA_OBJETIVOS[config.CTA_OBJETIVO_DEFAULT]["mensaje"]
+    palabra_clave = _campo_cta(
+        palabra_clave, config.CTA_PALABRA_CLAVE_MAX_CARACTERES)
+
+    w = ANCHO
+    medidor = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    for tam_titulo in (62, 56, 50, 44):
+        f_titulo = _fuente("Poppins-ExtraBold.ttf", tam_titulo)
+        lineas_mensaje = _envolver(medidor, mensaje, f_titulo, w - 150)
+        if len(lineas_mensaje) <= 3:
+            break
+    alto_linea_titulo = round(tam_titulo * 1.22)
+    f_num = _fuente("Poppins-ExtraBold.ttf", 58)
+    f_handle = _fuente("Poppins-Bold.ttf", 40)
+    f_eco = _fuente("Poppins-Bold.ttf", 36)
+    lineas_eco = _envolver(medidor, eco, f_eco, w - 180) if eco else []
+    alto_estimado = (180 + len(lineas_mensaje) * alto_linea_titulo
+                     + (128 if mostrar_whatsapp else 8)
+                     + (62 if palabra_clave else 0) + 58
+                     + (66 + len(lineas_eco) * 46 if eco else 0))
+    h = max(470, min(900, alto_estimado))
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
@@ -165,46 +207,42 @@ def render_cta_cierre(ruta_salida: Path, eco: str = ""):
     if ruta_logo.exists():
         logo = Image.open(ruta_logo).convert("RGBA")
         logo.thumbnail((132, 132))
-        # sombra suave para despegar el logo del fondo
         sombra = Image.new("RGBA", logo.size, (0, 0, 0, 0))
         sombra.paste((0, 0, 0, 150), (0, 0), logo)
         img.paste(sombra, (int(w / 2 - logo.width / 2) + 3, y + 3), sombra)
         img.paste(logo, (int(w / 2 - logo.width / 2), y), logo)
         y += logo.height + 26
 
-    f_titulo = _fuente("Poppins-ExtraBold.ttf", 62)
-    f_num = _fuente("Poppins-ExtraBold.ttf", 58)
-    f_handle = _fuente("Poppins-Bold.ttf", 40)
+    for linea in lineas_mensaje:
+        _texto_contorneado(draw, w / 2, y, linea, f_titulo, BLANCO, grosor=7)
+        y += alto_linea_titulo
 
-    _texto_contorneado(draw, w / 2, y, "¡Pide el tuyo ya!", f_titulo, BLANCO, grosor=7)
-    y += 92
+    if palabra_clave:
+        f_palabra = _fuente("Poppins-Bold.ttf", 38)
+        _texto_contorneado(draw, w / 2, y, f'Escribe "{palabra_clave}"',
+                           f_palabra, CIAN, grosor=5)
+        y += 62
 
-    # fila: ícono de WhatsApp + número, centrados como un bloque
-    icono = _icono_whatsapp(104)
-    texto_num = config.WHATSAPP_NUMERO
-    ancho_num = draw.textbbox((0, 0), texto_num, font=f_num, stroke_width=7)[2]
-    ancho_fila = icono.width + 22 + ancho_num
-    x_fila = (w - ancho_fila) / 2
-    img.paste(icono, (int(x_fila), int(y - 12)), icono)
-    draw.text((x_fila + icono.width + 22, y), texto_num, font=f_num, fill=BLANCO,
-              stroke_width=7, stroke_fill=(0, 0, 0, 230))
-    y += 128
+    if mostrar_whatsapp:
+        icono = _icono_whatsapp(104)
+        texto_num = config.WHATSAPP_NUMERO
+        ancho_num = draw.textbbox((0, 0), texto_num, font=f_num, stroke_width=7)[2]
+        ancho_fila = icono.width + 22 + ancho_num
+        x_fila = (w - ancho_fila) / 2
+        img.paste(icono, (int(x_fila), int(y - 12)), icono)
+        draw.text((x_fila + icono.width + 22, y), texto_num, font=f_num, fill=BLANCO,
+                  stroke_width=7, stroke_fill=(0, 0, 0, 230))
+        y += 128
 
     _texto_contorneado(draw, w / 2, y, config.TIKTOK_HANDLE, f_handle, CIAN, grosor=5)
 
     if eco:
-        # Cierre del loop: lo último que se lee es la frase con la que abrió el
-        # video, así el rebobinado se siente continuo.
         y += 66
-        f_eco = _fuente("Poppins-Bold.ttf", 36)
-        for linea in _envolver(draw, eco, f_eco, w - 180):
+        for linea in lineas_eco:
             _texto_contorneado(draw, w / 2, y, linea, f_eco, CIAN, grosor=5)
             y += 46
 
     img.save(ruta_salida)
-    # Arriba, igual que los insertos: en un talking-head sentado la franja
-    # superior está vacía y la cabeza ocupa el centro. A media altura el logo
-    # caía sobre la cara.
     return 0, int(ALTO * 0.13), w, h
 
 
@@ -853,27 +891,40 @@ def planificar_overlays(palabras: list, huecos: list, duracion_total: float, dir
                else max(duracion_total - 6.5, 3.5))
     fin_cta = min(float(hc["cta"]["fin"]), duracion_total) if "cta" in hc else duracion_total
     eco = _texto_eco_loop(texto_hook) if config.LOOP_ACTIVO else ""
+    cta = configurar_cta(hc.get("cta"))
     if cta_oculto:
         print("  cta: quitado a mano en el editor — no se compone.")
     else:
         clip_cta = f8_hyperframes.render("tarjeta-cta", {
-            "mensaje": "¡Pide el tuyo ya!",
+            "mensaje": cta["mensaje"],
             "whatsapp": config.WHATSAPP_NUMERO,
             "handle": config.TIKTOK_HANDLE,
             "eco": eco,
+            "objetivo": cta["objetivo"],
+            "palabra_clave": cta["palabra_clave"],
         }) if hf else None
         if clip_cta:
             import f7_animaciones
             eventos.append({"tipo": "cta", "archivo": clip_cta, "medio": "video",
                             "x": 0, "y": 0, "ini": ini_cta, "fin": fin_cta,
-                            "eco": eco, "miniatura": str(f7_animaciones.miniatura(clip_cta) or "")})
+                            "eco": eco, "mensaje": cta["mensaje"],
+                            "objetivo": cta["objetivo"],
+                            "palabra_clave": cta["palabra_clave"],
+                            "campania": cta["campania"],
+                            "miniatura": str(f7_animaciones.miniatura(clip_cta) or "")})
             if eco:
                 print(f"  loop: el CTA cierra con el eco del hook -> \"{eco}\"")
         else:
             ruta_cta = dir_tmp / "ov_cta.png"
-            x, y, w, h = render_cta_cierre(ruta_cta, eco=eco)
+            x, y, w, h = render_cta_cierre(
+                ruta_cta, eco=eco, mensaje=cta["mensaje"],
+                mostrar_whatsapp=cta["mostrar_whatsapp"],
+                palabra_clave=cta["palabra_clave"])
             eventos.append({"tipo": "cta", "archivo": ruta_cta, "x": x, "y": y,
-                            "ini": ini_cta, "fin": fin_cta, "eco": eco})
+                            "ini": ini_cta, "fin": fin_cta, "eco": eco,
+                            "mensaje": cta["mensaje"], "objetivo": cta["objetivo"],
+                            "palabra_clave": cta["palabra_clave"],
+                            "campania": cta["campania"]})
 
     # Solo se reservan las ventanas de las tarjetas que sí se componen: si el
     # hook o el CTA fueron quitados, ese tiempo queda libre para el B-roll.

@@ -41,7 +41,8 @@ PLANTILLAS = {
     "comparativa":    ["modeloA", "specA1", "specA2", "specA3",
                        "modeloB", "specB1", "specB2", "specB3"],
     "stickers":       ["tipo"],
-    "tarjeta-cta":    ["mensaje", "whatsapp", "handle", "eco"],
+    "tarjeta-cta":    ["mensaje", "whatsapp", "handle", "eco",
+                       "objetivo", "palabra_clave"],
     # Animaciones — sustituyen a las de PIL (f7_animaciones.py), que se ven
     # pobres al lado de estas: sin easing, sin tipografía, sin sombras.
     # `variante` da la variación determinista por video (semilla del nombre de

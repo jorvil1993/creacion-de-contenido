@@ -204,11 +204,20 @@ python editor/abrir_editor.py               # la más reciente
 O doble clic en `editor/Abrir Editor DeviceShop.bat`.
 
 Dentro del editor hay un desplegable para saltar entre corridas sin cerrarlo, y
-dos botones al final:
+tres botones junto al reproductor:
 
 - **Previsualizar** — misma composición exacta a media resolución. No toca el
   archivo final ni publica nada. Para comprobar un ajuste.
 - **Renderizar final** — el bueno, y lo copia a OneDrive listo para subir.
+- **Finalizar y liberar espacio** — después del Render, conserva el MP4 y los
+  ajustes y borra solamente los intermedios pesados de `C:\ai-video`. No publica
+  en ninguna red social.
+
+En **Hook y CTA** se puede elegir qué busca el cierre (venta, WhatsApp,
+comentarios, compartir, guardar o seguir) y editar el texto que se verá. Los
+objetivos sociales ocultan el número de WhatsApp. La palabra clave y el nombre
+interno de campaña son opcionales. Esto cambia la tarjeta visual, no las
+palabras ya grabadas; se comprueba con **Previsualizar** o **Renderizar final**.
 
 Todo lo que se ajusta **se guarda solo** cada par de segundos, así que cerrar la
 pestaña no cuesta el trabajo: al volver a abrir la corrida está todo donde se

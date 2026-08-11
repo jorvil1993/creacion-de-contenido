@@ -1,0 +1,176 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>slide</title>
+<style>
+  /* Sistema EDITORIAL del carrusel (2026-08-05). Nace del carrusel que Claude
+     le diseño a Jose en la web y que rindio mas que el de fotos: fondo claro
+     de papel, tipografia enorme y apretada, un acento de color, y numeracion
+     arriba. Es un sistema PARALELO al de hook-escena.html (navy con foto), no
+     un reemplazo -- la gracia es alternar los dos para que el feed no se vea
+     siempre igual.
+
+     Montserrat y no Poppins: Poppins es geometrica y redonda, y a este tamaño
+     se ve blanda. Montserrat apretada (-.03em) es lo mas parecido que tenemos
+     en casa a la grotesca del referente, sin descargar nada nuevo. */
+  @font-face { font-family: 'Mont'; src: url('__F__/Montserrat-ExtraBold.ttf'); font-weight: 800; }
+  @font-face { font-family: 'Mont'; src: url('__F__/Montserrat-Bold.ttf');      font-weight: 700; }
+  @font-face { font-family: 'Mont'; src: url('__F__/Montserrat-Variable.ttf');  font-weight: 100 900; }
+
+  :root {
+    --fondo:  __FONDO__;
+    --tinta:  __TINTA__;
+    --gris:   __GRIS__;
+    --acento: __ACENTO__;
+    --linea:  __LINEA__;
+    --w: __W__px;
+    --h: __H__px;
+    --m: __MARGEN__px;      /* margen lateral, unico para todo el sistema */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: var(--w); height: var(--h); overflow: hidden; }
+
+  body {
+    background: var(--fondo);
+    color: var(--tinta);
+    font-family: 'Mont', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .lienzo {
+    position: relative; width: var(--w); height: var(--h);
+    padding: var(--m);
+    display: flex; flex-direction: column;
+  }
+
+  /* ---- barra de arriba: de que trata esta slide + en que numero vas ---- */
+  .barra {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: __KICKER__px; font-weight: 600;
+    letter-spacing: .16em; text-transform: uppercase;
+  }
+  .barra .kicker { color: var(--acento); }
+  .barra .pag { color: var(--gris); font-variant-numeric: tabular-nums; }
+
+  /* ---- bloque central ---- */
+  /* El contenido va centrado en el alto y NO pegado arriba: en una slide de
+     puro texto, el aire de arriba y abajo es lo que la hace ver diseñada. */
+  .centro { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .centro.arriba { justify-content: flex-start; padding-top: __AIRE__px; }
+
+  h1 {
+    font-weight: 800; font-size: __TIT__px;
+    line-height: .96; letter-spacing: -.032em;
+  }
+  h1 .acento { color: var(--acento); }
+  .regla { height: 1px; background: var(--linea); margin: __REGLA_MT__px 0 __REGLA_MB__px; }
+  /* Peso 500 y no 400 en todo el cuerpo: sobre papel claro (#F2F1EE) el gris
+     #5B6770 en Regular se lava al reducir la slide al tamaño del feed. Medio
+     paso de peso recupera el trazo sin volverlo negrita ni tocar la jerarquia
+     contra el titular, que va en 800. El max-width sube a 92% porque con el
+     cuerpo mas grande el 86% partia renglones de dos palabras. */
+  .bajada {
+    font-weight: 500; font-size: __BAJADA__px; line-height: 1.4;
+    color: var(--gris); max-width: 92%;
+  }
+
+  /* ---- tipo LISTA: 01 / 02 / 03 con lineas finas ---- */
+  .lista { margin-top: __LISTA_MT__px; }
+  .item {
+    display: flex; gap: __ITEM_GAP__px; align-items: baseline;
+    padding: __ITEM_PY__px 0;
+    border-top: 1px solid var(--linea);
+  }
+  .item:last-child { border-bottom: 1px solid var(--linea); }
+  .item .n {
+    color: var(--acento); font-weight: 600; font-size: __ITEM_N__px;
+    font-variant-numeric: tabular-nums; flex: none; min-width: __ITEM_NW__px;
+  }
+  .item .t { font-weight: 500; font-size: __ITEM_F__px; line-height: 1.32; }
+
+  /* ---- tipo GRILLA: 2x2 de datos duros ---- */
+  .grilla {
+    margin-top: __LISTA_MT__px;
+    display: grid; grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--linea); border-left: 1px solid var(--linea);
+  }
+  .celda {
+    border-right: 1px solid var(--linea); border-bottom: 1px solid var(--linea);
+    padding: __CELDA_P__px;
+    min-height: __CELDA_H__px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    gap: __CELDA_GAP__px;
+  }
+  .celda .dato {
+    color: var(--acento); font-weight: 800; font-size: __DATO__px;
+    line-height: 1; letter-spacing: -.03em;
+  }
+  .celda .des { font-weight: 500; font-size: __CELDA_F__px; line-height: 1.32; color: var(--gris); }
+
+  /* ---- tipo ANTES/AHORA: dos columnas separadas por una linea ---- */
+  .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: __LISTA_MT__px; }
+  .col { padding-right: __CELDA_P__px; }
+  .col + .col { border-left: 1px solid var(--linea); padding-left: __CELDA_P__px; padding-right: 0; }
+  .col .rot {
+    font-size: __KICKER__px; font-weight: 600; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--gris); display: block;
+    margin-bottom: __COL_MB__px;
+  }
+  .col.ahora .rot { color: var(--acento); }
+  .col .t { font-weight: 500; font-size: __ITEM_F__px; line-height: 1.34; color: var(--gris); }
+  .col.ahora .t { color: var(--tinta); }
+
+  /* ---- tipo FOTO: imagen a sangre, texto encima abajo ---- */
+  .foto { position: absolute; inset: 0; }
+  .foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* Sin este velo el texto blanco se pierde en las zonas claras de la foto --
+     mismo problema y misma solucion que en hook-escena.html. */
+  .foto-velo {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(8,14,20,.55) 0%, rgba(8,14,20,.10) 28%,
+                                rgba(8,14,20,.20) 52%, rgba(8,14,20,.82) 100%);
+  }
+  .sobre-foto { position: relative; color: #fff; }
+  .sobre-foto .bajada { color: rgba(255,255,255,.88); }
+  /* Sobre la foto el acento se pierde (es un turquesa medio sobre una imagen
+     clara): la barra pasa a blanco, que es lo que hace el referente. */
+  .sobre-foto .barra .kicker { color: #fff; }
+  .sobre-foto .barra .pag { color: rgba(255,255,255,.72); }
+  .sobre-foto .regla { background: rgba(255,255,255,.45); }
+
+  /* ---- tipo GOLPE: una frase sola, al doble de cuerpo ---- */
+  /* Estas son las slides que sostienen el deslizamiento: se leen en menos de
+     un segundo, asi que el dedo sigue. El interlineado baja a .92 porque a
+     este tamaño el .96 normal abre demasiado los renglones. */
+  body.golpe h1 { line-height: .92; letter-spacing: -.038em; }
+  body.golpe .bajada { margin-top: __REGLA_MT__px; max-width: 88%; }
+  /* El logo del pie es turquesa sobre navy: encima del turquesa pleno el icono
+     desaparece y queda el texto flotando. En las invertidas no va. */
+  body.cierre .marca-pie img { display: none; }
+
+  /* ---- tipo CIERRE: fondo de acento pleno ---- */
+  body.cierre { background: var(--acento); color: var(--tinta); }
+  body.cierre .barra .kicker, body.cierre .barra .pag { color: rgba(1,26,46,.62); }
+  body.cierre .bajada { color: rgba(1,26,46,.78); }
+  body.cierre .regla { background: rgba(1,26,46,.28); }
+  .logo-top { height: __LOGO_H__px; display: block; }
+  .contacto { margin-top: __LISTA_MT__px; display: flex; flex-direction: column; gap: __COL_MB__px; }
+  .contacto .fila { display: flex; align-items: baseline; gap: __ITEM_GAP__px; }
+  .contacto .rot {
+    font-size: __KICKER__px; font-weight: 600; letter-spacing: .16em;
+    text-transform: uppercase; color: rgba(1,26,46,.62);
+    min-width: __CONTACTO_W__px;
+  }
+  .contacto .val { font-weight: 800; font-size: __CONTACTO__px; letter-spacing: -.01em; }
+
+  /* ---- pie: solo en la portada, la invitacion a deslizar ---- */
+  .desliza { font-size: __BAJADA__px; font-weight: 500; color: var(--gris); }
+  /* El logo chico de las slides interiores: la marca esta presente sin gritar,
+     que es todo el punto de este sistema. */
+  .marca-pie { display: flex; align-items: center; justify-content: space-between; }
+  .marca-pie img { height: __LOGO_PIE__px; display: block; opacity: .85; }
+</style>
+
+<body class="__CLASE_BODY__">
+__CUERPO__
+</body>

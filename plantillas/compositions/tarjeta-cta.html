@@ -3,7 +3,9 @@
   {"id":"mensaje","type":"string","label":"Texto principal del CTA","default":"¡Pide el tuyo ya!"},
   {"id":"whatsapp","type":"string","label":"Número de WhatsApp","default":"69214437"},
   {"id":"handle","type":"string","label":"Usuario de TikTok","default":"@deviceshopbo"},
-  {"id":"eco","type":"string","label":"Eco del hook (cierra el loop). Vacío = no se muestra","default":""}
+  {"id":"eco","type":"string","label":"Eco del hook (cierra el loop). Vacío = no se muestra","default":""},
+  {"id":"objetivo","type":"string","label":"Objetivo del CTA","default":"comprar"},
+  {"id":"palabra_clave","type":"string","label":"Palabra para comentar. Vacío = no se muestra","default":""}
 ]'>
   <head>
     <meta charset="UTF-8" />
@@ -59,6 +61,7 @@
         paint-order: stroke fill;
         text-shadow: 0 8px 26px rgba(0, 0, 0, 0.6);
         margin-bottom: 26px;
+        padding: 0 70px;
       }
 
       .cta-whatsapp {
@@ -87,6 +90,15 @@
         color: var(--cian);
         font-weight: 700;
         font-size: 42px;
+        -webkit-text-stroke: 7px rgba(0, 0, 0, 0.85);
+        paint-order: stroke fill;
+      }
+
+      .cta-palabra {
+        color: var(--cian);
+        font-weight: 700;
+        font-size: 40px;
+        margin: -4px 0 22px;
         -webkit-text-stroke: 7px rgba(0, 0, 0, 0.85);
         paint-order: stroke fill;
       }
@@ -120,6 +132,7 @@
           <img src="assets/logo/deviceshop-icono-blanco-transparente.png" alt="DeviceShop" />
         </div>
         <div class="cta-mensaje" id="cta-mensaje"></div>
+        <div class="cta-palabra" id="cta-palabra"></div>
         <div class="cta-whatsapp">
           <svg class="wa-icon" viewBox="0 0 32 32" fill="currentColor">
             <path
@@ -134,9 +147,23 @@
 
       <script>
         const v = window.__hyperframes.getVariables();
-        document.getElementById("cta-mensaje").textContent = v.mensaje;
+        const elMensaje = document.getElementById("cta-mensaje");
+        elMensaje.textContent = v.mensaje;
+        if ((v.mensaje || "").length > 64) elMensaje.style.fontSize = "54px";
+        else if ((v.mensaje || "").length > 48) elMensaje.style.fontSize = "60px";
         document.getElementById("cta-numero").textContent = v.whatsapp;
         document.getElementById("cta-handle").textContent = v.handle;
+
+        const conWhatsapp = ["comprar", "whatsapp"].includes(v.objetivo || "comprar");
+        if (!conWhatsapp) document.querySelector(".cta-whatsapp").style.display = "none";
+
+        const palabra = (v.palabra_clave || "").trim();
+        const elPalabra = document.getElementById("cta-palabra");
+        if (palabra) {
+          elPalabra.textContent = `Escribe “${palabra}”`;
+        } else {
+          elPalabra.style.display = "none";
+        }
 
         const eco = (v.eco || "").trim();
         const elEco = document.getElementById("cta-eco");

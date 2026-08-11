@@ -7,7 +7,12 @@ de los datos reales de la cuenta de Meta. El patron ganador medido es
 CTR 6,89%, $0,10 por conversacion).
 
 Reglas que no se rompen (mismas fuentes):
-- CTA siempre a CONVERSAR ("escribinos"), nunca "compra ya" — asi es el flujo real.
+- **Todo en TUTEO** ("escríbenos", "buscas", "tu biblioteca") -- el "espanol
+  neutro" de LatAm, confirmado por Jose el 2026-08-10. NO voseo ("escribinos",
+  "buscás"): eso es cruceño, y La Paz y Cochabamba —2do y 3er mercado— no vosean.
+  NO usted ("escríbanos"): suena demasiado formal para redes. Hasta el 2026-08-10
+  estas tres plantillas estaban en voseo, contra lo que ya decia voz-de-marca.md.
+- CTA siempre a CONVERSAR ("escríbenos"), nunca "compra ya" — asi es el flujo real.
 - Una sola idea por pieza. No mezclar regalo + vista + comparacion.
 - Beneficio emocional primero, specs despues.
 - 1 a 3 emojis, no mas.
@@ -43,15 +48,15 @@ def variantes(p: Producto, ocasion: str = "") -> dict[str, str]:
     """Devuelve las 3 variantes listas para pegar."""
     gancho_ocasion = f" {ocasion}" if ocasion else ""
 
-    emocional = f"""¿Buscás un regalo que de verdad vaya a usar? 🎁
+    emocional = f"""¿Buscas un regalo que de verdad vaya a usar? 🎁
 
 {p.beneficio}
 
 Un {p.nombre} es miles de libros en un solo aparato: se lee como papel real, no cansa la vista y la batería dura semanas.
 
-Nuevo, en caja sellada, con garantía de 1 mes y entrega inmediata desde stock propio — no esperás ninguna importación.
+Nuevo, en caja sellada, con garantía de 1 mes y entrega inmediata desde stock propio — sin esperar ninguna importación.
 
-📱 Escribinos al {WHATSAPP} y te ayudamos a elegir el ideal.
+📱 Escríbenos al {WHATSAPP} y te ayudamos a elegir el ideal.
 
 {HASHTAGS}"""
 
@@ -63,9 +68,9 @@ Tablet: brilla al sol, te distrae con notificaciones, cansa la vista, se descarg
 {p.objecion}
 → {p.respuesta}
 
-Si de verdad querés leer más, el aparato importa.
+Si de verdad quieres leer más, el aparato importa.
 
-📱 Preguntanos al {WHATSAPP} cuál te conviene según lo que leés.
+📱 Pregúntanos al {WHATSAPP} cuál te conviene según lo que lees.
 
 {HASHTAGS}"""
 
@@ -75,12 +80,12 @@ Si de verdad querés leer más, el aparato importa.
 
 ✅ Nuevo y sellado
 ✅ Garantía de 1 mes
-✅ Stock propio: lo recibís ya, sin esperar importación
+✅ Stock propio: lo recibes ya, sin esperar importación
 ✅ Envíos a todo el país · QR contra entrega
 
 6 años vendiendo lectores electrónicos en Bolivia. Solo esto: por eso sabemos cuál te sirve.
 
-📱 Escribinos al {WHATSAPP} y te asesoramos.
+📱 Escríbenos al {WHATSAPP} y te asesoramos.
 
 {HASHTAGS}"""
 
@@ -108,7 +113,12 @@ nuevo y sellado, garantia de 1 mes, entrega inmediata desde stock propio (sin
 esperar importacion), 6 anios vendiendo lectores electronicos en Bolivia.
 
 Reglas de la marca, no las rompas:
-- El CTA siempre invita a CONVERSAR ("escribinos al {WHATSAPP}"), nunca "compra ya".
+- **TUTEO, nunca voseo ni usted.** "Buscas", "escríbenos", "te ayudamos", "tu
+  biblioteca" -- nunca "buscás"/"escribinos" (voseo cruceño) ni "busca"/
+  "escríbanos" (usted). Ojo con los verbos: es "tienes"/"puedes"/"quieres", NO
+  "tenés"/"podés"/"querés". Es el espanol neutro que se entiende igual en los
+  tres departamentos donde se vende.
+- El CTA siempre invita a CONVERSAR ("escríbenos al {WHATSAPP}"), nunca "compra ya".
 - Una sola idea por variante -- no mezcles regalo + specs + comparacion en la misma pieza.
 - El beneficio emocional va primero, el dato duro despues.
 - 1 a 3 emojis por variante, no mas.
@@ -143,7 +153,7 @@ def generar_con_ia(p: Producto, ocasion: str = "", correccion: str = "",
     else:
         instruccion = _instruccion_ia(p, ocasion)
 
-    texto, cid = a11_agy.generar(instruccion, conversation_id)
+    texto, cid = a11_agy.generar_con_respaldo(instruccion, conversation_id)
     copys = a11_agy.json_de(texto)
     faltan = {"emocional", "racional", "oferta"} - copys.keys()
     if faltan:
@@ -157,13 +167,13 @@ PAPERWHITE = Producto(
     spec_fuerte="batería de semanas y resistencia al agua IPX8",
     objecion='"¿Para qué pago esto si puedo leer en el celular?"',
     respuesta="En el celular te distraen las notificaciones y cansa la vista. "
-              "El Kindle es solo para leer — por eso sí terminás los libros.",
+              "El Kindle es solo para leer — por eso sí terminas los libros.",
 )
 
 _OBJECION_CELULAR = '"¿Para qué pago esto si puedo leer en el celular?"'
 _RESPUESTA_CELULAR = (
     "En el celular te distraen las notificaciones y cansa la vista. "
-    "Este Kindle es solo para leer — por eso sí terminás los libros."
+    "Este Kindle es solo para leer — por eso sí terminas los libros."
 )
 
 # Un Producto por CLAVE de carpeta de fotos (misma clave que a8_conceptos.FICHAS
@@ -248,7 +258,7 @@ PRODUCTOS: dict[str, Producto] = {
                     "hasta 12 semanas",
         objecion='"¿Para qué le compro esto si puede leer en la tablet?"',
         respuesta="En la tablet hay juegos y videos a un toque. Este Kindle es "
-                  "solo para leer — y vos controlás todo desde el Parental Dashboard.",
+                  "solo para leer — y controlas todo desde el Parental Dashboard.",
     ),
 }
 

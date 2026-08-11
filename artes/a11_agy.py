@@ -16,11 +16,19 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
 
 _INSTALL_POR_DEFECTO = Path(os.environ.get("LOCALAPPDATA", "")) / "agy" / "bin" / "agy.exe"
+
+# agy escribe cada corrida en su propio log (cli.log siempre apunta a la mas
+# reciente). Encontrado 2026-08-03: cuando el fallo es por cuota (429
+# RESOURCE_EXHAUSTED), el JSON de --output-format json NO trae ese detalle --
+# solo dice algo generico como "Image failed to generate." -- pero el log SI
+# tiene el mensaje real y hasta cuando se resetea la cuota.
+_LOG_AGY = Path.home() / ".gemini" / "antigravity-cli" / "cli.log"
 
 # Cache propio de agy: cada conversacion deja sus archivos generados en una
 # carpeta con su mismo conversation_id (confirmado 2026-08-03, ver
@@ -51,17 +59,48 @@ def disponible() -> bool:
         return False
 
 
+def _causa_real_si_es_cuota() -> str | None:
+    """Lee el log de la corrida que acaba de terminar (cli.log siempre es la
+    mas reciente, un proceso nuevo por cada llamada) y, si el fallo fue por
+    cuota agotada, devuelve el mensaje real de Google con el tiempo de reset.
+    Si no hay rastro de cuota en el log, devuelve None -- no inventa una causa.
+    """
+    try:
+        texto = _LOG_AGY.read_text(encoding="utf-8", errors="replace")[-6000:]
+    except OSError:
+        return None
+    if "RESOURCE_EXHAUSTED" not in texto and "QUOTA_EXHAUSTED" not in texto:
+        return None
+    mensaje = re.search(r'"message":\s*"([^"]+)"', texto)
+    reset = re.search(r'"quotaResetTimeStamp":\s*"([^"]+)"', texto)
+    partes = [mensaje.group(1) if mensaje else "cuota agotada (RESOURCE_EXHAUSTED)"]
+    if reset:
+        partes.append(f"reset: {reset.group(1)}")
+    return " -- ".join(partes)
+
+
 def generar(prompt: str, conversation_id: str | None = None,
-            timeout: int = 150) -> tuple[str, str]:
+            timeout: int = 150, modelo: str | None = None) -> tuple[str, str]:
     """Manda `prompt` a agy en modo headless. Devuelve (texto, conversation_id).
 
     Si `conversation_id` viene, continua esa conversacion en vez de arrancar
     una nueva -- agy ya tiene el prompt y la respuesta anteriores en contexto.
+
+    `modelo` es opcional -- si no viene, agy usa su propio default (no lo
+    elegimos). Solo afecta al modelo de TEXTO/razonamiento: la cuota de
+    Google es por modelo (confirmado 2026-08-03 en el mensaje de error de
+    RESOURCE_EXHAUSTED, "exhausted your capacity on THIS model"), asi que
+    forzar otro (ej. "claude-sonnet-4-6") puede seguir funcionando aunque el
+    default de Gemini este sin cuota. Ver `agy models` para la lista completa.
+    Generar IMAGENES no tiene este control -- esa herramienta siempre pega
+    contra un modelo de imagen fijo de Google sin importar este flag.
     """
     cmd = [_binario(), "-p", prompt, "--output-format", "json",
            "--disable-slash-commands"]
     if conversation_id:
         cmd += ["--conversation", conversation_id]
+    if modelo:
+        cmd += ["--model", modelo]
 
     try:
         r = subprocess.run(cmd, capture_output=True, text=True,
@@ -81,7 +120,9 @@ def generar(prompt: str, conversation_id: str | None = None,
             datos_error = json.loads(r.stdout)
             motivo = datos_error.get("error") or datos_error.get("status")
             if motivo:
-                raise RuntimeError(f"agy fallo: {motivo}")
+                detalle = _causa_real_si_es_cuota()
+                raise RuntimeError(f"agy fallo: {motivo}"
+                                    + (f" ({detalle})" if detalle else ""))
         except json.JSONDecodeError:
             pass
         raise RuntimeError(f"agy fallo (codigo {r.returncode}): {r.stderr.strip()[:500]}")
@@ -93,9 +134,49 @@ def generar(prompt: str, conversation_id: str | None = None,
 
     if datos.get("status") != "SUCCESS":
         motivo = datos.get("error") or datos.get("status")
-        raise RuntimeError(f"agy fallo: {motivo}")
+        detalle = _causa_real_si_es_cuota()
+        raise RuntimeError(f"agy fallo: {motivo}"
+                            + (f" ({detalle})" if detalle else ""))
 
     return datos["response"].strip(), datos["conversation_id"]
+
+
+def generar_con_respaldo(prompt: str, conversation_id: str | None = None,
+                          timeout: int = 150, modelo: str | None = None) -> tuple[str, str]:
+    """Como generar(), pero si agy falla por cuota agotada (RESOURCE_EXHAUSTED,
+    lo que paso el 2026-08-03 con tantas pruebas seguidas) reintenta con
+    a12_codex.generar() -- respaldo de TEXTO nada mas, cuota separada de
+    Google. La generacion de imagen NO tiene respaldo: confirmado el mismo
+    dia que Codex no genera imagenes en el plan gratis de ChatGPT (pide
+    Plus, $20/mes -- ver panel-artes-integracion-agy.md).
+
+    `modelo` se pasa tal cual a generar() (ver ahi el porque) -- no aplica
+    cuando el proveedor termina siendo Codex, que elige su propio modelo.
+
+    El conversation_id devuelto queda marcado con el proveedor
+    ("agy:<id>" o "codex:<id>") para que una correccion siguiente vuelva a
+    ESE mismo proveedor -- los ids de agy y de codex no son intercambiables.
+    """
+    proveedor, id_real = "agy", conversation_id
+    if conversation_id and ":" in conversation_id:
+        proveedor, id_real = conversation_id.split(":", 1)
+
+    if proveedor == "codex":
+        from artes import a12_codex
+        texto, tid = a12_codex.generar(prompt, thread_id=id_real, timeout=timeout)
+        return texto, f"codex:{tid}"
+
+    try:
+        texto, cid = generar(prompt, conversation_id=id_real, timeout=timeout, modelo=modelo)
+        return texto, f"agy:{cid}"
+    except RuntimeError as e:
+        if "RESOURCE_EXHAUSTED" not in str(e) and "cuota" not in str(e).lower():
+            raise
+        from artes import a12_codex
+        if not a12_codex.disponible():
+            raise
+        texto, tid = a12_codex.generar(prompt, timeout=timeout)
+        return texto, f"codex:{tid}"
 
 
 def generar_imagen(prompt: str, destino: Path,

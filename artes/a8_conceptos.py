@@ -36,7 +36,7 @@ CONCEPTOS = [
     ),
     Concepto(
         clave="cafe",
-        titular='TU PRÓXIMA HISTORIA<br>EMPIEZA <span class="acento">ACÁ</span>',
+        titular='TU PRÓXIMA HISTORIA<br>EMPIEZA <span class="acento">AQUÍ</span>',
         escena=(
             "Empty warm wooden cafe table with a ceramic coffee cup, soft "
             "afternoon window light, blurred cozy cafe interior, shallow depth "
@@ -110,10 +110,10 @@ CONCEPTOS = [
 DOLORES = [
     ("Te arden los ojos leyendo en el celular",
      "Pantalla como papel: no te tira luz a los ojos"),
-    ("Abrís a leer y terminás en TikTok",
+    ("Abres a leer y terminas en TikTok",
      "Sin notificaciones. Es solo para leer"),
-    ("Tenés un libro con el separador clavado hace meses",
-     "Liviano y siempre encima: por eso sí los terminás"),
+    ("Tienes un libro con el separador clavado hace meses",
+     "Liviano y siempre encima: por eso sí los terminas"),
     ("Al sol la pantalla se vuelve un espejo",
      "Se lee a plena luz, como una hoja de papel"),
     ("De noche te desvela la luz de la tablet",
@@ -140,28 +140,28 @@ FICHAS: dict[str, list[tuple[str, str, str]]] = {
     "colorsoft-32gb": [
         ("color", "Portadas y cómics a color", "Pantalla a color tipo papel."),
         ("bateria", "Hasta 8 semanas", "Color sin el gasto de una tablet."),
-        ("agua", "Diseño resistente al agua", "Llevalo a la piscina sin miedo."),
+        ("agua", "Diseño resistente al agua", "Llévalo a la piscina sin miedo."),
     ],
     "kindle-scribe-2025-64-gb": [
-        ("lapiz", "Lápiz incluido", "No se carga ni se empareja: escribís y ya."),
+        ("lapiz", "Lápiz incluido", "No se carga ni se empareja: escribes y ya."),
         ("pantalla", "Pantalla grande", "Ideal para PDF, estudio y trabajo."),
         ("libros", "Leer y anotar en uno", "Tu cuaderno y tu biblioteca juntos."),
     ],
     "kobo-libra-colour-32-gb": [
         ("color", "Color para cómics", "Pantalla Kaleido 3 a color."),
-        ("libros", "EPUB sin convertir", "No dependés de una sola tienda."),
+        ("libros", "EPUB sin convertir", "No dependes de una sola tienda."),
         ("agua", "Resistente al agua", "Diseño impermeable."),
     ],
     # Los 6 de abajo se agregaron el 2026-08-01, verificados contra la pagina
     # oficial de cada producto (Amazon / us.kobobooks.com / help.kobo.com).
     "kindle-scribe-colorsoft-32-gb": [
         ("color", "Primer Scribe a color", "Pantalla Colorsoft: portadas, PDF y notas como en papel."),
-        ("lapiz", "Lápiz incluido", "No se carga ni se empareja: escribís y ya."),
+        ("lapiz", "Lápiz incluido", "No se carga ni se empareja: escribes y ya."),
         ("pantalla", "Pantalla de 11\" grande", "32 GB para PDF, estudio y trabajo."),
     ],
     "kindle-scribe-colorsoft-64gb": [
         ("color", "Primer Scribe a color", "Pantalla Colorsoft: portadas, PDF y notas como en papel."),
-        ("lapiz", "Lápiz incluido", "No se carga ni se empareja: escribís y ya."),
+        ("lapiz", "Lápiz incluido", "No se carga ni se empareja: escribes y ya."),
         ("memoria", "64 GB de espacio", "PDF, notas y libros, todo junto."),
     ],
     "kinlde-paperwhite-32gb": [
@@ -178,7 +178,7 @@ FICHAS: dict[str, list[tuple[str, str, str]]] = {
     # Kobo Libra Colour, Sage, Elipsa y Elipsa 2E — NO con el Clara Colour
     # (confirmado en help.kobo.com, 2026-08-01).
     "kobo-stylus": [
-        ("lapiz", "Sensible a la presión", "Línea más fina o gruesa según cuánto apretás."),
+        ("lapiz", "Sensible a la presión", "Línea más fina o gruesa según cuánto presiones."),
         ("bateria", "Se carga por USB-C", "Una hora de carga alcanza para semanas de uso."),
         ("pantalla", "Compatible con 4 modelos Kobo", "Libra Colour, Sage, Elipsa y Elipsa 2E."),
     ],
@@ -195,13 +195,101 @@ FICHAS: dict[str, list[tuple[str, str, str]]] = {
 # aparece en casi TODAS las ventas de La Paz y Cochabamba. Jose pidio versiones
 # cortas y que se vean bien.
 CONFIANZA = {
-    "pago": "Pagás cuando lo recibís",
+    "pago": "Pagas cuando lo recibes",
     "envio": "Envío a domicilio sin costo",
     "sellado": "Nuevo y sellado",
     "garantia": "Garantía de 1 mes",
     "anios": "6 años en Bolivia",
     "hoy": "En Santa Cruz, hoy mismo",
 }
+
+
+# ---------------------------------------------------------------------------
+# Contenido de los moldes nuevos (2026-08-10)
+# ---------------------------------------------------------------------------
+# Los tres salen de documentos propios, ni una frase inventada:
+#   analisis-chats-ventas-jun-jul-2026.md  (las objeciones REALES de jun/jul y
+#                                           la frase que cierra en el interior)
+#   objeciones-respuestas.md               (las ideas fuerza de la objecion #1)
+#   PLAN-ARTES.md                          (los datos duros de la tienda)
+
+# Guiones de chat. Cada uno reproduce una conversacion que YA pasa todos los
+# dias, con la respuesta que segun el analisis de 31 chats es la que cierra.
+CHATS: dict[str, dict] = {
+    "tienda": {
+        "kicker": "Conversación real · Santa Cruz",
+        "titular": '«¿TIENEN<br>TIENDA <span class="acento">FÍSICA</span>?»',
+        "mensajes": [
+            ("suya", "Hola, buenas tardes 🙌 ¿tienen tienda física?"),
+            ("mia", "Hola! Somos 100% a domicilio. Hacemos entregas sin costo "
+                    "adicional y <b>pagas cuando te lo entregan</b> 🛵"),
+            ("suya", "Ah perfecto. ¿Y si lo quiero hoy?"),
+            ("mia", "En Santa Cruz te lo entregamos <b>hoy mismo</b>. Nuevo, en "
+                    "caja sellada y con garantía de 1 mes ✅"),
+        ],
+    },
+    "tablet": {
+        "kicker": "La pregunta que más nos hacen",
+        "titular": '«CON MI TABLET<br>LEO <span class="acento">IGUAL</span>»',
+        "mensajes": [
+            ("suya", "¿Y para qué me sirve si con mi tablet leo igual?"),
+            ("mia", "Leer puedes, sí. Pero la tablet <b>te tira luz a los ojos</b> "
+                    "y te llegan notificaciones todo el tiempo."),
+            ("mia", "El e-reader se lee como papel, hasta a pleno sol, y la "
+                    "batería <b>dura semanas</b> 📖"),
+            ("suya", "Mmm, eso último me convence"),
+        ],
+    },
+    "interior": {
+        "kicker": "Conversación real · La Paz",
+        "titular": '¿Y SI NO ESTOY<br>EN <span class="acento">SANTA CRUZ</span>?',
+        "mensajes": [
+            ("suya", "Yo soy de La Paz, ¿igual me pueden mandar?"),
+            ("mia", "Claro. <b>Enviamos a todo el país</b> y pagas recién cuando "
+                    "te lo entregan en tu domicilio 📦"),
+            ("suya", "¿Y si hay bloqueo?"),
+            ("mia", "El courier manda por avión, así que los paros no frenan "
+                    "la entrega ✈️"),
+        ],
+    },
+}
+
+# Tablas de comparacion. Las cuatro filas de "tablet" son textuales las ideas
+# fuerza de la OBJECION #1 en objeciones-respuestas.md.
+COMPARATIVAS_FILAS: dict[str, dict] = {
+    "tablet": {
+        "kicker": "La pregunta que más nos hacen",
+        "titular": '«CON MI TABLET<br>LEO <span class="acento">IGUAL</span>»',
+        "titulos": ("TABLET", "E-READER"),
+        "filas": [
+            ("A pleno sol", "Brilla, se vuelve espejo", "Se lee como papel"),
+            ("Notificaciones", "WhatsApp, redes, todo", "Solo para leer"),
+            ("Batería", "Horas", "Semanas"),
+            ("Para tus ojos", "Te tira luz a la cara", "Refleja la luz del ambiente"),
+        ],
+    },
+    "papel": {
+        "kicker": "Lo que cambia de verdad",
+        "titular": 'LIBRO DE PAPEL<br>O <span class="acento">E-READER</span>',
+        "titulos": ("LIBRO DE PAPEL", "E-READER"),
+        "filas": [
+            ("Para viajar", "Uno por vez, y pesa", "Miles, y pesa menos que uno"),
+            ("De noche", "Necesitas lámpara", "Luz cálida propia"),
+            ("Letra chica", "Es la que es", "La agrandas cuando quieras"),
+            ("Espacio en casa", "Otra repisa más", "Del grosor de una revista"),
+        ],
+    },
+}
+
+# La lista de "que incluye" del molde precio. Todo verificado en PLAN-ARTES.md.
+# El PRECIO no vive aca a proposito: cambia seguido (lo avisa
+# precios-y-margenes.md) y lo escribe Jose en el panel cada vez.
+INCLUYE = [
+    "Nuevo y en caja sellada",
+    "Garantía de 1 mes",
+    "Entrega inmediata — stock propio",
+    "Envíos a todo el país · QR contra entrega",
+]
 
 
 def por_clave(clave: str) -> Concepto:

@@ -59,12 +59,11 @@ def main() -> None:
             recorte=recorte,
             recorte_alto=44,
             recorte_y=57 if v.confianza else 60,
-            sello_num=v.sello_num,
-            sello_lab=v.sello_lab,
+            sello=v.sello,
             confianza=v.confianza,
         )
         destino = render(arte, SALIDA / f"tanda-{i+1}-{producto}.jpg")
-        sello = v.sello_num or "—"
+        sello = v.sello or "—"
         print(f"{i+1}. {v.escena:7} sello={sello:6} palancas={len(v.confianza)}  {destino.name}")
 
 

@@ -39,6 +39,7 @@ from urllib.parse import urlparse, parse_qs
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config
 import f0_preparar
+import f_agy_video
 
 AQUI = Path(__file__).resolve().parent
 PANEL = config.RAIZ_PROYECTO / "PANEL-PRODUCCION.html"
@@ -50,6 +51,17 @@ PANEL = config.RAIZ_PROYECTO / "PANEL-PRODUCCION.html"
 TIPOS_VALIDOS = ("YO", "B-ROLL", "PIP", "ANIM")
 
 CAMPOS_SEGUNDOS = ("hooksegs", "cierresegs")
+
+# Trabajos de IA en curso (imagen de ambiente, imagen con producto). Mismo
+# patrón que artes/panel_servidor_artes.py: generar con agy tarda 15-40s (más
+# en una corrección sobre una conversación existente), y sin polling el
+# navegador lo ve colgado sin ningún aviso.
+TRABAJOS: dict[str, dict] = {}
+
+
+def _proveedor_de(conversation_id: str) -> str:
+    """Extrae el proveedor que quedó guardado en una conversación de IA."""
+    return conversation_id.split(":", 1)[0] if ":" in conversation_id else "agy"
 
 
 # ---------------------------------------------------------------------------
@@ -277,6 +289,42 @@ def escribir_segundos(fuente: str, n: int, campo: str, valor: float) -> str:
     texto = f"{valor:g}" if valor != int(valor) else f"{valor:.1f}"
     nuevo = bloque[:m.start(1)] + texto + bloque[m.end(1):]
     return fuente[:ini] + nuevo + fuente[fin:]
+
+
+def escribir_audio(fuente: str, n: int, ri: int, sonido: str = None, musica: str = None) -> str:
+    """Devuelve el fuente con el sonido y/o la música de esa fila cambiados.
+
+    Mismo mecanismo posicional que escribir_fila() (campos 4 y 5 en vez de 2 y
+    3), para los dos únicos campos de la fila que hoy no tienen ningún
+    endpoint — solo se podían tocar editando el HTML a mano.
+    """
+    if sonido is None and musica is None:
+        raise ValueError("Hace falta sonido o musica")
+    for valor, campo in ((sonido, "sonido"), (musica, "musica")):
+        if valor is not None and ("\n" in valor or "\r" in valor):
+            raise ValueError(f"El texto de '{campo}' no puede tener saltos de línea")
+
+    ini, fin = _bloque_guion(fuente, n)
+    filas = _lineas_filas(fuente, ini, fin)
+    if not 0 <= ri < len(filas):
+        raise ValueError(f"El guion {n} no tiene una fila {ri} (tiene {len(filas)})")
+    a, b = filas[ri]
+    linea = fuente[a:b]
+    campos = _campos(linea)
+    if len(campos) < 6:
+        raise ValueError(f"La fila {ri} del guion {n} no tiene los 6 campos esperados")
+
+    # De atrás para adelante, igual que escribir_fila(): el campo 5 (música) se
+    # reemplaza antes que el 4 (sonido) para no invalidar el rango ya calculado.
+    nueva = linea
+    for indice, valor in ((5, musica), (4, sonido)):
+        if valor is None:
+            continue
+        x, y = campos[indice]
+        if _desescapar(nueva[x:y]) == valor:
+            continue
+        nueva = nueva[:x] + _escapar(valor) + nueva[y:]
+    return fuente[:a] + nueva + fuente[b:]
 
 
 def leer_panel() -> str:
@@ -511,6 +559,71 @@ def abrir_editor_visual(nombre: str = None) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Generación con agy — imagen de ambiente / imagen con el producto real
+# ---------------------------------------------------------------------------
+def _imagen_ambiente_ia(tid: str, cfg: dict) -> None:
+    """Trabajo async para /api/imagen-ambiente-ia — ver f_agy_video.generar_ambiente."""
+    log = TRABAJOS[tid]["log"]
+
+    def paso(t: str) -> None:
+        log.append(t)
+
+    try:
+        nombre = (cfg.get("nombre") or "").strip()
+        if not nombre:
+            raise RuntimeError("falta el nombre/código de esa fila (el mismo que va en 'Qué se ve')")
+        proveedor = cfg.get("proveedor", "agy")
+        paso(f"generando imagen de ambiente con {proveedor}... esto tarda 15-40s, más si es una corrección")
+        ruta, cid = f_agy_video.generar_ambiente(
+            nombre, cfg.get("idea", ""), cfg.get("contexto_guion", ""),
+            conversation_id=cfg.get("conversation_id"),
+            proveedor=proveedor,
+        )
+        paso(f"LISTO: {ruta.name}")
+        TRABAJOS[tid]["estado"] = "listo"
+        TRABAJOS[tid]["archivo"] = str(ruta.relative_to(config.RAIZ_PROYECTO)).replace("\\", "/")
+        TRABAJOS[tid]["conversation_id"] = cid
+    except Exception as e:
+        paso(f"ERROR: {e}")
+        TRABAJOS[tid]["estado"] = "error"
+
+
+def _imagen_producto_ia(tid: str, cfg: dict) -> None:
+    """Trabajo async para /api/imagen-producto-ia — ver f_agy_video.generar_producto."""
+    log = TRABAJOS[tid]["log"]
+
+    def paso(t: str) -> None:
+        log.append(t)
+
+    try:
+        nombre = (cfg.get("nombre") or "").strip()
+        foto = cfg.get("foto", "")
+        if not nombre:
+            raise RuntimeError("falta el nombre/código de esa fila (el mismo que va en 'Qué se ve')")
+        if not foto:
+            raise RuntimeError("elegí un producto primero")
+        origen = config.RAIZ_PROYECTO / foto
+        if not origen.exists():
+            raise RuntimeError(f"no existe la foto {foto}")
+        proveedor = cfg.get("proveedor", "agy")
+        paso(f"generando imagen con el producto real ({proveedor})... esto tarda 15-40s, más si es una corrección")
+        ruta, cid = f_agy_video.generar_producto(
+            nombre, cfg.get("escena", ""), origen,
+            correccion=cfg.get("correccion", ""),
+            conversation_id=cfg.get("conversation_id"),
+            prompt_armado=cfg.get("prompt", ""),
+            proveedor=proveedor,
+        )
+        paso(f"LISTO: {ruta.name}")
+        TRABAJOS[tid]["estado"] = "listo"
+        TRABAJOS[tid]["archivo"] = str(ruta.relative_to(config.RAIZ_PROYECTO)).replace("\\", "/")
+        TRABAJOS[tid]["conversation_id"] = cid
+    except Exception as e:
+        paso(f"ERROR: {e}")
+        TRABAJOS[tid]["estado"] = "error"
+
+
+# ---------------------------------------------------------------------------
 # HTTP
 # ---------------------------------------------------------------------------
 class Handler(BaseHTTPRequestHandler):
@@ -564,7 +677,57 @@ class Handler(BaseHTTPRequestHandler):
                     "dir_salida": str(config.DIR_SALIDA),
                     "videos": f0_preparar.listar_entrada(),
                     "corrida": _estado_corrida(),
+                    "agy": f_agy_video.disponible(),
+                    "proveedores_ia": f_agy_video.proveedores_disponibles(),
+                    "productos_ia": f_agy_video.productos_disponibles(),
                 })
+
+            elif ruta == "/api/trabajo":
+                tid = (qs.get("id") or [""])[0]
+                self._json(TRABAJOS.get(tid) or {"estado": "desconocido"})
+
+            elif ruta == "/api/fotos-producto":
+                producto = (qs.get("producto") or [""])[0]
+                self._json({"fotos": f_agy_video.fotos_de_producto(producto)})
+
+            elif ruta == "/api/foto-producto":
+                # Sirve cualquier foto real DENTRO de assets/productos/ (para
+                # la galería de referencia) — acotado a esa carpeta con
+                # is_relative_to, mismo criterio que /api/imagen-manual.
+                nombre = (qs.get("f") or [""])[0]
+                candidato = (config.RAIZ_PROYECTO / nombre).resolve()
+                dir_productos = (config.DIR_ASSETS / "productos").resolve()
+                if not nombre or not candidato.is_relative_to(dir_productos) or not candidato.exists():
+                    self.send_error(404, "no existe")
+                    return
+                cuerpo = candidato.read_bytes()
+                tipo = "image/png" if candidato.suffix.lower() == ".png" else "image/jpeg"
+                self.send_response(200)
+                self.send_header("Content-Type", tipo)
+                self.send_header("Content-Length", str(len(cuerpo)))
+                self.send_header("Cache-Control", "no-store")
+                self._cabeceras_comunes()
+                self.end_headers()
+                self.wfile.write(cuerpo)
+
+            elif ruta == "/api/imagen-manual":
+                # Solo sirve por NOMBRE de archivo (sin ruta) y solo desde
+                # assets/generado/manual/ — igual que /api/arte en el panel de
+                # artes: acotado a una carpeta fija, sin traversal posible.
+                nombre = Path((qs.get("f") or [""])[0]).name
+                archivo = config.DIR_GENERADO / "manual" / nombre
+                if not nombre or not archivo.exists():
+                    self.send_error(404, "no existe")
+                    return
+                cuerpo = archivo.read_bytes()
+                tipo = "image/png" if archivo.suffix.lower() == ".png" else "image/jpeg"
+                self.send_response(200)
+                self.send_header("Content-Type", tipo)
+                self.send_header("Content-Length", str(len(cuerpo)))
+                self.send_header("Cache-Control", "no-store")
+                self._cabeceras_comunes()
+                self.end_headers()
+                self.wfile.write(cuerpo)
 
             elif ruta == "/api/log":
                 desde = int((qs.get("desde") or ["0"])[0])
@@ -632,6 +795,61 @@ class Handler(BaseHTTPRequestHandler):
             elif ruta == "/api/elegir-video":
                 elegido = elegir_video_nativo(datos.get("desde"))
                 self._json({"ok": True, "ruta": elegido})
+
+            elif ruta == "/api/fila-audio":
+                n, ri = int(datos["n"]), int(datos["ri"])
+                sonido = datos.get("sonido")
+                musica = datos.get("musica")
+                nuevo = escribir_audio(leer_panel(), n, ri, sonido, musica)
+
+                def releida_ok(f, n=n, ri=ri, sonido=sonido, musica=musica):
+                    fila = leer_fila(f, n, ri)
+                    if sonido is not None and fila["sonido"] != sonido:
+                        return False
+                    if musica is not None and fila["musica"] != musica:
+                        return False
+                    return True
+
+                _guardar_panel(nuevo, releida_ok, f"Actualizar sonido/música fila {ri} de guion {n} en panel")
+                self._json({"ok": True, "fila": leer_fila(nuevo, n, ri)})
+
+            elif ruta == "/api/imagen-ambiente-ia":
+                # Trabajo async (ver _imagen_ambiente_ia) — agy tarda 15-40s,
+                # más en una corrección; sin polling el navegador lo ve colgado.
+                tid = f"t{len(TRABAJOS) + 1}"
+                TRABAJOS[tid] = {"estado": "corriendo", "log": []}
+                threading.Thread(target=_imagen_ambiente_ia, args=(tid, datos), daemon=True).start()
+                self._json({"id": tid})
+
+            elif ruta == "/api/imagen-producto-ia":
+                if not datos.get("foto"):
+                    raise ValueError("elegí un producto primero")
+                tid = f"t{len(TRABAJOS) + 1}"
+                TRABAJOS[tid] = {"estado": "corriendo", "log": []}
+                threading.Thread(target=_imagen_producto_ia, args=(tid, datos), daemon=True).start()
+                self._json({"id": tid})
+
+            elif ruta == "/api/prompt-producto-ia":
+                correccion = datos.get("correccion", "")
+                es_correccion = bool(correccion and datos.get("conversation_id"))
+                if not datos.get("escena") and not es_correccion:
+                    raise ValueError("escribí la idea de la escena primero")
+                prompt, cid = f_agy_video.prompt_producto_texto(
+                    datos.get("escena", ""), correccion=correccion,
+                    conversation_id=datos.get("conversation_id"))
+                self._json({"ok": True, "prompt": prompt, "conversation_id": cid,
+                            "proveedor": _proveedor_de(cid)})
+
+            elif ruta == "/api/prompt-veo-ia":
+                correccion = datos.get("correccion", "")
+                es_correccion = bool(correccion and datos.get("conversation_id"))
+                if not datos.get("idea") and not es_correccion:
+                    raise ValueError("escribí la idea del concepto primero")
+                prompt, cid = f_agy_video.generar_prompt_veo(
+                    datos.get("idea", ""), datos.get("contexto_guion", ""),
+                    correccion=correccion, conversation_id=datos.get("conversation_id"))
+                self._json({"ok": True, "prompt": prompt, "conversation_id": cid,
+                            "proveedor": _proveedor_de(cid)})
 
             elif ruta == "/api/correr":
                 video = datos.get("video")

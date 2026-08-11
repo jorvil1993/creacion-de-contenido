@@ -42,7 +42,10 @@
   .escena-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
   /* Velo: sin esto el titular blanco compite con las zonas claras y pierde
-     legibilidad. Solo cubre la franja del texto. */
+     legibilidad. Solo cubre la franja del texto. Reforzado 2026-08-03: con
+     fondos de agy/Qwen (fotorrealistas, no plantillas de color) la franja de
+     arriba a veces trae ventanas, cielo o detalle brillante justo detras del
+     titular -- el velo anterior (86% -> 0% a los 52%) no siempre alcanzaba. */
   .velo {
     position: absolute; inset: 0;
     background: linear-gradient(180deg,
@@ -183,11 +186,104 @@
   .dolor .bien .t { color: var(--txt); font-weight: 800; font-size: __DO_F__px;
                     line-height: 1.25; }
 
+  /* ---- moldes de 2026-08-10: chat, precio y comparativa en filas ----
+     Los tres son bloques ABSOLUTOS que arrancan debajo del titular
+     (--bloque-top, que se pasa por arte porque depende de cuantas lineas tenga)
+     y terminan justo encima del pie. No van dentro de .texto como las fichas:
+     necesitan el alto completo que queda libre, no fluir bajo la bajada. */
+  :root { --bloque-top: __BLOQUE_TOP__%; }
+  .bloque {
+    position: absolute; left: 5.5%; right: 5.5%;
+    top: var(--bloque-top); bottom: calc(var(--pie) + __BLO_GAP__px);
+  }
+
+  /* Kicker: la linea chica en mayusculas encima del titular. Es lo que hace que
+     el arte diga de que va antes de que la persona lea el titular entero. */
+  .kicker {
+    font-weight: 800; font-size: __KICK_F__px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--turquesa);
+    margin-bottom: __KICK_MB__px;
+  }
+
+  /* ---- molde chat ----
+     Verde y beige de WhatsApp de verdad, NO el turquesa de la casa: la gracia
+     del molde es que se lea como una captura real. La marca entra por el pie. */
+  .chat {
+    background: #ECE5DD; border-radius: __CH_RAD__px; padding: __CH_PAD__px;
+    display: flex; flex-direction: column; justify-content: center;
+    gap: __CH_GAP__px;
+    box-shadow: 0 __CH_S__px __CH_S2__px rgba(0,0,0,.35);
+  }
+  .chat .b {
+    max-width: 80%; padding: __CH_BPY__px __CH_BPX__px; border-radius: __CH_BRAD__px;
+    font-size: __CH_F__px; line-height: 1.32; color: #111b21; font-weight: 400;
+    box-shadow: 0 1px 2px rgba(0,0,0,.16);
+  }
+  .chat .b b { font-weight: 700; }
+  .chat .b.suya { background: #FFFFFF; align-self: flex-start; border-top-left-radius: __CH_PICO__px; }
+  .chat .b.mia  { background: #D9FDD3; align-self: flex-end;   border-top-right-radius: __CH_PICO__px; }
+  .chat .b .hora { display: block; text-align: right; font-size: __CH_HF__px;
+                   color: #667781; margin-top: __CH_HMT__px; }
+
+  /* ---- molde precio ---- */
+  .precio { position: absolute; left: 5.5%; top: var(--bloque-top); }
+  .precio .rotulo { font-weight: 700; font-size: __PR_RF__px; color: var(--txt);
+                    opacity: .8; letter-spacing: .06em; text-transform: uppercase; }
+  .precio .num { font-weight: 800; font-size: __PR_NF__px; color: var(--turquesa);
+                 line-height: .92; letter-spacing: -.02em; }
+  .precio .num small { font-size: __PR_MF__px; }
+  /* La lista de "que incluye" va donde iria la barra de confianza: encima del
+     pie, nunca sobre el. */
+  .incluye {
+    position: absolute; left: 5.5%; right: 5.5%;
+    bottom: calc(var(--pie) + __BLO_GAP__px);
+    background: rgba(1,26,46,.72); border: 1px solid rgba(255,255,255,.16);
+    border-radius: __IN_RAD__px; padding: __IN_PY__px __IN_PX__px;
+    display: flex; flex-direction: column; gap: __IN_GAP__px;
+  }
+  .incluye .it { display: flex; align-items: center; gap: __IN_ICOGAP__px;
+                 color: #fff; font-weight: 700; font-size: __IN_F__px; }
+  .incluye .tic { width: __IN_ICO__px; height: __IN_ICO__px; flex: none; border-radius: 50%;
+                  background: var(--turquesa); display: flex; align-items: center;
+                  justify-content: center; }
+  .incluye .tic svg { width: 62%; height: 62%; }
+
+  /* ---- molde comparativa en filas ----
+     Distinto del molde `split`, que son dos FOTOS. Este es una tabla de texto:
+     una fila por criterio, la columna mala en rojo y la buena en turquesa. */
+  .tabla { display: flex; flex-direction: column; justify-content: space-between; }
+  .tabla .cabeza, .tabla .fila { display: grid; grid-template-columns: 1fr 1fr; gap: __TB_GAP__px; }
+  .tabla .chip { border-radius: 999px; text-align: center; font-weight: 800;
+                 font-size: __TB_CF__px; padding: __TB_CP__px 0; letter-spacing: .04em; }
+  .tabla .chip.mal  { background: #D52B1E; color: #fff; }
+  .tabla .chip.bien { background: var(--turquesa); color: var(--navy); }
+  .tabla .et { grid-column: 1 / -1; font-weight: 800; font-size: __TB_EF__px;
+               color: var(--txt); opacity: .62; letter-spacing: .10em;
+               text-transform: uppercase; margin-bottom: __TB_EMB__px; }
+  .tabla .cel { border-radius: __TB_RAD__px; padding: __TB_PY__px __TB_PX__px;
+                font-weight: 700; font-size: __TB_F__px; line-height: 1.24;
+                display: flex; align-items: center; }
+  .tabla .cel.mal  { background: rgba(213,43,30,.16); border: 1px solid rgba(255,120,110,.42); color: #ffd9d5; }
+  .tabla .cel.bien { background: rgba(0,199,202,.16); border: 1px solid rgba(0,199,202,.55); color: #eafcfd; }
+
   /* ---- bloque de texto ---- */
   .texto { position: absolute; top: 4.6%; left: 5.5%; right: 5.5%; }
+  /* Molde de solo texto (carrusel de diseño): sin producto abajo, el bloque se
+     centra en el hueco libre en vez de quedar pegado arriba. __TEXTO_Y__ ya
+     descuenta el alto del pie. */
+  .texto.centro {
+    top: __TEXTO_Y__%; transform: translateY(-50%);
+  }
+  .texto.centro .titular, .texto.centro .divisor,
+  .texto.centro .producto, .texto.centro .bajada { max-width: 100%; }
   .texto .titular, .texto .divisor, .texto .producto, .texto .bajada {
     max-width: __TXT_MAX__%;
   }
+  /* Moldes chat y comparativa: el bloque de abajo es el contenido real, el
+     divisor y el nombre del producto solo le roban alto. */
+  .texto.compacto .divisor,
+  .texto.compacto .producto,
+  .texto.compacto .bajada { display: none; }
   .titular {
     font-weight: 800; font-size: __TIT__px;
     line-height: .98; letter-spacing: -.015em;
@@ -212,11 +308,11 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     text-align: center; line-height: 1;
     box-shadow: 0 6px 24px rgba(0,0,0,.3);
-    padding: 6%;
+    padding: 3%;
   }
   .sello .num { font-weight: 800; font-size: __SELLO_N__px; flex: none; }
   .sello .lab { font-weight: 700; font-size: __SELLO_L__px; margin-top: .24em; line-height: 1.12; flex: none; }
-  .sello .ico { width: 72%; margin-bottom: .22em; flex: none; }
+  .sello .ico { width: 64%; margin-bottom: .22em; flex: none; }
   .sello .ico svg { width: 100%; height: auto; display: block; }
   /* Bandera de Bolivia en SVG y no emoji: el Chrome del render no siempre trae
      fuente de emoji a color instalada y saldria en blanco. Mismo criterio que
@@ -284,7 +380,8 @@
   __CALLOUTS__
   __SPLIT__
 
-  <div class="texto">
+  <div class="__TEXTO_CLASE__">
+    __KICKER__
     <div class="titular">__TITULAR__</div>
     <div class="divisor"></div>
     <div class="producto">__PRODUCTO__</div>
@@ -293,17 +390,16 @@
     __DOLORES__
   </div>
 
+  __CHAT__
+  __PRECIO__
+  __FILAS__
+  __INCLUYE__
+
   __SELLO__
 
   __CONFIANZA__
 
   <div class="logo-caja"><img src="__LOGO__" alt="Device Shop BO"></div>
 
-  <div class="cta">
-    <div class="fila">
-      <svg viewBox="0 0 24 24" fill="#011A2E"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.22 8.22 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.7 8.23-8.24 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.78.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.5.11-.11.25-.29.37-.43.13-.15.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.48c-.16 0-.43.06-.65.31-.22.25-.85.83-.85 2.03s.87 2.35.99 2.51c.12.16 1.71 2.61 4.15 3.66.58.25 1.03.4 1.39.51.58.19 1.11.16 1.53.1.47-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.11-.22-.17-.47-.29z"/></svg>
-      <span class="txt">CONTÁCTANOS</span>
-    </div>
-    <div class="fila oscura"><span class="num">692-14437</span></div>
-  </div>
+  __CTA__
 </div>
