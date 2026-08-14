@@ -1,0 +1,34 @@
+{
+  "id": "PRUEBA-CAJA-KOBO-LIBRA-2",
+  "version": "claude",
+  "generado_por": "claude",
+  "fecha_generacion": "2026-08-12",
+  "fecha_publicacion": "2026-08-13",
+  "estado": "prueba",
+  "tipo": "arte_individual",
+  "producto": "kobo-libra-colour",
+  "titular": "KOBO LIBRA COLOUR<br><span class=\"acento\">CON SU CAJA</span>",
+  "modelo": "KOBO LIBRA COLOUR",
+  "bajada": "Sellado y protegido, como sale de la tienda.",
+  "hashtags": [],
+  "formato": "cuadrado",
+  "medidas": "1080x1080",
+  "motor": "escena agy + artes/a1_marca.py",
+  "conversation_id_agy": "271e7dac-c9f8-40e7-b846-4bda3d581797",
+  "foto_referencia": "contexto\\referencia\\kobo-libra-colour\\tres-cuartos-negro.jpg",
+  "foto_referencia_2": "contexto\\referencia\\kobo-libra-colour\\caja-negro-frontal.jpg",
+  "prompt_escena": "An e-reader with an asymmetric grip and physical page-turn buttons lying flat on a warm wooden desk, its colour display showing an illustrated book cover, and beside it its retail packaging box standing upright with its printed cover facing the camera, soft natural window light from the left, a blurred bookshelf in the background. The device is a modern e-reader with a matte, non-glossy electronic ink display that looks like printed paper under the ambient light. The screen is a flat rigid surface and stays perfectly flat at all times: nothing lifts, peels, curls, flies or emerges from it, and there are no paper sheets anywhere in the frame. Only the front face has a display; the back is a plain solid shell with no screen. The device shape, buttons, bezels and proportions match the reference image exactly. The screen shows normal readable book content. Text is allowed ONLY inside the screen, as the book content itself, and the device's own manufacturer wordmark exactly as it is printed on its body in the reference image (reproduce that mark faithfully, do not remove it and do not invent a different one); everywhere else in the image there are no brand names, no invented logos, no lettering, no watermark and no text overlay. The camera stays in a fixed position, no orbit. Vertical square 1:1 framing, natural editorial product photography, shot on a 50mm lens, shallow depth of field, soft realistic light. There are TWO reference images. The FIRST is the device: its exact shape, proportions, thickness, bezels and buttons must be reproduced exactly as shown, never simplified or averaged toward a generic rectangular slate. The SECOND reference image is ONLY the retail box the device comes in: reproduce its exact size, shape, colour, finish and every printed element (the product photo on the front, the wordmark and the text) faithfully, exactly as printed in the reference image. The box is a SEPARATE object standing beside the device, never merged with it and never reshaped by it. No new text, logo or label may be added anywhere in the scene beyond what is already printed on the box in the reference image. The illustration or book cover printed on the box's own product photo was fixed at the factory and comes ONLY from the second reference image: it must NOT be changed, redrawn or matched to whatever content is shown on the actual device's screen elsewhere in this scene -- the box's printed picture and the device's on-screen content are independent and may show completely different things.",
+  "sellos": [
+    "escudo",
+    "efectivo_a"
+  ],
+  "sin_precio": true,
+  "sello_ia": false,
+  "voz": "tuteo",
+  "regla": "el producto aparece una sola vez, puesto por el modelo en la escena; el modelo se nombra una vez y la bajada no lo repite",
+  "archivos": [
+    "PRUEBA-CAJA-KOBO-LIBRA-2-1.jpg",
+    "copy.txt"
+  ],
+  "nota": "prueba del fix: la caja no debe copiar la pantalla del equipo"
+}

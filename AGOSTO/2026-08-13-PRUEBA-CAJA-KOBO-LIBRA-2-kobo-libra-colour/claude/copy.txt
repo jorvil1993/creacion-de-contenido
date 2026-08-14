@@ -1,0 +1,3 @@
+Prueba 2: confirmar que la pantalla de la caja ya no copia la del equipo.
+
+
