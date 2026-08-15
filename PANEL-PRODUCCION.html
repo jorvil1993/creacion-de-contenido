@@ -329,7 +329,7 @@ a{color:var(--cian)}
     <button data-s="ayuda">📖 Cómo funciona</button>
     <button data-s="pipeline" id="nav-pipeline" class="pipe-solo pipe-off">🚀 Hacer el video</button>
     <button data-s="ia" id="nav-ia" class="pipe-solo pipe-off">🤖 Generar con IA</button>
-    <button style="background:var(--navy2);border-color:var(--cian);color:var(--cian);font-weight:700" onclick="abrirTeleprompter(1)">📺 Teleprompter</button>
+    <button style="background:var(--navy2);border-color:var(--cian);color:var(--cian);font-weight:700" onclick="abrirTeleprompterActual()">📺 Teleprompter</button>
   </nav>
 </header>
 
@@ -347,7 +347,7 @@ a{color:var(--cian)}
     segundo.
   </div>
   <div class="aviso bien">
-    <b>Si vas guion por guion:</b> seguí el orden que marca el calendario maestro.
+    <b>Si vas guion por guion:</b> sigue el orden que marca el calendario maestro.
     Revisa los recursos de cada guion antes de grabar: mientras más se reutilicen,
     menos material nuevo necesita cada video.
   </div>
@@ -1015,7 +1015,7 @@ const G=[
 {n:3,t:'La Kobo Libra Colour ya está en Bolivia.',rum:84,bloque:'Demostración',hook:'talking',hooksegs:2.0,cierresegs:0,
  hooktxt:'Sostienes la Kobo junto a tu cara desde el primer fotograma y la acercas ligeramente a cámara',
  utileria:['Kobo Libra Colour o su caja sellada','Mesa despejada','Kobo Stylus 2 solo si lo tienes'],
- set:['Plano medio vertical, cámara a la altura de los ojos','La Kobo aparece desde el primer fotograma y ocupa cerca del 40% del cuadro','Graba todo el texto como una sola toma continua; el pipeline pondrá los B-rolls encima','Después graba un primer plano del pulgar presionando los dos botones durante 4 segundos y guárdalo como kobo-libra-colour-botones.mp4','Si F35–F39 pertenecen a otro creador, no los uses en Promote sin permiso: recrea esos planos con una unidad demo'],
+ set:['Plano medio vertical, cámara a la altura de los ojos','La Kobo aparece desde el primer fotograma y ocupa cerca del 40% del cuadro','Graba todo el texto como una sola toma continua; el pipeline pondrá los B-rolls encima','REGLA DE MONTAJE: ningún plano tuyo ni B-roll permanece más de 3 segundos; alterna YO, acercamiento y B-roll','Después graba un primer plano del pulgar presionando los dos botones durante 4 segundos y guárdalo como kobo-libra-colour-botones.mp4','Si F35–F39 pertenecen a otro creador, no los uses en Promote sin permiso: recrea esos planos con una unidad demo'],
  tele:'La Kobo Libra Colour ya está en Bolivia. || Parece una tablet, pero su pantalla parece papel de verdad. || Puedes ajustar la luz para leer más cómodo, de día o de noche. || También tiene botones cómodos para pasar página fácilmente. || Aquí no tienes mensajes, videos ni redes sociales interrumpiéndote. Solo tus libros, con portadas y subrayados a color. || También puedes usar un lápiz especial para marcar y escribir. || Es como llevar una biblioteca completa en tus manos. || Encuéntrala en DeviceShop BO. || Escríbenos la palabra KOBO y te damos todos los detalles.',
  tomas:[
   ['0–7s','Plano medio · HOOK','Miras a cámara con la Kobo junto a tu cara. La acercas un poco al decir «Bolivia» y luego muestras la pantalla.','La Kobo Libra Colour ya está en Bolivia. Parece una tablet, pero su pantalla parece papel de verdad.'],
@@ -1025,16 +1025,17 @@ const G=[
   ['30–37s','Plano medio · CIERRE','Dejas la Kobo junto a tu rostro, señalas el texto de WhatsApp y terminas mirando a cámara.','Encuéntrala en DeviceShop BO. Escríbenos la palabra KOBO y te damos todos los detalles.']],
  tl:[
   ['0–3s','La Kobo Libra Colour ya está en Bolivia.','YO','Tú con la Kobo junto a tu cara + texto «YA EN BOLIVIA 🇧🇴»','impacto_hit_2','—'],
-  ['3–7s','Parece una tablet, pero su pantalla parece papel de verdad.','B-ROLL','F39 a pantalla completa: unboxing y pantalla de bienvenida','riser_reveal','entra 01-comercial a −20 dB'],
-  ['7–10s','Puedes ajustar la luz para leer más cómodo, de día o de noche.','B-ROLL','F35 a pantalla completa; usa solo el tramo 0.8–3.0s y omite la caja del Stylus del final','ui_sparkle','—'],
-  ['10–13s','También tiene botones cómodos para pasar página fácilmente.','B-ROLL','F40 a pantalla completa: primer plano propio del pulgar presionando los botones','ui_click','—'],
-  ['13–17s','Aquí no tienes mensajes, videos ni redes sociales interrumpiéndote.','B-ROLL','F01 a pantalla completa: celular de noche','subdrop_1','baja a −24 dB'],
-  ['17–20s','Solo tus libros,','B-ROLL','F37 a pantalla completa: biblioteca y portadas a color','whoosh_simple','sube a −19 dB'],
-  ['20–23s','con portadas y subrayados a color.','YO','Vuelves tú sosteniendo la Kobo; acercamiento digital suave','transicion_corte','—'],
-  ['23–27s','También puedes usar un lápiz especial para marcar y escribir.','B-ROLL','F38 a pantalla completa: subrayado y escritura; texto pequeño «Stylus 2 se vende por separado»','ui_blip_1','—'],
+  ['3–6s','Parece una tablet, pero su pantalla parece papel de verdad.','B-ROLL','F39 a pantalla completa: unboxing y pantalla de bienvenida','riser_reveal','entra 01-comercial a −20 dB'],
+  ['6–9s','Puedes ajustar la luz para leer más cómodo, de día o de noche.','B-ROLL','F35 a pantalla completa; usa solo el tramo 0.8–3.0s y omite la caja del Stylus del final','ui_sparkle','—'],
+  ['9–12s','También tiene botones cómodos para pasar página fácilmente.','B-ROLL','F40 a pantalla completa: primer plano propio del pulgar presionando los botones','ui_click','—'],
+  ['12–15s','Aquí no tienes mensajes, videos ni redes sociales interrumpiéndote.','B-ROLL','F01 a pantalla completa: celular de noche','subdrop_1','baja a −24 dB'],
+  ['15–18s','Aquí no tienes mensajes, videos ni redes sociales interrumpiéndote.','YO','Vuelves tú con un acercamiento digital y texto «SIN DISTRACCIONES»','transicion_corte','—'],
+  ['18–21s','Solo tus libros, con portadas y subrayados a color.','B-ROLL','F37 a pantalla completa: biblioteca y portadas a color','whoosh_simple','sube a −19 dB'],
+  ['21–24s','Solo tus libros, con portadas y subrayados a color.','YO','Vuelves tú sosteniendo la Kobo; encuadre más cerrado','reverso_3','—'],
+  ['24–27s','También puedes usar un lápiz especial para marcar y escribir.','B-ROLL','F38 a pantalla completa: subrayado y escritura; texto pequeño «Stylus 2 se vende por separado»','ui_blip_1','—'],
   ['27–30s','Es como llevar una biblioteca completa en tus manos.','B-ROLL','F09 a pantalla completa: estanterías y luz dorada','whoosh_grave_3','sube a −18 dB'],
   ['30–33s','Encuéntrala en DeviceShop BO.','YO','Tú con la Kobo o su caja, junto al rostro','reverso_3','baja a −22 dB'],
-  ['33–37s','Escríbenos la palabra KOBO y te damos todos los detalles.','ANIM','tarjeta-cta + «ESCRÍBENOS KOBO» + DeviceShop BO','tada_cierre','fade out']]}
+  ['33–36s','Escríbenos la palabra KOBO y te damos todos los detalles.','ANIM','tarjeta-cta + «ESCRÍBENOS KOBO» + DeviceShop BO','tada_cierre','fade out']]}
 ];
 
 const HOOKLBL={fisico:['h-fisico','⚡ Hook físico'],objeto:['h-objeto','📦 Hook con objeto'],
@@ -1751,17 +1752,29 @@ function abrirTeleprompter(gNum){
  requestWakeLock();
 }
 
+function numeroGuionTeleprompterActual(){
+ const m = /^#(?:guion|teleprompter)-(\d+)$/.exec(location.hash || '');
+ const nHash = m ? +m[1] : null;
+ if(nHash !== null && G.some(g => g.n === nHash)) return nHash;
+ if(guionSeleccionado !== null && G.some(g => g.n === guionSeleccionado)) return guionSeleccionado;
+ return G.length ? G[0].n : 1;
+}
+
+function abrirTeleprompterActual(){
+ abrirTeleprompter(numeroGuionTeleprompterActual());
+}
+
 function teleCargarGuion(gNum){
  teleStop();
  const g = G.find(x=>x.n===gNum);
  if(!g) return;
  const content = document.getElementById('tele-content');
  let html = `<div style="font-size:0.55em;color:var(--cian);margin-bottom:30px;font-weight:800;letter-spacing:1.5px">🎬 GUION ${g.n} · ${g.t.toUpperCase()}</div>`;
- html += g.tomas.map((t, idx)=>`
+ html += g.tele.split(' || ').map((frase, idx)=>`
    <div class="tele-frase">
-     <span class="tele-cue">TOMA ${idx+1} (${t[0]}) — ${t[1]}</span>
-     <div>${t[3]}</div>
-     <span class="tele-pausa">⏸ PAUSA // CAMBIO DE PLANO</span>
+     <span class="tele-cue">FRASE ${idx+1}</span>
+     <div>${frase}</div>
+     <span class="tele-pausa">⏸ PAUSA</span>
    </div>
  `).join('');
  content.innerHTML = html;
@@ -2665,6 +2678,17 @@ function abrirGuionDelHash(){
   if(!G.some(g=>g.n===n)) return;
   irAGuion(n);
 }
+function abrirTeleprompterDelHash(){
+  const m=/^#teleprompter-(\d+)$/.exec(location.hash||'');
+  if(!m) return;
+  const n=+m[1];
+  if(!G.some(g=>g.n===n)) return;
+  abrirTeleprompter(n);
+}
 abrirGuionDelHash();
-window.addEventListener('hashchange',abrirGuionDelHash);
+abrirTeleprompterDelHash();
+window.addEventListener('hashchange',()=>{
+  abrirGuionDelHash();
+  abrirTeleprompterDelHash();
+});
 </script>
