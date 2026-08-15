@@ -5,7 +5,7 @@
      puede hacer desde el propio archivo es que no la INDEXEN, y va en la etiqueta
      y no en un robots.txt porque esto es una "project page": el robots.txt solo
      lo miran en la raíz del dominio (jorvil1993.github.io/robots.txt), que
-     pertenece a otro repo. Sin esto, los guiones y los 40 prompts acabarían
+     pertenece a otro repo. Sin esto, los guiones y sus prompts acabarían
      buscables en Google. -->
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <meta name="referrer" content="no-referrer">
@@ -323,8 +323,8 @@ a{color:var(--cian)}
 <header>
   <h1>Panel de producción · <b>DeviceShop</b></h1>
   <nav>
-    <button class="on" data-s="guiones">🎬 Guiones (10)</button>
-    <button data-s="prompts">🎨 Prompts (40)</button>
+    <button class="on" data-s="guiones" id="nav-guiones">🎬 Guiones</button>
+    <button data-s="prompts" id="nav-prompts">🎨 Prompts</button>
     <button data-s="lote">⚡ Lote de 4</button>
     <button data-s="ayuda">📖 Cómo funciona</button>
     <button data-s="pipeline" id="nav-pipeline" class="pipe-solo pipe-off">🚀 Hacer el video</button>
@@ -338,7 +338,7 @@ a{color:var(--cian)}
 <!-- ══════════ GUIONES ══════════ -->
 <section id="s-guiones" class="on">
   <h2>Guiones de producción
-    <span class="sub">Los 10 de RUM más alto, listos para grabar. Cada uno indica qué grabar, qué decir y qué se ve en pantalla segundo a segundo.</span>
+    <span class="sub">Los guiones vigentes del mes, definidos por el calendario maestro. Cada uno indica qué grabar, qué decir y qué se ve en pantalla segundo a segundo.</span>
   </h2>
   <div class="aviso">
     <b>Cómo usar esto:</b> abre el guion, lee <b>Antes de grabar</b>, usa el botón
@@ -347,11 +347,9 @@ a{color:var(--cian)}
     segundo.
   </div>
   <div class="aviso bien">
-    <b>Si vas guion por guion:</b> empieza por el <b>27</b> — solo necesita 2 clips
-    (40 créditos), así pruebas el circuito completo barato. Después el <b>7</b> y el
-    <b>8</b>, que comparten 2 clips entre sí. Los 10 guiones usan <b>26 clips
-    distintos, no 45</b>: mientras más avances, menos material nuevo necesita cada
-    guion.
+    <b>Si vas guion por guion:</b> seguí el orden que marca el calendario maestro.
+    Revisa los recursos de cada guion antes de grabar: mientras más se reutilicen,
+    menos material nuevo necesita cada video.
   </div>
   <div id="guiones"></div>
 </section>
@@ -359,7 +357,7 @@ a{color:var(--cian)}
 <!-- ══════════ PIPELINE (solo cuando panel_servidor.py está detrás) ══════════ -->
 <section id="s-pipeline">
   <h2>Hacer el video
-    <span class="sub">Elegí la grabación y el guion. El pipeline lee de este mismo archivo todo lo demás: los cortes, los B-rolls, los PiP, los sonidos y la música.</span>
+    <span class="sub">Elige la grabación y el guion. El pipeline lee de este mismo archivo todo lo demás: los cortes, los B-rolls, los PiP, los sonidos y la música.</span>
   </h2>
 
   <div class="pipe-estado" id="pipe-conexion">
@@ -374,7 +372,7 @@ a{color:var(--cian)}
       <select id="pipe-video" onchange="pipeElegirDeLista()"></select>
       <button class="btn sec" onclick="pipeBuscarEnDisco()">📁 Buscar en el disco…</button>
     </div>
-    <p class="notaflow" style="margin:0">Salen solas las de <span class="ruta" id="pipe-dir-entrada">entrada/</span>. Si la grabación está en otro lado, buscala con el botón.</p>
+    <p class="notaflow" style="margin:0">Salen solas las de <span class="ruta" id="pipe-dir-entrada">entrada/</span>. Si la grabación está en otro lado, búscala con el botón.</p>
     <p class="notaflow" id="pipe-video-elegido" style="margin:8px 0 0"></p>
   </div>
 
@@ -416,11 +414,11 @@ a{color:var(--cian)}
   </div>
 
   <div class="aviso" id="ia-sin-agy" style="display:none">
-    <b>agy no está instalado o no se detecta.</b> Estas herramientas necesitan Antigravity CLI logueado con la cuenta de Google AI Pro — sin eso no hay nada que generar acá.
+    <b>agy no está instalado o no se detecta.</b> Estas herramientas necesitan Antigravity CLI logueado con la cuenta de Google AI Pro — sin eso no hay nada que generar aquí.
   </div>
 
   <div class="aviso bien">
-    <b>Cómo se usa el resultado:</b> las imágenes quedan en <span class="ruta">assets/generado/manual/</span> con el <b>código o nombre</b> que pongas acá abajo — es lo mismo que el pipeline ya busca solo cuando una fila dice ese código en "Qué se ve" (F01, P03…) o esa palabra suelta. No hace falta tocar nada más para que entre al video.
+    <b>Cómo se usa el resultado:</b> las imágenes quedan en <span class="ruta">assets/generado/manual/</span> con el <b>código o nombre</b> que pongas aquí abajo — es lo mismo que el pipeline ya busca solo cuando una fila dice ese código en "Qué se ve" (F01, P03…) o esa palabra suelta. No hace falta tocar nada más para que entre al video.
   </div>
 
   <div class="pipe-caja">
@@ -485,7 +483,7 @@ a{color:var(--cian)}
 
   <div class="pipe-caja">
     <h4>3 · Prompt para Google Flow / Veo (B-roll con movimiento)</h4>
-    <p class="notaflow" style="margin:0 0 10px">agy no genera el clip — redacta el prompt con las reglas ya aprendidas (regla del primer frame, blindaje del logo y las hojas). Lo pegás en <a href="https://labs.google/fx/tools/flow" target="_blank">Google Flow</a> y subís el resultado como siempre a <span class="ruta">assets/generado/video/manual/</span>.</p>
+    <p class="notaflow" style="margin:0 0 10px">agy no genera el clip — redacta el prompt con las reglas ya aprendidas (regla del primer frame, blindaje del logo y las hojas). Lo pegas en <a href="https://labs.google/fx/tools/flow" target="_blank">Google Flow</a> y subes el resultado como siempre a <span class="ruta">assets/generado/video/manual/</span>.</p>
     <div class="pipe-fila">
       <label for="ia-veo-idea">Concepto</label>
       <textarea id="ia-veo-idea" rows="2" placeholder="ej. alguien apagando todas las notificaciones del celular de golpe" style="flex:1;min-width:200px;font:inherit;font-size:13px;background:#0a1c26;color:var(--txt);border:1px solid var(--linea);border-radius:7px;padding:7px 9px;resize:vertical"></textarea>
@@ -534,7 +532,7 @@ a{color:var(--cian)}
   <div class="aviso bien">
     <b>Cuál conviene:</b> usa <b>4 pestañas</b> (abajo) para avanzar rápido por el
     banco — 4 clips distintos a la vez. Guarda las <b>4 variantes del mismo prompt</b>
-    solo para los clips que aparecen en 8-10 guiones, donde sí quieres versiones
+    solo para los clips que se repiten en varios guiones, donde sí quieres versiones
     alternativas para no repetir el mismo plano en todo el feed.
   </div>
   <p style="margin:18px 0 8px"><a class="btn" href="https://labs.google/fx/tools/flow" target="_blank" style="text-decoration:none;display:inline-block">↗ Abrir Google Flow</a></p>
@@ -558,17 +556,15 @@ a{color:var(--cian)}
   <h4>Qué modelo elegir en Flow</h4>
   <table class="tabla-simple">
     <tr><th>Modelo</th><th>Créditos</th><th>¿Cuándo?</th></tr>
-    <tr><td><b>Veo 3.1 Fast</b></td><td>20</td><td><b>Los 21 clips de ambiente.</b> Van como PiP chico o B-roll de 2-3s: a ese tamaño no se ve la diferencia con Quality, y cuesta 5 veces menos</td></tr>
-    <tr><td><b>Veo 3.1 Quality</b></td><td>100</td><td><b>Los 5 clips de producto.</b> Es tu aparato real, es donde aparecen el logo falso y la deformación, y son pocos. Acá sí se justifica</td></tr>
+    <tr><td><b>Veo 3.1 Fast</b></td><td>20</td><td><b id="ayuda-ambiente">Los clips de ambiente vigentes.</b> Van como PiP chico o B-roll de 2-3s: a ese tamaño no se ve la diferencia con Quality, y cuesta 5 veces menos</td></tr>
+    <tr><td><b>Veo 3.1 Quality</b></td><td>100</td><td><b id="ayuda-producto">Los clips de producto vigentes.</b> Es tu aparato real, es donde aparecen el logo falso y la deformación, y son pocos. Aquí sí se justifica</td></tr>
     <tr><td>Veo 3.1 Lite</td><td>10</td><td><b>No.</b> Ahorra 10 créditos frente a Fast y baja bastante la calidad. No compensa</td></tr>
-    <tr><td>Omni Flash</td><td>15-30</td><td><b>Solo como plan B.</b> Máximo 720p, pero preserva mejor la identidad del objeto y permite corregir hablándole ("quítale el logo") sin regenerar. Si Quality te sigue inventando marcas en el producto, probá acá</td></tr>
+    <tr><td>Omni Flash</td><td>15-30</td><td><b>Solo como plan B.</b> Máximo 720p, pero preserva mejor la identidad del objeto y permite corregir hablándole ("quítale el logo") sin regenerar. Si Quality te sigue inventando marcas en el producto, prueba aquí</td></tr>
   </table>
-  <div class="aviso bien"><b>Presupuesto con esta mezcla:</b> 21 ambiente × 20 +
-  5 producto × 100 = <b>920 créditos</b>. Entra entero en <b>una sola cuenta</b>, y te
-  quedan las otras dos completas (2.000 créditos) para reintentos y variantes.</div>
-  <div class="aviso"><b>Antes de gastar en serio:</b> generá <code>scroll</code> en Fast y
-  <code>P01</code> en Quality (120 créditos). Miralos en el celular en vertical. Si la
-  diferencia no se nota en el PiP, bajá todo a Fast y te sobran 400 créditos más.</div>
+  <div class="aviso bien" id="ayuda-presupuesto"></div>
+  <div class="aviso"><b>Antes de gastar en serio:</b> genera primero un clip de ambiente y,
+  si este mes hay producto, uno de producto. Miralos en el celular en vertical antes de
+  completar el lote.</div>
   <div class="aviso bien"><b>P02 ya no se genera:</b> lo reemplaza <code>pagina-real.mp4</code>,
   metraje real de un unboxing (con permiso de MySmartPrice) que muestra exactamente ese plano
   — el aparato en la mano con una página legible. Cero créditos, cero riesgo de logo falso.</div>
@@ -589,7 +585,7 @@ a{color:var(--cian)}
   <p>Todos van a <code>assets\generado\video\manual\</code>. Esa carpeta no existe
   todavía: créala al bajar el primero.</p>
   <div class="aviso"><b>✅ Integrado en el pipeline (Modo `--guion N`):</b>
-  al ejecutar <code>python editor/editor.py "contexto/Guion-7.mp4" --guion 7</code>,
+  al ejecutar <code>python editor/editor.py "entrada/mi-grabacion.mp4" --guion N</code>,
   el pipeline lee las instrucciones de este guion tal cual están escritas en el panel.
   Inserta los B-rolls a pantalla completa (1080×1920) y los PIPs en tarjetas con marco (400×520 via <code>render_pip_video()</code>),
   desencadena los SFX exactos de la tabla y ajusta los subtítulos karaoke.
@@ -601,7 +597,7 @@ a{color:var(--cian)}
   <h4>Glosario · qué significa cada término</h4>
   <table class="tabla-simple">
     <tr><th>Término</th><th>Qué es</th><th>¿Lo haces tú?</th></tr>
-    <tr><td><b>Punch-in</b></td><td>Un salto de zoom brusco hacia tu cara en la palabra clave, sin mover la cámara. Es la técnica #1 de retención en talking-head vertical</td><td><b>No.</b> Lo hace el pipeline solo, detectando dónde subes el énfasis. Tú solo hablá normal</td></tr>
+    <tr><td><b>Punch-in</b></td><td>Un salto de zoom brusco hacia tu cara en la palabra clave, sin mover la cámara. Es la técnica #1 de retención en talking-head vertical</td><td><b>No.</b> Lo hace el pipeline solo, detectando dónde subes el énfasis. Tú solo habla normal</td></tr>
     <tr><td><b>PIP</b></td><td>Un recuadro chico con otra imagen o clip, sobre tu video, arriba a un costado. Tú sigues viéndote. El pipeline recorta el clip solo y le pone el marco</td><td><b>No.</b> Lo pega el pipeline</td></tr>
     <tr><td><b>B-roll</b></td><td>Un clip que <i>tapa</i> tu video entero por 2-3 segundos. Tu voz sigue sonando y los subtítulos quedan encima</td><td><b>No.</b> Lo pega el pipeline</td></tr>
     <tr><td><b>YO</b></td><td>Se ve tu grabación en bruto, sin nada encima</td><td><b>Sí</b>, eso es lo que grabas</td></tr>
@@ -628,7 +624,7 @@ a{color:var(--cian)}
   desde una foto tuya, con <b>Frames to Video</b>.</p>
   <p>Son nombres de archivo, no algo que generes por guion: el mismo
   <span class="clip">P02<span class="tip"><b>P02 · producto</b>Paperwhite 16GB en la mano, pantalla blanco y negro.<i>Se usa en 14 guiones</i></span></span>
-  se reutiliza en 14 guiones distintos. Pasá el mouse por encima de cualquier
+  se reutiliza en 14 guiones distintos. Pasa el mouse por encima de cualquier
   código en los guiones y te dice qué es.</p>
 
   <h4>Los tres errores de Veo que ya están blindados</h4>
@@ -756,56 +752,56 @@ async function apiPost(ruta,cuerpo){
 
 /* ═══════════ CATÁLOGO DE CLIPS ═══════════ */
 const CLIPS={
- F01:['noche','Cara en la oscuridad iluminada por el celular','6 guiones'],
- F02:['ojos','Primer plano de ojos cansados frotándose','6 guiones'],
- F03:['insomnio','Dando vueltas en la cama, reloj de madrugada','3 guiones'],
- F04:['sol','Sol fuerte, reflejo cegador en la pantalla','2 guiones'],
- F05:['cama','Cama acogedora con luz cálida','2 guiones'],
- F06:['cafe','Café humeando mientras se espera','1 guion'],
- F07:['viaje','Maleta abierta, ropa doblada','1 guion'],
- F08:['libros','Pila pesada de libros de tapa dura','8 guiones'],
- F09:['biblioteca','Estanterías infinitas, luz dorada','7 guiones'],
- F11:['agua','Gotas de agua salpicando en cámara lenta','1 guion'],
- F12:['tina','Bañera con espuma y vapor','1 guion'],
- F13:['regalo','Caja de regalo con moño de satén','4 guiones'],
- F14:['scroll','Pulgar deslizando sin fin en la oscuridad','10 guiones'],
- F15:['tiempo','Arena cayendo en un reloj de arena','3 guiones'],
- F16:['abandonado','Libro olvidado con separador y polvo','5 guiones'],
- F17:['notificaciones','Enjambre de burbujas de notificación','3 guiones'],
- F18:['ninos-pantalla','Niño a oscuras frente a una tablet','3 guiones'],
- F19:['ninos-leyendo','Niño leyendo feliz junto a la ventana','3 guiones'],
- F20:['mama','Mujer de 50s leyendo en un sillón','1 guion'],
- F21:['pareja','Uno duerme, el otro lee en la oscuridad','1 guion'],
- F22:['mochila','Mochila escolar reventada de libros','1 guion'],
- F23:['bateria','Celular muriéndose, cable fuera de alcance','3 guiones'],
- F24:['entrega','Moto de delivery en la ciudad','3 guiones'],
- F25:['caja','Caja de cartón abriéndose','2 guiones'],
- F28:['piscina','Borde de piscina en verano','2 guiones'],
- F29:['lampara','Lámpara que se enciende en la oscuridad','1 guion'],
- F30:['vitrina','Alguien indeciso en un pasillo de tienda','4 guiones'],
- F31:['kindle-primer-plano','Primer plano del aparato leyendo sin distracciones','1 guion'],
- F32:['lluvia','Lluvia en la ventana, luz cálida adentro','2 guiones'],
- F33:['rendicion','Se rinde: suelta el libro y agarra el celular','1 guion'],
+ F01:['noche','Cara en la oscuridad iluminada por el celular'],
+ F02:['ojos','Primer plano de ojos cansados frotándose'],
+ F03:['insomnio','Dando vueltas en la cama, reloj de madrugada'],
+ F04:['sol','Sol fuerte, reflejo cegador en la pantalla'],
+ F05:['cama','Cama acogedora con luz cálida'],
+ F06:['cafe','Café humeando mientras se espera'],
+ F07:['viaje','Maleta abierta, ropa doblada'],
+ F08:['libros','Pila pesada de libros de tapa dura'],
+ F09:['biblioteca','Estanterías infinitas, luz dorada'],
+ F11:['agua','Gotas de agua salpicando en cámara lenta'],
+ F12:['tina','Bañera con espuma y vapor'],
+ F13:['regalo','Caja de regalo con moño de satén'],
+ F14:['scroll','Pulgar deslizando sin fin en la oscuridad'],
+ F15:['tiempo','Arena cayendo en un reloj de arena'],
+ F16:['abandonado','Libro olvidado con separador y polvo'],
+ F17:['notificaciones','Enjambre de burbujas de notificación'],
+ F18:['ninos-pantalla','Niño a oscuras frente a una tablet'],
+ F19:['ninos-leyendo','Niño leyendo feliz junto a la ventana'],
+ F20:['mama','Mujer de 50s leyendo en un sillón'],
+ F21:['pareja','Uno duerme, el otro lee en la oscuridad'],
+ F22:['mochila','Mochila escolar reventada de libros'],
+ F23:['bateria','Celular muriéndose, cable fuera de alcance'],
+ F24:['entrega','Moto de delivery en la ciudad'],
+ F25:['caja','Caja de cartón abriéndose'],
+ F28:['piscina','Borde de piscina en verano'],
+ F29:['lampara','Lámpara que se enciende en la oscuridad'],
+ F30:['vitrina','Alguien indeciso en un pasillo de tienda'],
+ F31:['kindle-primer-plano','Primer plano del aparato leyendo sin distracciones'],
+ F32:['lluvia','Lluvia en la ventana, luz cálida adentro'],
+ F33:['rendicion','Se rinde: suelta el libro y agarra el celular'],
  F34:['kindle-real','[REAL, con permiso — MySmartPrice] Encendido: logo Kindle y árbol','sin usar aún'],
- P01:['P01','Paperwhite en la cama de noche · pantalla B/N','10 guiones'],
- P02:['pagina-real','[REAL, con permiso — MySmartPrice] Paperwhite 16GB en la mano · pantalla B/N','14 guiones'],
- P03:['P03','Paperwhite a pleno sol · pantalla B/N','2 guiones'],
- P04:['P04','Paperwhite jade (verde matcha) a oscuras · B/N','3 guiones'],
- P05:['P05','Kindle Basic liviano en una mano · B/N','6 guiones'],
- P06:['P06','Paperwhite raspberry como regalo · B/N','5 guiones'],
- P07:['P07','Paperwhite Kids en manos de niño · B/N','3 guiones'],
- P08:['P08','Kindle Colorsoft · pantalla A COLOR','1 guion'],
- P09:['P09','Kobo Libra Colour con botones · A COLOR','2 guiones'],
- P10:['P10','Kobo Clara Colour compacta · A COLOR','1 guion'],
- P11:['P11','Tus cajas selladas reales (stock)','4 guiones'],
- H01:['tarjeta-specs','Hyperframe: Ficha técnica animada con 3 características clave del producto','1 guion'],
- H02:['comparativa','Hyperframe: Comparativa animada lado a lado entre 2 modelos','1 guion'],
- H03:['anim-sol','Hyperframe: Animación de legibilidad a pleno sol sin reflejos','1 guion'],
- H04:['anim-bateria','Hyperframe: Animación de batería de larga duración (semanas)','1 guion'],
- H05:['anim-splash','Hyperframe: Animación de salpicadura de agua al mojar el equipo','1 guion'],
- H06:['anim-moto','Hyperframe: Animación de envío rápido a domicilio en Bolivia','1 guion'],
- H07:['stickers','Hyperframe: Stickers gráficos (Destello cian / Bandera Bolivia)','1 guion'],
- H08:['anim-apps','Hyperframe: Animación de marcas/apps que distraen (TikTok, WhatsApp, Facebook)','1 guion']
+ P01:['P01','Paperwhite en la cama de noche · pantalla B/N'],
+ P02:['pagina-real','[REAL, con permiso — MySmartPrice] Paperwhite 16GB en la mano · pantalla B/N'],
+ P03:['P03','Paperwhite a pleno sol · pantalla B/N'],
+ P04:['P04','Paperwhite jade (verde matcha) a oscuras · B/N'],
+ P05:['P05','Kindle Basic liviano en una mano · B/N'],
+ P06:['P06','Paperwhite raspberry como regalo · B/N'],
+ P07:['P07','Paperwhite Kids en manos de niño · B/N'],
+ P08:['P08','Kindle Colorsoft · pantalla A COLOR'],
+ P09:['P09','Kobo Libra Colour con botones · A COLOR'],
+ P10:['P10','Kobo Clara Colour compacta · A COLOR'],
+ P11:['P11','Tus cajas selladas reales (stock)'],
+ H01:['tarjeta-specs','Hyperframe: Ficha técnica animada con 3 características clave del producto'],
+ H02:['comparativa','Hyperframe: Comparativa animada lado a lado entre 2 modelos'],
+ H03:['anim-sol','Hyperframe: Animación de legibilidad a pleno sol sin reflejos'],
+ H04:['anim-bateria','Hyperframe: Animación de batería de larga duración (semanas)'],
+ H05:['anim-splash','Hyperframe: Animación de salpicadura de agua al mojar el equipo'],
+ H06:['anim-moto','Hyperframe: Animación de envío rápido a domicilio en Bolivia'],
+ H07:['stickers','Hyperframe: Stickers gráficos (Destello cian / Bandera Bolivia)'],
+ H08:['anim-apps','Hyperframe: Animación de marcas/apps que distraen (TikTok, WhatsApp, Facebook)']
 };
 // Animaciones que los guiones nombran por su slug y no por código H##. Las que
 // tienen H## se resuelven solas por COD; esta tabla es para las que no están en
@@ -938,9 +934,9 @@ document.addEventListener('mouseover',e=>{
    ${i.pide?`<span class="pide">Se le pide: ${i.pide}</span>`:''}
    ${i.real?'<i>Metraje real, no generado con IA.</i>':''}
    <i>${us.length
-     ? 'Se usa '+us.length+(us.length>1?' veces':' vez')+' en los 10 guiones: '
+     ? 'Se usa '+us.length+(us.length>1?' veces':' vez')+' en los guiones vigentes: '
        +[...new Set(us.map(u=>'G'+u.n))].join(', ')
-     : 'No se usa en los 10 guiones de producción'}</i>
+     : 'No se usa en los guiones vigentes de producción'}</i>
    <span class="clic">${accion}</span>`;
  t.style.display='block';
  const r=el.getBoundingClientRect(), tr=t.getBoundingClientRect();
@@ -953,80 +949,86 @@ document.addEventListener('mouseout',e=>{
  if(e.target.closest?.('.clip'))document.getElementById('tipflot').style.display='none';
 });
 
-/* ═══════════ LOS 10 GUIONES ═══════════ */
+/* ═══════════ GUIONES VIGENTES DEL MES ═══════════ */
 const G=[
-{n:1,t:'Los saqué al sol. Mira.',rum:82,bloque:'Comparación',hook:'accion',hooksegs:2.0,cierresegs:0,
- hooktxt:'Exterior, sol fuerte: muestras celular y e-reader lado a lado',
- utileria:['Tu celular con el brillo al máximo','Kindle','Trípode o alguien que sostenga la cámara'],
- set:['Al mediodía, sol directo, sin sombra','La comparación grabala 3 veces: es LA toma del video'],
- tele:'Los saqué al sol. Mira. || Mismo sol, misma hora. En uno ves tu cara. En el otro ves la página. || Y no es el brillo: sube el celular al máximo y sigue igual. || Uno tira luz hacia ti. El otro deja que el sol le pegue, como a una hoja. || Escríbeme si lees afuera.',
+{n:1,t:'Si vas a comprar un Kindle en Bolivia, no compres todavía.',rum:88,bloque:'Comparación',hook:'objeto',hooksegs:2.5,cierresegs:0,
+ hooktxt:'Los cuatro aparatos alineados en la mesa; tu mano se posa sobre ellos y los tapa',
+ utileria:['Kindle Basic','Kindle Colorsoft','Kobo Libra Colour','Kindle Scribe — las cuatro cajas o los cuatro aparatos','Mesa de madera clara'],
+ set:['Luz de ventana a 45° por la izquierda','Los cuatro alineados de menor a mayor tamaño','VIDEO LARGO A PROPÓSITO: apunta a 75-90s. Es la prueba de duración del mes: V2 y V3 van cortos para poder comparar','NINGÚN aparato está abierto salvo la Paperwhite: las pantallas encendidas las pone el pipeline con los clips, tú grabas con las cajas y los aparatos apagados','La palabra clave «comprar un Kindle en Bolivia» tiene que salir de tu boca antes del segundo 3'],
+ tele:'Si vas a comprar un Kindle en Bolivia, no compres todavía. || Son cuatro, y solo uno es el tuyo. Los otros tres son plata tirada. || El error de siempre es elegir por el precio. Y el precio no te dice nada de lo que vas a hacer con él. || El primero. Si lo tuyo es texto —novelas, ensayo, lo que sea, pero letras— el Basic te sobra. Mil setecientos cincuenta. Y se ve exactamente igual de nítido que el más caro: los mismos trescientos puntos por pulgada. || El segundo. Si lees cómics, manga o revistas, el blanco y negro te va a decepcionar. Ahí entra el Colorsoft, desde tres mil quinientos noventa. Color de verdad, sin reflejo y sin quemarte la vista. || El tercero, y es el que más vendemos. El Kobo Libra Colour. Tiene color, tiene botones para pasar página con una sola mano, y aguanta el agua. Tres mil setecientos noventa. || Y el cuarto. Si te la pasas marcando PDFs, el Scribe es el único que escribe a mano. Diez pulgadas y el lápiz viene en la caja. || Ahora sí: cuenta cuántas veces dijiste que sí. || Comenta el número del que te tocó y te paso el precio con envío a tu ciudad.',
  tomas:[
-  ['0–3s','Primer plano de los dos · HOOK','Los dos aparatos juntos bajo el sol, encuadre cerrado. Que se vea tu reflejo en el celular. Esta toma es el video entero: grabala 3 veces.','Los saqué al sol. Mira.'],
-  ['3–14s','Primer plano · comparación','Mueves los dos aparatos para que el sol les pegue igual. Sin cortes.','Mismo sol, misma hora. En uno ves tu cara. En el otro ves la página.'],
-  ['14–25s','Primer plano del celular','Subes el brillo del celular a la vista de la cámara. Sigue sin verse.','Y no es el brillo: sube el celular al máximo y sigue igual.'],
-  ['25–35s','Plano medio · tú','Te incluyes en cuadro, con el sol de fondo, sosteniendo el Kindle.','Uno tira luz hacia ti. El otro deja que el sol le pegue, como a una hoja.'],
-  ['35–40s','Primer plano · CIERRE','Vuelves al encuadre de los dos aparatos del segundo 0.','Escríbeme si lees afuera.']],
+  ['0–6s','Plano cenital de la mesa · HOOK','Los cuatro alineados. Tu mano entra y los tapa con la palma abierta mientras dices el hook. Grábala 3 veces: es la toma que decide el video.','Si vas a comprar un Kindle en Bolivia, no compres todavía. Son cuatro, y solo uno es el tuyo.'],
+  ['6–16s','Plano medio · tú','Miras a cámara. Tono de amigo que te frena, no de vendedor.','Los otros tres son plata tirada. El error de siempre es elegir por el precio. Y el precio no te dice nada de lo que vas a hacer con él.'],
+  ['16–32s','Primer plano · Basic en la mano','Levantas el Basic y lo sostienes con una mano, liviano, casi jugando con el peso.','El primero. Si lo tuyo es texto —novelas, ensayo, lo que sea, pero letras— el Basic te sobra. Mil setecientos cincuenta. Y se ve exactamente igual de nítido que el más caro: los mismos trescientos puntos por pulgada.'],
+  ['32–48s','Primer plano · Colorsoft','Cambias de aparato en cuadro. El movimiento de dejar uno y agarrar el otro se ve: eso es lo que sostiene la atención.','El segundo. Si lees cómics, manga o revistas, el blanco y negro te va a decepcionar. Ahí entra el Colorsoft, desde tres mil quinientos noventa. Color de verdad, sin reflejo y sin quemarte la vista.'],
+  ['48–62s','Primer plano · Kobo Libra','Lo agarras de perfil para que se vean los botones del costado. Marca el gesto de pasar página con el pulgar.','El tercero, y es el que más vendemos. El Kobo Libra Colour. Tiene color, tiene botones para pasar página con una sola mano, y aguanta el agua. Tres mil setecientos noventa.'],
+  ['62–76s','Plano medio · Scribe','Levantas el Scribe: la diferencia de tamaño contra los otros tres tiene que verse en el mismo cuadro.','Y el cuarto. Si te la pasas marcando PDFs, el Scribe es el único que escribe a mano. Diez pulgadas y el lápiz viene en la caja.'],
+  ['76–86s','Plano cenital · CIERRE','Vuelves al encuadre del segundo 0, con los cuatro en la mesa. Señalas uno por uno con el dedo.','Ahora sí: cuenta cuántas veces dijiste que sí. Comenta el número del que te tocó y te paso el precio con envío a tu ciudad.']],
  tl:[
-  ['0–3s','Los saqué al sol. Mira.','YO','Tu comparación real, los dos aparatos + banner de hook','camara_dslr','—'],
-  ['3–6s','Mismo sol, misma hora.','YO','Tu toma de la comparación','—','entra 01-comercial a −20 dB'],
-  ['6–8s','En uno ves tu cara.','YO','Punch-in sobre el reflejo del celular','impacto_vidrio','—'],
-  ['8–11s','En el otro ves la página.','ANIM','H03 anim-sol arriba a la derecha','ui_sparkle','—'],
-  ['11–14s','Y no es el brillo:','YO','Tu toma del brillo al máximo','ui_boton','—'],
-  ['14–16s','sube el celular al máximo','YO','Punch-in sobre el dedo en el deslizador','ui_click','—'],
-  ['16–18s','y sigue igual.','ANIM','H03 anim-sol, otra variante','riser_sweep_1','sube a −18 dB'],
-  ['18–21s','Uno tira luz hacia ti.','YO','Plano medio con el sol de fondo','transicion_corte_2','—'],
-  ['21–24s','El otro deja que el sol le pegue,','PIP','P03 arriba a la izquierda','camara_flash','—'],
-  ['24–26s','como a una hoja.','YO','Primer plano: sostienes el aparato plano, como una hoja','whoosh_metal','—'],
-  ['26–29s','Escríbeme si lees afuera.','ANIM','tarjeta-cta','tada_cierre','fade out']]},
+  ['0–3s','Si vas a comprar un Kindle en Bolivia, no compres todavía.','YO','Tu cenital de los cuatro + banner de hook','impacto_hit_4','—'],
+  ['3–6s','Son cuatro, y solo uno es el tuyo.','YO','Tu mano tapando los cuatro','impacto_grave','entra 01-comercial a −20 dB'],
+  ['6–11s','Los otros tres son plata tirada.','YO','Plano medio, miras a cámara','transicion_corte','—'],
+  ['11–16s','El error de siempre es elegir por el precio. Y el precio no te dice nada de lo que vas a hacer con él.','ANIM','H08 arriba a la derecha: los cuatro precios tachándose','pop','—'],
+  ['16–22s','El primero. Si lo tuyo es texto —novelas, ensayo, lo que sea, pero letras— el Basic te sobra.','YO','Tu primer plano del Basic en una mano','ui_boton','—'],
+  ['22–27s','Mil setecientos cincuenta.','ANIM','tarjeta-cta con el precio Bs1.750','ui_sparkle','—'],
+  ['27–32s','Y se ve exactamente igual de nítido que el más caro: los mismos trescientos puntos por pulgada.','B-ROLL','F31 a pantalla completa: textura de pantalla e-ink como papel real','camara_click_2','—'],
+  ['32–38s','El segundo. Si lees cómics, manga o revistas, el blanco y negro te va a decepcionar.','YO','Tu cambio de aparato en cuadro','transicion_corte_2','—'],
+  ['38–43s','Ahí entra el Colorsoft, desde tres mil quinientos noventa.','PIP','P01 arriba a la derecha','camara_flash','sube a −18 dB'],
+  ['43–48s','Color de verdad, sin reflejo y sin quemarte la vista.','ANIM','H03 anim-sol arriba a la derecha','ui_sparkle','—'],
+  ['48–54s','El tercero, y es el que más vendemos. El Kobo Libra Colour.','YO','Tu primer plano del Kobo de perfil','whoosh_simple','—'],
+  ['54–58s','Tiene color, tiene botones para pasar página con una sola mano, y aguanta el agua.','PIP','P02 arriba a la izquierda','ui_click','—'],
+  ['58–62s','Tres mil setecientos noventa.','ANIM','tarjeta-cta con el precio Bs3.790','ui_sparkle','—'],
+  ['62–69s','Y el cuarto. Si te la pasas marcando PDFs, el Scribe es el único que escribe a mano.','YO','Tu plano medio del Scribe','riser_sweep_1','—'],
+  ['69–76s','Diez pulgadas y el lápiz viene en la caja.','PIP','P03 arriba a la derecha','camara_click_4','—'],
+  ['76–81s','Ahora sí: cuenta cuántas veces dijiste que sí.','YO','Tu cenital de cierre, señalando uno por uno','reverso_1','baja a −22 dB'],
+  ['81–86s','Comenta el número del que te tocó y te paso el precio con envío a tu ciudad.','ANIM','tarjeta-cta + «comenta 👇»','tada_cierre','fade out']]},
 
-{n:2,t:'Intenta estar cinco minutos sin mirar el celular. No puedes.',rum:90,bloque:'Atención',hook:'fisico',hooksegs:3.0,cierresegs:0,
- hooktxt:'Entras de pie al plano caminando hacia cámara',
- utileria:['Kindle Paperwhite — lo levantas en la toma 4','Celular en mano — scrolleando en la toma 2'],
- set:['Ventana a 45° a tu izquierda','2 m de separación de la pared','De pie frente a cámara','Cámara ya grabando antes de que entres al plano'],
- tele:'Intenta estar cinco minutos sin mirar el celular. No puedes. || Ya casi nadie puede. Y no es casualidad. || Estás compitiendo contra una aplicación diseñada por mil ingenieros para que no puedas soltarla. El video que se reproduce solo. La notificación. El scroll. Todo está diseñado para ganarte. || No es falta de disciplina. Es una pelea injusta: tú, con tu pobre fuerza de voluntad, contra un algoritmo. Y así, no la vas a ganar. || La única forma de ganarla es salirte del juego. || Volver a tener un espacio donde nada te interrumpa. Donde abres un libro y el ruido por fin desaparece: sin notificaciones, sin pantallas que te quemen la vista, sin tentaciones a un toque. || Un espacio donde tu atención vuelve a ser tuya. Es hora de ganarles la pelea. || Envíaselo a esa persona que no suelta el celular ni en la mesa.',
+{n:2,t:'Si imprimes PDFs solo para poder rayarlos, mira esto.',rum:86,bloque:'Trabajo',hook:'fisico',hooksegs:2.0,cierresegs:0,
+ hooktxt:'Tienes una pila de hojas impresas en la mano y las sueltas sobre la mesa',
+ utileria:['Una pila de hojas impresas y rayadas con lapicero','Kindle Scribe','Lapicero real — para el contraste de la toma 1','Escritorio de trabajo'],
+ set:['Escritorio real, con taza y desorden de trabajo: esta pieza no va limpia, va creíble','Luz de mañana de ventana','Formato corto: 30-40s. Es la contraprueba de V1, que va largo','La palabra clave «Kindle Scribe» tiene que salir antes del segundo 3','NO uses frases abstractas tipo «donde tus ideas cobran vida»: habla de trabajo real'],
+ tele:'Si imprimes PDFs solo para poder rayarlos, mira esto. || Esto es lo que yo hacía. Imprimir, rayar, perder la hoja, volver a imprimir. || El Kindle Scribe es lo único que resolvió esto de verdad. Abres el PDF, lo rayas encima con el lápiz, y queda ahí. || Diez pulgadas: entra la hoja completa, sin achicar la letra. Y el lápiz viene en la caja, no se cobra aparte. || No es para leer novelas. Es para el que trabaja con documentos. || Comenta PDF si trabajas con documentos todo el día y te cuento cuál te sirve.',
  tomas:[
-  ['0–6s','Plano medio · de pie · HOOK','Cámara ya grabando. Entras de pie al cuadro caminando hacia cámara. Miras fijo a cámara y dices el hook.','Intenta estar cinco minutos sin mirar el celular. No puedes.'],
-  ['6–20s','Plano medio · de perfil con celular','Pones tu cuerpo de perfil scrolleando el celular concentrado. Dices "Ya casi nadie puede...", luego te giras o miras a cámara marcando "mil ingenieros" con la mano.','Ya casi nadie puede. Y no es casualidad. Estás compitiendo contra una aplicación diseñada por mil ingenieros para que no puedas soltarla. El video que se reproduce solo. La notificación. El scroll. Todo está diseñado para ganarte.'],
-  ['20–32s','Plano cerrado (acercá la cámara)','Cambio de distancia real de pie. Tono más confidencial e íntimo.','No es falta de disciplina. Es una pelea injusta: tú, con tu pobre fuerza de voluntad, contra un algoritmo. Y así, no la vas a ganar.'],
-  ['32–47s','Plano medio · con producto','Levantas el Kindle al cuadro a la altura del pecho de pie y lo sostienes suavemente mientras hablas.','La única forma de ganarla es salirte del juego. Volver a tener un espacio donde nada te interrumpa. Donde abres un libro y el ruido por fin desaparece: sin notificaciones, sin pantallas que te quemen la vista, sin tentaciones a un toque.'],
-  ['47–52s','Plano medio · CIERRE','Bajas el aparato de pie y miras fijo a cámara sosteniendo el gesto.','Un espacio donde tu atención vuelve a ser tuya. Es hora de ganarles la pelea. Envíaselo a esa persona que no suelta el celular ni en la mesa.']],
+  ['0–4s','Primer plano de las manos · HOOK','Sostienes la pila de hojas rayadas y la sueltas de golpe sobre la mesa. El sonido del papel es parte del hook.','Si imprimes PDFs solo para poder rayarlos, mira esto.'],
+  ['4–12s','Plano medio · tú','Señalas la pila con la mano abierta. Tono de «esto era un desastre», con algo de gracia.','Esto es lo que yo hacía. Imprimir, rayar, perder la hoja, volver a imprimir.'],
+  ['12–24s','Primer plano · Scribe en la mesa','Apoyas el Scribe al lado de la pila. El contraste de tamaño entre la pila y el aparato es la toma.','El Kindle Scribe es lo único que resolvió esto de verdad. Abres el PDF, lo rayas encima con el lápiz, y queda ahí.'],
+  ['24–33s','Primer plano · el lápiz','Tomas el lápiz y lo apoyas sobre la pantalla apagada, como si fueras a escribir. El gesto alcanza: la pantalla la pone el pipeline.','Diez pulgadas: entra la hoja completa, sin achicar la letra. Y el lápiz viene en la caja, no se cobra aparte.'],
+  ['33–40s','Plano medio · CIERRE','Dejas el lápiz y miras a cámara. Vuelves a tocar la pila de hojas con dos dedos.','No es para leer novelas. Es para el que trabaja con documentos. Comenta PDF si trabajas con documentos todo el día y te cuento cuál te sirve.']],
  tl:[
-  ['0–3s','Intenta estar cinco minutos sin mirar el celular.','YO','Entras de pie al plano caminando a cámara. Banner de hook arriba','whoosh_rapido al entrar + impacto_grave','—'],
-  ['3–6s','No puedes. Ya casi nadie puede.','ANIM','F14 arriba a la derecha: persona haciendo scroll infinito en el celular','pop + ui_blip_1','entra 02-lofi a −20 dB'],
-  ['6–9s','Y no es casualidad.','YO','De perfil scrolleando el celular mientras dices la frase','transicion_corte','—'],
-  ['9–15s','Estás compitiendo contra una aplicación diseñada por mil ingenieros para que no puedas soltarla. El video que se reproduce solo.','ANIM','H08 arriba a la derecha: íconos de TikTok, WhatsApp, Instagram','pop + ui_blip_2','—'],
-  ['15–20s','La notificación. El scroll.','B-ROLL','F15 a pantalla completa: pantalla brillante / luz de teléfono en la oscuridad','whoosh_swoosh_2','—'],
-  ['20–28s','Todo está diseñado para ganarte.','B-ROLL','F33 a pantalla completa: se rinde y suelta el libro por el celular','subdrop_1 + impacto_hit','baja a −24 dB'],
-  ['28–32s','No es falta de disciplina. Es una pelea injusta: tú, con tu pobre fuerza de voluntad, contra un algoritmo.','YO','Vuelves al plano medio mirando fijo a cámara','reverso_1','—'],
-  ['32–38s','Y así, no la vas a ganar. La única forma de ganarla es salirte del juego.','ANIM','H07 destello mientras levantas el Kindle al cuadro','whoosh_simple','sube a −20 dB'],
-  ['38–43s','Volver a tener un espacio donde nada te interrumpa.','B-ROLL','F31 a pantalla completa: textura de pantalla e-ink como papel real','ui_apagar','—'],
-  ['43–47s','Donde abres un libro y el ruido por fin desaparece: sin notificaciones, sin pantallas que te quemen la vista, sin tentaciones a un toque. Un espacio donde tu atención vuelve a ser tuya.','PIP','P02 arriba a la derecha: lectura placentera en ambiente cálido','camara_click_2','—'],
-  ['47–52s','Es hora de ganarles la pelea. Envíaselo a esa persona que no suelta el celular ni en la mesa.','ANIM','tarjeta-cta con el hook repetido y botón de compartir','tada_cierre','fade out']]},
+  ['0–3s','Si imprimes PDFs solo para poder rayarlos,','YO','Tu primer plano de la pila cayendo + banner de hook','impacto_hit','—'],
+  ['3–5s','mira esto.','YO','La pila ya sobre la mesa','impacto_vidrio','entra 02-lofi a −21 dB'],
+  ['5–9s','Esto es lo que yo hacía.','YO','Plano medio señalando la pila','transicion_corte','—'],
+  ['9–12s','Imprimir, rayar, perder la hoja, volver a imprimir.','B-ROLL','F33 a pantalla completa','whoosh_grave_3','—'],
+  ['12–17s','El Kindle Scribe es lo único que resolvió esto de verdad.','YO','Tu toma del Scribe al lado de la pila','riser_reveal','sube a −18 dB'],
+  ['17–24s','Abres el PDF, lo rayas encima con el lápiz, y queda ahí.','PIP','P03 arriba a la derecha','ui_click','—'],
+  ['24–29s','Diez pulgadas: entra la hoja completa, sin achicar la letra.','YO','Tu primer plano del lápiz sobre la pantalla','camara_click_2','—'],
+  ['29–33s','Y el lápiz viene en la caja, no se cobra aparte.','ANIM','H07 destello sobre el lápiz','ui_sparkle','—'],
+  ['33–36s','No es para leer novelas. Es para el que trabaja con documentos.','YO','Plano medio, miras a cámara','reverso_3','baja a −23 dB'],
+  ['36–40s','Comenta PDF si trabajas con documentos todo el día y te cuento cuál te sirve.','ANIM','tarjeta-cta + «comenta PDF 👇»','tada_cierre','fade out']]},
 
-{n:3,t:'¿Cuántos libros dejaste a medias?',rum:82,bloque:'Atención',hook:'objeto',hooksegs:1.5,cierresegs:0,
- hooktxt:'Levantas un libro con el separador clavado en la página 30',
- utileria:['Un libro con separador clavado a un tercio — tomas 1, 2 y 5','Kindle — toma 4'],
- set:['Mesa de luz o repisa','Luz suave de tarde'],
- tele:'¿Cuántos libros dejaste a medias? || Todos tenemos ese libro con el separador clavado en la página treinta desde hace dos años. || Y cada vez que lo ves, te sientes un poco mal. Pero no lo abres, porque abrirlo cuesta más que abrir el celular. || Lo que cambia el juego es que agarrar la lectura cueste menos que agarrar el celular. Ahí sí se termina. || Comenta en qué página quedó el tuyo.',
+{n:3,t:'La Kobo Libra Colour ya está en Bolivia.',rum:84,bloque:'Demostración',hook:'talking',hooksegs:2.0,cierresegs:0,
+ hooktxt:'Tienes un cómic de papel abierto a todo color y lo giras hacia cámara',
+ utileria:['Un cómic o revista de papel a todo color','Kobo Libra Colour — en su caja o el aparato apagado','Funda del Kobo Libra','Mesa de madera clara'],
+ set:['GRÁBALO EL MISMO DÍA QUE EL GUION 1: mismo set, misma luz, misma ropa. Es la única forma de que entren tres videos en dos semanas','Luz de ventana, la misma de V1','Formato corto: 30-40s','La palabra clave «Kobo en Bolivia» tiene que salir antes del segundo 3','NO hay ninguna unidad Kobo abierta. Graba con el aparato apagado o en su caja; el color de pantalla lo pone el pipeline con los clips. Si decides abrir una Libra Colour como unidad demo, la toma 3 cambia: muestras la pantalla encendida con un cómic'],
+ tele:'La Kobo Libra Colour ya está en Bolivia. || Parece una tablet, pero su pantalla parece papel de verdad. || Puedes ajustar la luz para leer más cómodo, de día o de noche. || También tiene botones cómodos para pasar página fácilmente. || Aquí no tienes mensajes, videos ni redes sociales interrumpiéndote. Solo tus libros, con portadas y subrayados a color. || También puedes usar un lápiz especial para marcar y escribir. || Es como llevar una biblioteca completa en tus manos. || Encuéntrala en DeviceShop BO. || Escríbenos la palabra KOBO y te damos todos los detalles.',
  tomas:[
-  ['0–3s','Plano medio · HOOK','Levantas el libro y lo abres justo donde está el separador. Miras a cámara.','¿Cuántos libros dejaste a medias?'],
-  ['3–13s','Primer plano del libro','Pasas el dedo por el separador. Que se vea el grosor de lo que falta.','Todos tenemos ese libro con el separador clavado en la página treinta desde hace dos años.'],
-  ['13–24s','Plano medio · tú','Cierras el libro y lo dejas. Tono comprensivo, no acusador.','Y cada vez que lo ves, te sientes un poco mal. Pero no lo abres, porque abrirlo cuesta más que abrir el celular.'],
-  ['24–34s','Plano medio · con producto','Levantas el Kindle con una sola mano, mostrando lo fácil que es.','Lo que cambia el juego es que agarrar la lectura cueste menos que agarrar el celular. Ahí sí se termina.'],
-  ['34–38s','Plano medio · CIERRE','Vuelves a levantar el libro, como en el segundo 0.','Comenta en qué página quedó el tuyo.']],
+  ['0–5s','Primer plano del cómic · HOOK','Tienes el cómic abierto a todo color y lo giras hacia cámara de golpe. El color llena el cuadro. Grábala 3 veces.','Si lees cómics, un lector en blanco y negro no te sirve. Y en Bolivia casi nadie te habla del Kobo.'],
+  ['5–12s','Primer plano · la página','Pasas la mano por encima de la página a color, marcando los colores con el dedo.','Mira esta página. Todo esto, en gris, se pierde.'],
+  ['12–20s','Plano medio · Kobo en la mano','Levantas el Kobo al lado del cómic. Los dos en el mismo cuadro.','El Kobo Libra Colour es el que más vendemos, y es el que menos nombra la gente.'],
+  ['20–30s','Primer plano · de perfil','Giras el Kobo de perfil para que se vean los botones. Marcas el gesto del pulgar pasando página, y después el gesto de una gota de agua con la mano.','Tiene color. Tiene botones de verdad para pasar página con una sola mano, sin tocar la pantalla. Y se moja y no pasa nada.'],
+  ['30–38s','Plano medio · CIERRE','Apoyas el Kobo sobre la funda y vuelves a levantar el cómic, como en el segundo 0.','Con funda y protector, tres mil novecientos noventa. Por separado son cuatro mil trescientos noventa. Comenta KOBO y te paso el precio con envío a tu ciudad.']],
  tl:[
-  ['0–3s','¿Cuántos libros dejaste a medias?','YO','Levantas el libro y lo abres en el separador + banner de hook','impacto_hit_4','—'],
-  ['3–6s','Todos tenemos ese libro','YO','Tu primer plano del separador','—','entra 02-lofi a −21 dB'],
-  ['6–9s','con el separador clavado en la página treinta','PIP','F16 arriba a la derecha','pop','—'],
-  ['9–11s','desde hace dos años.','B-ROLL','F15 a pantalla completa','reverso_3','—'],
-  ['11–14s','Y cada vez que lo ves, te sientes un poco mal.','YO','Plano medio, cierras el libro','transicion_corte','baja a −23 dB'],
-  ['14–17s','Pero no lo abres,','YO','Dejas el libro fuera de cuadro','—','—'],
-  ['17–20s','porque abrirlo cuesta más que abrir el celular.','B-ROLL','F14 a pantalla completa','whoosh_grave_3','—'],
-  ['20–23s','Lo que cambia el juego','YO','Levantas el Kindle con una sola mano','whoosh_simple','sube a −19 dB'],
-  ['23–26s','es que agarrar la lectura cueste menos','PIP','P01 arriba a la izquierda','camara_click_4','—'],
-  ['26–28s','que agarrar el celular.','ANIM','H08 arriba a la derecha + punch-in en \"celular\"','impacto_hit_2','—'],
-  ['28–30s','Ahí sí se termina.','ANIM','H07 destello sobre el aparato','riser_reveal','—'],
-  ['30–33s','Comenta en qué página quedó el tuyo.','ANIM','tarjeta-cta + "comenta 👇"','tada_cierre','fade out']]}
+  ['0–3s','Si lees cómics, un lector en blanco y negro no te sirve.','YO','Tu primer plano del cómic girando a cámara + banner de hook','impacto_hit_2','—'],
+  ['3–5s','Y en Bolivia casi nadie te habla del Kobo.','YO','El cómic ya de frente','pop','entra 01-comercial a −20 dB'],
+  ['5–9s','Mira esta página.','YO','Tu primer plano de la mano sobre la página','camara_click_4','—'],
+  ['9–12s','Todo esto, en gris, se pierde.','ANIM','H03 arriba a la derecha: la página desaturándose a gris','subdrop_1','baja a −24 dB'],
+  ['12–17s','El Kobo Libra Colour es el que más vendemos,','YO','Tu plano medio del Kobo junto al cómic','riser_reveal','sube a −18 dB'],
+  ['17–20s','y es el que menos nombra la gente.','PIP','P02 arriba a la izquierda','ui_blip_1','—'],
+  ['20–24s','Tiene color. Tiene botones de verdad para pasar página con una sola mano,','YO','Tu primer plano de perfil con los botones','ui_click','—'],
+  ['24–27s','sin tocar la pantalla.','ANIM','H07 destello sobre los botones','ui_sparkle','—'],
+  ['27–30s','Y se moja y no pasa nada.','B-ROLL','F16 a pantalla completa','whoosh_swoosh_2','—'],
+  ['30–34s','Con funda y protector, tres mil novecientos noventa. Por separado son cuatro mil trescientos noventa.','ANIM','tarjeta-cta con Bs3.990 y el ahorro de Bs400','ui_sparkle','baja a −22 dB'],
+  ['34–38s','Comenta KOBO y te paso el precio con envío a tu ciudad.','ANIM','tarjeta-cta + «comenta KOBO 👇»','tada_cierre','fade out']]}
 ];
 
 const HOOKLBL={fisico:['h-fisico','⚡ Hook físico'],objeto:['h-objeto','📦 Hook con objeto'],
@@ -1164,7 +1166,7 @@ function renderPromptsParaGuion(g){
 }
 
 function formatearTeleParaEditor(tele){
-  return (tele || '').split(' || ').join('\n\n// pausá //\n\n');
+  return (tele || '').split(' || ').join('\n\n// pausa //\n\n');
 }
 
 function toggleEditorGuion(n){
@@ -1177,7 +1179,7 @@ function toggleEditorGuion(n){
 
 function actualizarTextosGuion(g, nuevoTeleRaw){
   let parrafos = nuevoTeleRaw
-    .replace(/\/\/\s*pausá\s*\/\//gi, ' || ')
+    .replace(/\/\/\s*pausa\s*\/\//gi, ' || ')
     .split(/\s*\|\|\s*|\n\s*\n+/)
     .map(p => p.trim())
     .filter(Boolean);
@@ -1233,7 +1235,7 @@ async function guardarEdicionGuion(n){
   if(estado){ estado.textContent = 'Guardando…'; estado.className = 'hookseg-estado'; }
 
   let parrafos = rawText
-    .replace(/\/\/\s*pausá\s*\/\//gi, ' || ')
+    .replace(/\/\/\s*pausa\s*\/\//gi, ' || ')
     .split(/\s*\|\|\s*|\n\s*\n+/)
     .map(p => p.trim())
     .filter(Boolean);
@@ -1303,6 +1305,7 @@ async function guardarEdicionGuion(n){
 }
 
 function renderGuiones(){
+  actualizarResumenVigente();
   const cont = document.getElementById('guiones');
   let html = renderTabsGuiones();
 
@@ -1312,7 +1315,7 @@ function renderGuiones(){
     if(listaGuiones.length === 0){
       html += vistaGuiones === 'grabados'
         ? `<div class="guiones-vacio">🎬 Todavía no marcaste ningún guion como grabado.</div>`
-        : `<div class="guiones-vacio">🎉 Grabaste todos los guiones. Mirá la pestaña "Grabados" para revisarlos.</div>`;
+        : `<div class="guiones-vacio">🎉 Grabaste todos los guiones. Mira la pestaña "Grabados" para revisarlos.</div>`;
     }
     html += listaGuiones.map((g, i) => {
       const hk = HOOKLBL[g.hook];
@@ -1401,7 +1404,7 @@ function renderGuiones(){
 
             <div class="tele" id="tele-box-${g.n}">
               <button class="copiar" onclick="cp(this,g.tele.replace(/ \|\| /g,'\n\n'))">Copiar</button>
-              ${g.tele.split(' || ').map(p => p).join('<br><span class="pausa">// pausá //</span><br>')}
+              ${g.tele.split(' || ').map(p => p).join('<br><span class="pausa">// pausa //</span><br>')}
             </div>
 
             <div id="editor-guion-caja-${g.n}" class="caja-editor-guion" style="display:${estadoEditoresGuion[g.n] ? 'block' : 'none'}; margin:12px 0 20px; background:#071a26; border:1.5px solid var(--cian); border-radius:10px; padding:16px;">
@@ -1425,12 +1428,12 @@ function renderGuiones(){
             ${g.tomas.map(t=>`<div class="tnum">${t[0]}</div><div class="tdesc"><b>${t[1]}</b><p>${t[2]}</p><p class="dice">"${t[3]}"</p></div>`).join('')}
 
             <h4>Línea de tiempo · esto es 100% automático</h4>
-            <p class="notaflow" style="margin:0 0 8px">Nada de esta tabla lo haces tú: son las decisiones que ejecuta el pipeline sobre tu grabación. La columna "En pantalla" dice de dónde sale la imagen — <b>YO</b> es tu video crudo. Pasá el mouse por cualquier código (F14, P02, H08) para ver qué es, y hacé clic para ir a su prompt.</p>
+            <p class="notaflow" style="margin:0 0 8px">Nada de esta tabla lo haces tú: son las decisiones que ejecuta el pipeline sobre tu grabación. La columna "En pantalla" dice de dónde sale la imagen — <b>YO</b> es tu video crudo. Pasa el mouse por cualquier código (F14, P02, H08) para ver qué es, y haz clic para ir a su prompt.</p>
             <p class="notaflow pipe-solo pipe-off" style="margin:0 0 8px">Cada fila trae un selector para cambiarla entre <b>YO</b>, <b>B-ROLL</b>, <b>PIP</b> y <b>ANIM</b>, y otro para elegir con qué clip. Se guarda en este mismo archivo.</p>
             <p class="notaflow pipe-sin pipe-off" style="margin:0 0 8px; border-left:3px solid var(--warn); padding-left:10px">
-              <b style="color:var(--warn)">Acá no se puede cambiar nada.</b> Para elegir si cada fila es
+              <b style="color:var(--warn)">Aquí no se puede cambiar nada.</b> Para elegir si cada fila es
               <b>YO</b>, <b>B-ROLL</b>, <b>PIP</b> o <b>ANIM</b> —y con qué clip— abrí
-              <span class="ruta">editor/Panel de producción.bat</span> en tu PC y entrá por
+              <span class="ruta">editor/Panel de producción.bat</span> en tu PC y entra por
               <span class="ruta">127.0.0.1:8899</span>. Sin el pipeline detrás no hay dónde guardar el
               cambio, así que los selectores no se muestran en vez de fingir que funcionan.</p>
             <div class="tablawrap">
@@ -1502,92 +1505,117 @@ const CIERRE=`No added text outside the screen, no logos, no watermark. No dialo
 
 const P=[
 /* --- CUENTA A · tanda 1 --- */
-['scroll','A','1','Ambiente','El pulgar infinito · 10 guiones',
+['scroll','A','1','Ambiente','El pulgar infinito',
 `Vertical 9:16. Extreme close-up of a thumb endlessly scrolling on a smartphone screen in a dark room, the screen's blue-white glow flickering across the skin, the motion repetitive and hypnotic, slight slow motion. Shot on a 50mm lens, shallow depth of field, moody low-key lighting, natural editorial photography. Camera slowly pushes in. The phone body is completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving anywhere on it. The screen is a flat rigid glass surface showing only an indistinct blur of coloured light, and it stays perfectly flat at all times: nothing ever lifts, peels, curls, flies or emerges from it. No paper, no sheets, no physical pages. No readable text, no icons, no interface, no watermark. No dialogue, no voiceover, ambient room tone only.`],
-['ojos','A','1','Ambiente','Vista cansada · 6 guiones',
+['ojos','A','1','Ambiente','Vista cansada',
 `Vertical 9:16. Intimate close-up of tired eyes at night, a person slowly rubbing them with the heel of the hand, blinking heavily, faint blue screen light on the face. Warm dark bedroom in the background, out of focus. Shot on an 85mm lens, shallow depth of field, natural editorial photography, soft realistic skin. Subtle handheld camera. Face partially in shadow, not a recognizable person. No text, no lettering, no logos, no watermark. No dialogue, no voiceover, quiet room tone only.`],
-['noche','A','1','Ambiente','Cara iluminada por el celular · 6 guiones',
+['noche','A','1','Ambiente','Cara iluminada por el celular',
 `Vertical 9:16. A person lying in bed in a completely dark bedroom, face lit only by the harsh blue-white glow of a phone held above them, the light carving hard shadows. Slow, still, uncomfortable mood. Shot on a 35mm lens, shallow depth of field, cinematic low-key lighting, natural editorial photography. Camera very slowly drifts closer. The phone body is completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving. The screen is a flat rigid glass surface showing only formless glowing light, and it stays perfectly flat at all times: nothing ever lifts, peels, curls, flies or emerges from it. No paper, no sheets, no physical pages. No readable text, no interface, no watermark. No dialogue, no voiceover, only faint night ambience.`],
-['libros','A','1','Ambiente','La pila pesada · 8 guiones',
+['libros','A','1','Ambiente','La pila pesada',
 `Vertical 9:16. A tall heavy stack of thick hardcover paper books on a wooden table, dramatic warm side light raking across the spines and dust in the air, one hand entering frame to lift the top book and feel its weight. Shot on a 50mm lens, shallow depth of field, natural editorial photography, soft warm daylight from a window. Slow dolly around the stack. Real physical paper books only, no electronic devices anywhere in frame. Covers are plain with no readable titles, no text, no logos, no watermark. No dialogue, no voiceover, subtle paper sounds only.`],
-['biblioteca','A','1','Ambiente','Estanterías infinitas · 7 guiones',
+['biblioteca','A','1','Ambiente','Estanterías infinitas',
 `Vertical 9:16. Slow upward tilt along towering library shelves packed with books, warm golden light falling from high windows, dust floating in the beams, the shelves seeming to continue endlessly. Shot on a wide 24mm lens, deep warm tones, natural editorial photography, cinematic. Smooth vertical camera movement. Spines are plain with no readable titles, no text, no lettering, no logos, no watermark, no people, no electronic devices. No dialogue, no voiceover, quiet library ambience only.`],
-['abandonado','A','1','Ambiente','El libro de la página 30 · 5 guiones',
+['abandonado','A','1','Ambiente','El libro de la página 30',
 `Vertical 9:16. A closed paper book lying forgotten on a bedside table with a bookmark stuck a third of the way in, a thin layer of dust on the cover, soft grey afternoon light from a nearby window, everything still and slightly melancholic. Shot on an 85mm macro lens, very shallow depth of field, natural editorial photography. Camera creeps slowly toward the bookmark. The book stays completely closed and still. Plain cover with no readable title, no text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, silent room tone only.`],
-['notificaciones','A','1','Ambiente','El bombardeo · 4 guiones',
+['notificaciones','A','1','Ambiente','El bombardeo',
 `Vertical 9:16. Abstract visualization of relentless digital interruption: dozens of soft glowing rounded rectangles crowding the frame like a swarm, blurred and out of focus, cool blue and white light, overwhelming and claustrophobic. The frame is already packed with them in the very first frame: the swarm starts at its densest and never builds up from an empty or nearly empty screen, and more keep pouring in from the edges the whole time. Cinematic, elegant, minimal, shallow depth of field. Camera slowly pulls back as more of them pour in. The shapes are completely blank: no text, no icons, no symbols, no letters, no numbers, no logos, no watermark. No dialogue, no voiceover, subtle rising hum only.`],
-['insomnio','A','1','Ambiente','Las 3:47 de la mañana · 3 guiones',
+['insomnio','A','1','Ambiente','Las 3:47 de la mañana',
 `Vertical 9:16. A person turning restlessly under the covers in a dark bedroom, unable to sleep, then a digital alarm clock on the nightstand glowing faintly in the dark. Cold blue night tones, deep shadows. Shot on a 35mm lens, shallow depth of field, cinematic natural editorial photography. Slow handheld drift toward the clock. The clock display is blurred and unreadable: no text, no numbers, no lettering, no logos, no watermark. No dialogue, no voiceover, only faint night ambience.`],
 /* --- CUENTA A · tanda 2 --- */
-['regalo','A','2','Ambiente','La caja con moño · 4 guiones',
+['regalo','A','2','Ambiente','La caja con moño',
 `Vertical 9:16. A small elegant gift box with a satin ribbon resting on a table, warm golden light, hands entering frame to slowly untie the bow with anticipation. Soft festive bokeh in the far background. Shot on a 50mm lens, shallow depth of field, natural editorial photography, warm inviting mood. Slow push in. The box stays closed. Completely plain box with no text, no labels, no lettering, no logos, no watermark, no brand names. No dialogue, no voiceover, gentle paper and ribbon sounds only.`],
-['caja','A','2','Ambiente','El desempaque · 2 guiones',
+['caja','A','2','Ambiente','El desempaque',
 `Vertical 9:16. Close-up of a clean plain cardboard box on a table, its tape already cut and hands already lifting the flap open in the very first frame, revealing soft protective foam inside, warm daylight from a side window, satisfying unboxing mood. The box is already being opened when the clip starts: the video never opens on a closed untouched box and never waits for the tape to be cut. Shot on a 50mm lens, shallow depth of field, natural editorial photography. Slow overhead push in. Nothing is taken out of the box. The cardboard is completely blank with no printing, no text, no lettering, no labels, no logos, no watermark. No dialogue, no voiceover, cardboard and tape sounds only.`],
-['vitrina','A','2','Ambiente','No saber qué regalar · 4 guiones',
+['vitrina','A','2','Ambiente','No saber qué regalar',
 `Vertical 9:16. A person standing in a bright store aisle seen from behind, shoulders slumped, hesitating with empty hands in front of shelves of generic products, clearly unable to decide. Soft diffused retail lighting, slightly desaturated. Shot on a 35mm lens, shallow depth of field, natural editorial photography, candid documentary feel. Subtle handheld camera. Face not visible. Products blurred and completely plain: no packaging text, no signage, no lettering, no logos, no watermark. No dialogue, no voiceover, faint store ambience only.`],
-['tiempo','A','2','Ambiente','El tiempo que se va · 3 guiones',
+['tiempo','A','2','Ambiente','El tiempo que se va',
 `Vertical 9:16. Extreme close-up of fine sand streaming through the narrow waist of an hourglass, backlit by warm golden light, individual grains catching the light, dark background. Slow motion, hypnotic and slightly melancholic. Shot on a 100mm macro lens, very shallow depth of field, cinematic natural editorial photography. Camera almost still, barely drifting. No text, no numbers, no lettering, no logos, no watermark. No dialogue, no voiceover, soft ambient tone only.`],
-['bateria','A','2','Ambiente','El 1% · 3 guiones',
+['bateria','A','2','Ambiente','El 1%',
 `Vertical 9:16. Close-up of a smartphone lying on a bedside table, its screen already almost black in the very first frame, showing only a faint dying glow, a tangled charging cable just out of reach beside it. The phone is already dying when the clip starts: the video never opens on a bright screen. Dim warm bedroom light, night mood. Shot on an 85mm lens, very shallow depth of field, natural editorial photography. Slow push in as the last of the glow fades. The phone body is completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving. The screen is a flat rigid glass surface, blurred and unreadable, and it stays perfectly flat at all times: nothing ever lifts, peels, curls, flies or emerges from it. No paper, no sheets, no physical pages, no icons, no text, no watermark. No dialogue, no voiceover, silence with faint room tone.`],
-['entrega','A','2','Ambiente','La moto en la ciudad · 3 guiones',
+['entrega','A','2','Ambiente','La moto en la ciudad',
 `Vertical 9:16. A delivery motorcycle weaving through warm sunlit city traffic in a Latin American city, tropical trees and low buildings, dust and golden late afternoon light, a small plain package secured on the back. Energetic, fast, real. Shot on a 35mm lens, handheld tracking shot following the bike, natural editorial photography, documentary feel. Rider's face not visible. No visible brands, no text, no signage, no lettering, no logos, no watermark. No dialogue, no voiceover, street and engine ambience only.`],
-['ninos-pantalla','A','2','Ambiente','El niño a las 11 de la noche · 3 guiones',
+['ninos-pantalla','A','2','Ambiente','El niño a las 11 de la noche',
 `Vertical 9:16. A child in a dark bedroom at night, face lit only by the cold blue glow of a tablet held close, eyes wide and unblinking, room completely dark around them. Still, quiet, unsettling. Shot on a 50mm lens, shallow depth of field, cinematic low-key lighting, natural editorial photography. Camera slowly pushes in. Face partly in shadow and not clearly identifiable. The tablet body is completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving. Its screen is a flat rigid glass surface showing only formless glowing light, and it stays perfectly flat at all times: nothing ever lifts, peels, curls, flies or emerges from it. No paper, no sheets, no physical pages, no readable text, no icons, no watermark. No dialogue, no voiceover, silent night ambience.`],
-['ninos-leyendo','A','2','Ambiente','El niño que sí lee · 3 guiones',
+['ninos-leyendo','A','2','Ambiente','El niño que sí lee',
 `Vertical 9:16. A child curled up in an armchair by a window on a bright afternoon, absorbed in reading a paper book, warm natural daylight and soft shadows, cozy living room, a small smile. Shot on a 50mm lens, shallow depth of field, natural editorial photography, warm and hopeful mood. Gentle slow dolly in. A real physical paper book only, no electronic devices anywhere in frame. Face soft and not clearly identifiable. No readable text, no lettering, no logos, no watermark. No dialogue, no voiceover, quiet room tone and page turns only.`],
-['sol','A','2','Ambiente','El sol que ciega la pantalla · 2 guiones',
+['sol','A','2','Ambiente','El sol que ciega la pantalla',
 `Vertical 9:16. Harsh midday sun over an outdoor table, a hand tilting a glossy dark reflective rectangular slab that mirrors the bright sky and the silhouette of the person holding it, lens flare, intense summer light, tropical greenery blurred behind. Shot on a 50mm lens, shallow depth of field, natural editorial photography, high contrast. Slight handheld movement as the reflection shifts. The slab is completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving. It is flat and rigid and stays perfectly flat at all times: nothing ever lifts, peels, curls, flies or emerges from it. No paper, no sheets, no physical pages, no interface, no text, no watermark. No dialogue, no voiceover, outdoor summer ambience only.`],
-['cama','A','2','Ambiente','La cama acogedora · 2 guiones',
+['cama','A','2','Ambiente','La cama acogedora',
 `Vertical 9:16. An inviting unmade bed with soft rumpled linen sheets in a warm dim bedroom, a small bedside lamp casting a pool of golden light, evening calm, nobody in frame. Shot on a 35mm lens, shallow depth of field, natural editorial photography, cozy and restful mood. Very slow dolly toward the pillow. No text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, quiet evening room tone only.`],
 /* --- CUENTA B · tanda 3 --- */
-['agua','B','3','Ambiente','Las gotas · guion 28',
+['agua','B','3','Ambiente','Las gotas',
 `Vertical 9:16. Extreme slow motion close-up of clear water droplets splashing and beading on a dark matte waterproof surface, bright poolside sunlight, crisp refreshing summer mood, droplets catching the light. Shot on a 100mm macro lens, very shallow depth of field, natural editorial photography. Camera almost static. The surface is completely smooth, blank and unmarked: no brand name, no logo, no lettering, no engraving. No paper, no sheets, no text, no logos, no watermark. No dialogue, no voiceover, water sounds only.`],
-['tina','B','3','Ambiente','La bañera · guion 28',
+['tina','B','3','Ambiente','La bañera',
 `Vertical 9:16. A warm bathtub filled with foam and steam rising, soft candlelight and a folded towel on the edge, relaxing spa atmosphere, warm amber tones, nobody in frame. Shot on a 35mm lens, shallow depth of field, natural editorial photography, calm and intimate. Slow drift along the edge of the tub. No text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, gentle water ambience only.`],
-['piscina','B','3','Ambiente','El verano · guiones 4 y 28',
+['piscina','B','3','Ambiente','El verano',
 `Vertical 9:16. Poolside on a bright summer day, turquoise water rippling and reflecting sunlight onto a lounge chair and towel, tropical palm shadows moving across the deck, nobody in frame. Shot on a 35mm lens, shallow depth of field, natural editorial photography, vivid warm summer mood. Slow lateral dolly. No text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, water and distant summer ambience only.`],
-['mama','B','3','Ambiente','La lectora en el sillón · guion 15',
+['mama','B','3','Ambiente','La lectora en el sillón',
 `Vertical 9:16. A woman in her fifties sitting in a comfortable armchair by a window, reading peacefully in warm afternoon light, relaxed shoulders, faint smile, plants and a soft home interior blurred behind her. Shot on an 85mm lens, shallow depth of field, natural editorial photography, warm and tender mood. Slow gentle push in. She holds a plain flat rectangular e-reader, completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving on its frame. ${BLIND_BN} Face soft and not clearly identifiable, no logos, no watermark. No dialogue, no voiceover, quiet home ambience only.`],
-['pareja','B','3','Ambiente','Uno duerme, el otro lee · guion 6',
+['pareja','B','3','Ambiente','Uno duerme, el otro lee',
 `Vertical 9:16. A dark bedroom at night, two people in bed: one asleep facing away, the other propped up awake beside them, careful not to disturb. Only a small warm pool of light on the awake person's side, the rest in deep shadow. Shot on a 35mm lens, shallow depth of field, cinematic low-key lighting, natural editorial photography, intimate and quiet. Camera nearly still. The awake person holds a plain flat rectangular e-reader, completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving on its frame. ${BLIND_BN} Faces not clearly identifiable, no logos, no watermark. No dialogue, no voiceover, soft breathing and night ambience only.`],
-['mochila','B','3','Ambiente','El peso del colegio · guion 21',
+['mochila','B','3','Ambiente','El peso del colegio',
 `Vertical 9:16. A child's overstuffed school backpack sitting on the floor, visibly heavy and bulging with books, a small hand grabbing the strap and struggling to lift it, warm morning light from a hallway window. Shot on a 50mm lens, shallow depth of field, natural editorial photography, candid documentary feel. Low angle, camera static. No visible brands, no text, no lettering, no logos, no watermark. No dialogue, no voiceover, fabric and zipper sounds only.`],
-['cafe','B','3','Ambiente','La espera · guion 23',
+['cafe','B','3','Ambiente','La espera',
 `Vertical 9:16. A cup of coffee steaming on a small café table by a window, warm morning light, an empty chair opposite, the street softly blurred outside, calm waiting mood. Shot on a 50mm lens, shallow depth of field, natural editorial photography. Slow push in on the rising steam. Plain cup with no branding, no text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, quiet café ambience only.`],
-['viaje','B','3','Ambiente','La maleta · guion 25',
+['viaje','B','3','Ambiente','La maleta',
 `Vertical 9:16. An open suitcase on a bed being packed, hands placing folded clothes inside, warm morning light from a window, travel anticipation mood, plain unbranded luggage. Shot on a 35mm lens, shallow depth of field, natural editorial photography. Slow overhead push in. No text, no tags, no labels, no lettering, no logos, no watermark. No dialogue, no voiceover, fabric and zipper sounds only.`],
-['silencio','B','3','Ambiente','El silencio digital · 3 guiones',
+['silencio','B','3','Ambiente','El silencio digital',
 `Vertical 9:16. Abstract visualization of digital silence, already calm and almost empty in the very first frame. The video opens on dark quiet space with only four or five soft glowing rounded rectangles left, drifting slowly and dimly, and one small warm amber glow already resting in the centre. Within the first second they start going out: one dims, shrinks and blinks out into the darkness, then another, then another, so that by the second second only one faint shape is still lit. From there the frame stays as calm empty darkness with the single warm amber glow breathing gently in the centre for the rest of the clip. This is the quiet after the noise, never the noise itself: the frame is never crowded and never full, and the shapes only ever disappear. Nothing new ever appears, no shape is ever added, and none of them ever return, multiply or refill the frame. Cinematic, elegant, minimal, shallow depth of field, warm amber calm over deep black. Camera almost still, a very slow push in. The shapes are completely blank: no text, no icons, no symbols, no letters, no numbers, no logos, no watermark. No dialogue, no voiceover, a faint hum already fading into silence.`],
-['lluvia','B','3','Ambiente','Lluvia en la ventana · 2 guiones',
+['lluvia','B','3','Ambiente','Lluvia en la ventana',
 `Vertical 9:16. Heavy rain running down a window pane at dusk, the world outside blurred into soft bokeh lights, warm lamp light from inside reflecting on the wet glass, cozy and calm reading mood. Shot on an 85mm lens, very shallow depth of field, natural editorial photography. Camera almost static, drifting slowly along the glass. No text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, gentle rain ambience only.`],
-['lampara','B','3','Ambiente','La luz que despierta al otro · guion 6',
+['lampara','B','3','Ambiente','La luz que despierta al otro',
 `Vertical 9:16. A bedside lamp already switched on in a dark bedroom in the very first frame, its harsh warm light spilling across rumpled sheets and a wall while the rest of the room stays in deep shadow. The intrusive glow is there immediately and at full strength from the first frame, and it stays on for the whole clip: the video never opens in darkness, never fades up from black and never shows the lamp being switched on. The light only flickers and settles very slightly. The contrast between the harshly lit sheets and the black room is the subject. Shot on a 35mm lens, shallow depth of field, cinematic natural editorial photography, high contrast. Camera static, a very slow push in, nobody in frame. No text, no lettering, no logos, no watermark, no electronic devices. No dialogue, no voiceover, quiet room tone only.`],
-['rendicion','B','3','Ambiente','Se rinde: suelta el libro por el celular · guion 7',
+['rendicion','B','3','Ambiente','Se rinde: suelta el libro por el celular',
 `Vertical 9:16. Close-up on a person's hands giving up on a paperback, the book already slipping in the very first frame. The video opens with the fingers gone loose and the half-closed book sliding out of the hand, while just beside them a smartphone lies face-up with its screen glowing and flickering insistently. Within the first second the book drops away onto the table and the same hand is already drifting over to the phone; by the second second the hand has reached it and is picking it up, and it stays there with the phone for the rest of the clip. The video never opens on someone reading calmly and it never waits: the hand is already losing the book when the clip starts. Shot on a 50mm lens, shallow depth of field, natural editorial photography, warm room light contrasted with a cool blue glow from the screen. Slow quiet camera push in, the hands doing all the movement. Face and body kept out of frame or in soft shadow, not a recognizable person. The book has a plain cover with no readable title, no text, no lettering, no logos, no watermark. The phone body is completely smooth, blank and unmarked: bare material with no brand name, no logo, no lettering and no engraving anywhere on it. Its screen is a flat rigid glass surface showing only a soft indistinct blur of coloured light, and it stays perfectly flat at all times: nothing ever lifts, peels, curls, flies or emerges from it. No dialogue, no voiceover, quiet room tone with a faint phone vibration only.`],
 /* --- CUENTA B · producto --- */
-['P01','B','4','Producto·B/N','Lectura en cama de noche · 10 guiones','kindle-paperwhite/frontal-negro.jpg',
+['P01','B','4','Producto·B/N','Lectura en cama de noche','kindle-paperwhite/frontal-negro.jpg',
 `Animate this image. The device rests on a bed in a dark bedroom, lit only by its own soft warm screen glow. A hand enters frame and taps the glass surface once with a fingertip. Very subtle camera push in, shallow depth of field, cinematic low-key lighting, natural editorial photography. ${MARCO} ${BLIND_BN} ${CIERRE} quiet night room tone only.`],
-['P03','B','4','Producto·B/N','A pleno sol · 2 guiones','kindle-paperwhite/frontal-negro.jpg',
+['P03','B','4','Producto·B/N','A pleno sol','kindle-paperwhite/frontal-negro.jpg',
 `Animate this image. The device sits on an outdoor table under harsh bright midday sun, tropical greenery blurred behind, sunlight moving across its surface as leaf shadows drift over it. Slight handheld camera movement, lens flare, high contrast, natural editorial photography. ${MARCO} Its screen is a black and white electronic ink display showing a page of a Spanish-language novel: several justified paragraphs of small dark grey Spanish body text on a light warm grey background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen, perfectly readable in direct sunlight with no glare washing it out. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${EINK_SUP} ${CIERRE} outdoor summer ambience only.`],
-['P04','B','4','Producto·B/N','Verde matcha a oscuras · 3 guiones','kindle-paperwhite/frontal-jade.jpg',
+['P04','B','4','Producto·B/N','Verde matcha a oscuras','kindle-paperwhite/frontal-jade.jpg',
 `Animate this image. The device lies in near-total darkness, its warm amber screen glow the only light source, gently illuminating the surface beneath it. A hand enters frame and shifts it slightly. Camera almost static, very shallow depth of field, cinematic low-key lighting, natural editorial photography. ${MARCO} Its screen is a black and white electronic ink display showing a page of a Spanish-language novel: several justified paragraphs of small dark grey Spanish body text on a warm amber-lit background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${EINK_SUP} ${CIERRE} silent night ambience.`],
-['P05','B','4','Producto·B/N','Liviano, una sola mano · 6 guiones','kindle-basic/frontal.png',
+['P05','B','4','Producto·B/N','Liviano, una sola mano','kindle-basic/frontal.png',
 `Animate this image. The device is held up in a single hand, its screen facing the camera the whole time, tilting only very slightly at the edge so the thin profile catches the warm window light from the side, softly blurred home interior behind. It is never turned over or rotated to show its back. Smooth slow push in, no orbit and no arc around the device, shallow depth of field, natural editorial photography. ${MARCO} ${BLIND_BN} ${CIERRE} subtle room tone only.`],
-['P06','B','4','Producto·B/N','Como regalo · 5 guiones','kindle-paperwhite/frontal-raspberry.jpg',
+['P06','B','4','Producto·B/N','Como regalo','kindle-paperwhite/frontal-raspberry.jpg',
 `Animate this image. The device rests on a table beside a satin ribbon and soft festive bokeh lights, warm golden hour light, hands entering frame to slide it gently toward the camera as a gift. Slow push in, shallow depth of field, natural editorial photography, warm celebratory mood. ${MARCO} ${BLIND_BN} ${CIERRE} soft ribbon sounds only.`],
-['P07','B','4','Producto·B/N','Niños · 3 guiones','paperwhite-kids/frontal.png',
+['P07','B','4','Producto·B/N','Niños','paperwhite-kids/frontal.png',
 `Animate this image. The device is held by small child-sized hands in a bright cozy bedroom, warm afternoon daylight, a soft blanket and stuffed toy blurred in the background. Gentle handheld camera, shallow depth of field, natural editorial photography, warm and hopeful mood. Hands only, no faces. ${MARCO} Its screen is a black and white electronic ink display showing a page of a Spanish-language children's story: several short justified paragraphs of dark grey Spanish body text on a light warm grey background, with clean margins, exactly like printed prose, with no colour whatsoever on the screen. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${EINK_SUP} ${CIERRE} quiet room tone only.`],
-['P08','B','4','Producto·COLOR','Kindle Colorsoft · 1 guion','colorsoft-32gb/frontal.png',
+['P08','B','4','Producto·COLOR','Kindle Colorsoft','colorsoft-32gb/frontal.png',
 `Animate this image. The device rests face up on a clean light surface as warm directional light slowly sweeps across it, making the colours of its body and its page deepen and come alive. The light does all the movement: the device itself stays still, flat and face up, and is never lifted, rotated or turned over. Very slow straight push in from above, no orbit and no arc around the device, shallow depth of field, natural editorial photography, crisp and vivid. ${MARCO} ${BLIND_COL} ${CIERRE} subtle ambient tone only.`],
-['P09','B','4','Producto·COLOR','Kobo Libra con botones · 2 guiones','kobo-libra-colour-32-gb/frontal.png',
+['P09','B','4','Producto·COLOR','Kobo Libra con botones','kobo-libra-colour-32-gb/frontal.png',
 `Animate this image. The device is held in one hand against a softly blurred warm interior background, the thumb resting on the physical page-turn buttons along its raised side grip, the screen facing the camera the whole time and angled just enough that the raised grip and its buttons stay clearly visible along the side. The hand holds it steady, never rotating it or turning it over. Very slow straight push in, no orbit and no arc around the device, shallow depth of field, natural editorial photography, clean minimal composition. Keep the device exactly as shown: do not alter its shape, proportions, colour, body or its asymmetric grip with physical buttons. Its frame stays completely smooth, blank and unmarked, with no brand name, no logo, no lettering and no engraving anywhere on it. ${UNA_CARA} Its screen is a colour electronic ink display, with the soft muted pastel tones typical of colour e-ink rather than the vivid saturation of an LCD, showing a page of a Spanish-language novel with a few passages highlighted in soft yellow and pink: justified paragraphs of small dark Spanish body text on a light warm background, with clean margins, exactly like printed prose. That page is a flat image rendered on the glass, never physical paper: the screen stays perfectly rigid and flat at all times, and nothing ever lifts, peels, curls, flies or emerges from it. No loose sheets, no paper, no book pages turning. The content on the screen is completely static and frozen: it never changes, never scrolls, and there is no page-turn animation, no sliding, no fading, no dissolve and no transition of any kind, because a real e-ink screen does not animate smoothly. It is a solid flat slab, not a book, and it never bends, folds or opens. ${EINK_SUP} ${CIERRE} subtle room tone and a soft button click only.`],
-['P10','B','4','Producto·COLOR','Kobo Clara compacta · 1 guion','kobo-clara-colour-16gb/frontal.png',
+['P10','B','4','Producto·COLOR','Kobo Clara compacta','kobo-clara-colour-16gb/frontal.png',
 `Animate this image. The device rests on a light wooden table beside a cup of coffee, warm morning window light moving gently across it, a hand entering frame to pick it up and hold it comfortably in one palm to show how compact it is, keeping the screen facing the camera at all times and never turning it over. Slow push in, no orbit and no arc around the device, shallow depth of field, natural editorial photography, warm and inviting. ${MARCO} ${BLIND_COL} ${CIERRE} quiet morning room tone only.`],
-['P11','B','4','Producto·CAJAS','Cajas selladas, stock real · 4 guiones','varios-modelos-en-la-misma-foto/frontal.png',
+['P11','B','4','Producto·CAJAS','Cajas selladas, stock real','varios-modelos-en-la-misma-foto/frontal.png',
 `Animate this image. The sealed retail boxes stand together on a dark surface under warm directional light that slowly sweeps across them, revealing the texture of the cardboard, with a subtle slow camera orbit around the group. Shallow depth of field, natural editorial photography, premium product mood. Keep every box exactly as shown: do not alter their shape, proportions, colours, or any of the printing, artwork and brand markings already on them — preserve all existing packaging graphics exactly as they appear. The boxes stay closed and sealed at all times; nothing is opened, unwrapped or taken out. Do not add any new text, lettering, labels, stickers or logos that are not already in the image. No watermark. No dialogue, no voiceover, subtle room tone only.`]
 ];
 
 let filtro='todos';
+// El calendario maestro decide los guiones del mes. De ahí se deriva también
+// qué prompts hacen falta: el banco histórico P no se muestra ni se cuenta si
+// ningún guion vigente lo nombra.
+function promptsVigentesConIndice(){
+ return P.map((p,i)=>({p,i})).filter(({p})=>usosDe(p[0]).length>0);
+}
+function costoPrompt(p){ return p.length>6 ? 100 : 20; }
+function actualizarResumenVigente(){
+ const vigentes=promptsVigentesConIndice();
+ const ambiente=vigentes.filter(({p})=>!p[3].startsWith('Producto'));
+ const producto=vigentes.filter(({p})=>p[3].startsWith('Producto'));
+ const total=vigentes.reduce((s,{p})=>s+costoPrompt(p),0);
+ const porGuiones=document.getElementById('nav-guiones');
+ const porPrompts=document.getElementById('nav-prompts');
+ if(porGuiones) porGuiones.textContent=`🎬 Guiones (${G.length})`;
+ if(porPrompts) porPrompts.textContent=`🎨 Prompts (${vigentes.length})`;
+ const txtAmbiente=document.getElementById('ayuda-ambiente');
+ const txtProducto=document.getElementById('ayuda-producto');
+ const presupuesto=document.getElementById('ayuda-presupuesto');
+ if(txtAmbiente) txtAmbiente.textContent=`${ambiente.length} clips de ambiente vigentes.`;
+ if(txtProducto) txtProducto.textContent=`${producto.length} clips de producto vigentes.`;
+ if(presupuesto) presupuesto.innerHTML=`<b>Presupuesto del calendario vigente:</b> `+
+   `${ambiente.length} ambiente × 20 + ${producto.length} producto × 100 = `+
+   `<b>${total} créditos</b> para generar cada prompt una vez.`;
+}
 // cambia de pestaña por código
 function irA(sec){
  document.querySelectorAll('nav button').forEach(x=>
@@ -1625,6 +1653,7 @@ function irAPrompt(clipId){
 function verGuion(n){ filtro='G'+n; irA('prompts'); renderPrompts(); window.scrollTo(0,0); }
 
 function renderPrompts(){
+ actualizarResumenVigente();
  const f=document.getElementById('filtros');
  const opts=[['todos','Todos'],['A','Cuenta A'],['B','Cuenta B'],
              ['Producto','Solo producto']];
@@ -1641,7 +1670,7 @@ function renderPrompts(){
   const g=G.find(x=>x.n===+filtro.slice(1));
   ordenGuion=clipsDe(g).map(id=>CLIPS[id][0]);
  }
- let lista=P.map((p,i)=>({p,i})).filter(({p})=>{
+ let lista=promptsVigentesConIndice().filter(({p})=>{
    if(ordenGuion)return ordenGuion.includes(p[0]);
    if(filtro=='todos')return 1;
    if(filtro=='Producto')return p[3].startsWith('Producto');
@@ -1662,7 +1691,7 @@ function renderPrompts(){
         <input type="checkbox" class="chk-clip-${p[0]}" ${esClipHecho(p[0]) ? 'checked' : ''} onchange="toggleClipHecho('${p[0]}', this.checked)">
         ☑ Ya tengo el video
       </label>
-      <div class="orden" style="margin-left:8px;">${i+1}</div>
+      <div class="orden" style="margin-left:8px;">${k+1}</div>
      <div class="prinfo"><b>${p[4].replace(/\s*·\s*(\d+\s*)?guion(es)?[\s\d,y]*$/i,'')}</b><span>${p[3]} · tanda ${p[2]}${
        COD[p[0]]?' · en los guiones aparece como <span class="codref">'+COD[p[0]]+'</span>':''}</span></div>
      <span class="modelo ${esProd?'mQ':'mF'}">${esProd?'Veo 3.1 Quality':'Veo 3.1 Fast'}</span>
@@ -1672,7 +1701,7 @@ function renderPrompts(){
      <code>assets/productos/${foto}</code>
      <button class="btn sec" onclick="cp(this,'assets\\\\productos\\\\${foto.replace(/\//g,'\\\\')}')">Copiar ruta</button></div>`:''}
    ${(()=>{const us=usosDe(p[0]);
-     if(!us.length)return `<div class="sinuso">💤 <b>No se usa en los 10 guiones de producción.</b></div>`;
+     if(!us.length)return `<div class="sinuso">💤 <b>No se usa en los guiones vigentes de producción.</b></div>`;
      return `<div class="usos"><div class="usoscab">📍 Dónde se usa · verifica que el clip funcione en estos momentos</div>
       ${us.map(u=>`<div class="uso" onclick="irAGuion(${u.n},${u.ri})"
         title="Ir al guion ${u.n}, al momento ${u.mom}">
@@ -1800,20 +1829,24 @@ function teleCerrar(){
 
 /* ═══════════ LOTES ═══════════ */
 function renderLotes(){
+ const vigentes=promptsVigentesConIndice();
  let h='';
- for(let i=0;i<P.length;i+=4){
-  const g=P.slice(i,i+4), nro=Math.floor(i/4)+1;
-  h+=`<div class="lote"><h3>Tanda ${nro} · cuenta ${g[0][1]}</h3>
+ for(let i=0;i<vigentes.length;i+=4){
+  const g=vigentes.slice(i,i+4), nro=Math.floor(i/4)+1;
+  const costo=g.reduce((s,{p})=>s+costoPrompt(p),0);
+  h+=`<div class="lote"><h3>Tanda ${nro}</h3>
    <p style="margin:2px 0 0;font-size:13px;color:var(--txt2)">
-     4 pestañas abiertas, un prompt en cada una. Cuesta ${g.length*20} créditos.</p>
-   <div class="loteitems">${g.map((p,j)=>`<div class="loteit">
+     ${g.length} pestaña${g.length===1?'':'s'} abierta${g.length===1?'':'s'}, un prompt en cada una. Cuesta ${costo} créditos.</p>
+   <div class="loteitems">${g.map(({p,i:indice},j)=>`<div class="loteit">
      <b>${j+1}. ${p[4].split('·')[0].trim()}</b>
      <span class="archivo">${p[0]}.mp4</span><br>
-     <button class="btn sec" style="margin-top:7px" onclick="cpIdx(this,${i+j})">📋 Copiar</button>
+     <button class="btn sec" style="margin-top:7px" onclick="cpIdx(this,${indice})">📋 Copiar</button>
    </div>`).join('')}</div>
-   <button class="btn" onclick="cpTanda(this,${i})">📋 Copiar los ${g.length} numerados</button>
+   <button class="btn" onclick="cpTanda(this,[${g.map(({i:indice})=>indice).join(',')}])">📋 Copiar los ${g.length} numerados</button>
   </div>`;
  }
+ if(!vigentes.length) h='<div class="guiones-vacio">Todavía no hay prompts para los guiones vigentes.</div>';
+ const repetidos=vigentes.filter(({p})=>new Set(usosDe(p[0]).map(u=>u.n)).size>1).map(({p})=>p[0]);
  h+=`<div class="lote" style="border-color:var(--warn)">
   <h3 style="color:var(--warn)">4 variantes del mismo prompt</h3>
   <p style="font-size:13.5px;color:var(--txt2)">
@@ -1821,8 +1854,9 @@ function renderLotes(){
    aparte: <b>4 variantes = 80 créditos</b> en Fast. Guardalas como
    <code>nombre.mp4</code>, <code>nombre-2.mp4</code>, <code>nombre-3.mp4</code>,
    <code>nombre-4.mp4</code> y quédate con las 2 mejores.</p>
-  <p style="font-size:13.5px;color:var(--txt2)">Vale la pena solo en estos, que salen en 8-10 guiones:
-   <b>scroll · libros · biblioteca · ojos · noche · P01 · P02</b></p>
+  <p style="font-size:13.5px;color:var(--txt2)">${repetidos.length
+   ? 'Vale la pena solo en estos, que se repiten en varios guiones vigentes: <b>'+repetidos.join(' · ')+'</b>'
+   : 'Por ahora ningún prompt se repite entre los guiones vigentes.'}</p>
  </div>`;
  document.getElementById('lotes').innerHTML=h;
 }
@@ -1877,7 +1911,7 @@ function _bloqueGuion(src,n){
 }
 // Cada fila de la línea de tiempo ocupa exactamente una línea del fuente (las
 // 120 lo cumplen, y test_regresion lo comprueba). Apoyarse en eso evita meter
-// un parser de JavaScript acá dentro.
+// un parser de JavaScript aquí dentro.
 function _lineasFilas(src,ini,fin){
   const m=/\n\s*tl:\[/.exec(src.slice(ini,fin));
   if(!m) throw new Error('ese guion no tiene línea de tiempo');
@@ -2066,7 +2100,7 @@ function opcionesRecurso(clave,ve){
   const actual=((ve||'').match(RX_RECURSO1)||[''])[0];
   const sel=k=>k===actual?' selected':'';
   const opcion=(k,txt,titulo)=>`<option value="${k}"${sel(k)} title="${(titulo||'').replace(/"/g,'&quot;')}">${txt}</option>`;
-  let h=actual?'':'<option value="" selected>— elegí el clip —</option>';
+  let h=actual?'':'<option value="" selected>— elige el clip —</option>';
   if(tipo==='ANIM'){
     h+='<optgroup label="Plantillas animadas">';
     for(const k in CLIPS) if(k[0]==='H') h+=opcion(k,`${k} · ${CLIPS[k][0]}`,CLIPS[k][1]);
@@ -2120,7 +2154,7 @@ function estadoFila(n,ri,mensaje,clase){
 async function cambiarFila(n,ri,clave,recurso){
   const g=G.find(x=>x.n===n); if(!g) return;
   const r=g.tl[ri];
-  if(recurso==='') { refrescarFila(n,ri); return; }   // el "— elegí el clip —"
+  if(recurso==='') { refrescarFila(n,ri); return; }   // el "— elige el clip —"
   const claveFinal=clave||modoDeFila(r[2],r[3]);
   const tipo=MODOS[claveFinal].tipo;
   let ve=textoConModo(r[3],claveFinal);
@@ -2139,13 +2173,16 @@ async function cambiarFila(n,ri,clave,recurso){
     return;
   }
   r[2]=tipo; r[3]=ve;
+  // Si cambia un recurso, los prompts y sus contadores vuelven a salir del
+  // calendario vigente, sin conservar tarjetas del banco histórico.
+  actualizarResumenVigente(); renderPrompts(); renderLotes();
   const falta=tipo!=='YO' && !RX_RECURSO1.test(ve);
   refrescarFila(n,ri, falta?'Guardado, pero falta elegir el clip':'✓ Guardado',
     falta?'mal':'ok');
 }
 
 function cpIdx(b,i){const p=P[i];cp(b,p.length>6?p[6]:p[5]);}
-function cpTanda(b,i){const g=P.slice(i,i+4);
+function cpTanda(b,indices){const g=indices.map(i=>P[i]);
  cp(b,g.map((p,j)=>`━━━ ${j+1}. GUARDAR COMO: ${p[0]}.mp4 ━━━\n${p.length>6?'[Frames to Video · foto: assets/productos/'+p[5]+']\n':''}${p.length>6?p[6]:p[5]}`).join('\n\n\n'));}
 
 /* ═══════════ UTILIDADES ═══════════ */
@@ -2157,7 +2194,7 @@ function cp(btn,txt){
   setTimeout(()=>t.classList.remove('on'),1400);
  }).catch(()=>alert('No se pudo copiar. Selecciona el texto a mano.'));
 }
-/* ═══════════ CORRER EL PIPELINE DESDE ACÁ ═══════════ */
+/* ═══════════ CORRER EL PIPELINE DESDE AQUÍ ═══════════ */
 // Todo esto solo existe con `editor/panel_servidor.py` detrás. El servidor corre
 // en la misma máquina que el navegador, que es lo que permite las dos cosas que
 // una página web no puede hacer sola: pedir la ruta absoluta de la grabación
@@ -2290,7 +2327,7 @@ function pipeDesdeGuion(n){
 async function pipeCorrer(){
   const msg=document.getElementById('pipe-mensaje');
   if(!pipeVideo){
-    msg.textContent='Primero elegí la grabación.'; msg.className='hookseg-estado mal'; return;
+    msg.textContent='Primero elige la grabación.'; msg.className='hookseg-estado mal'; return;
   }
   const cuerpo={
     video:pipeVideo,
@@ -2360,7 +2397,7 @@ function pipePintarCorrida(d){
     msg.className='hookseg-estado ok';
   }else if(d.estado==='error'){
     punto.className='pipe-punto mal';
-    msg.textContent=`Falló (código ${d.codigo}). Mirá el log de acá abajo.`;
+    msg.textContent=`Falló (código ${d.codigo}). Mira el log de aquí abajo.`;
     msg.className='hookseg-estado mal';
   }else if(d.estado==='cancelada'){
     punto.className='pipe-punto'; msg.textContent='Cancelada.'; msg.className='hookseg-estado';
@@ -2522,7 +2559,7 @@ async function iaGenerarProducto(correccion){
   const nombreTexto = document.getElementById('ia-prod-nombre').value.trim();
   const foto = iaProdFotoSel;
   if (!nombreTexto) { alert('Escribí el código o nombre primero.'); return; }
-  if (!foto) { alert('Elegí una foto de la galería primero.'); return; }
+  if (!foto) { alert('Elige una foto de la galería primero.'); return; }
   const promptTxt = document.getElementById('ia-prod-prompt-txt');
   const promptArmado = promptTxt.style.display !== 'none' ? promptTxt.textContent : '';
   const btn = document.getElementById('btn-ia-prod-img'), msg = document.getElementById('ia-prod-msg');
@@ -2612,7 +2649,7 @@ pipeArrancar();
 
 /* ═══════════ ENTRADA POR HASH (#guion-N) ═══════════
    El calendario del mes (deviceshop\marketing\CALENDARIO-MES.html) enlaza cada
-   tarjeta de video acá con `#guion-N`. Es de SOLO LECTURA: abre y muestra ese
+   tarjeta de video aquí con `#guion-N`. Es de SOLO LECTURA: abre y muestra ese
    guion reutilizando irAGuion(), no escribe nada ni cambia ningún estado. Un
    número que no exista se ignora y el panel queda como siempre. */
 function abrirGuionDelHash(){
